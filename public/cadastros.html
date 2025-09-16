@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastros - Sistema de Gestão</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fontes do Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Ficheiro de Estilos CSS Externo -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-10">
+            <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
+            <h1 class="text-4xl font-bold text-gray-800 text-center mt-2">Cadastros Gerais</h1>
+            <p class="mt-2 text-lg text-gray-600 text-center">Gira os produtos e serviços da sua oficina.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Card: Produtos -->
+            <a href="gestao_produtos.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                    </svg>
+                    <h3>Produtos (Peças)</h3>
+                    <p>Adicione, edite, remova e controle o stock das suas peças e produtos.</p>
+                </div>
+                <span class="go-arrow">Aceder &rarr;</span>
+            </a>
+
+            <!-- Card: Serviços -->
+            <a href="gestao_servicos.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.472-2.472a3.375 3.375 0 0 0-4.773-4.773L6.75 15.75l-2.472-2.472a3.375 3.375 0 0 0-4.773 4.773l2.472 2.472" />
+                    </svg>
+                    <h3>Serviços</h3>
+                    <p>Registe e gira os preços dos serviços oferecidos pela sua empresa.</p>
+                </div>
+                <span class="go-arrow">Aceder &rarr;</span>
+            </a>
+        </main>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venda de Balcão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="mb-4">
+            <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Venda de Balcão</h1>
+
+        <form id="venda-form">
+            <div class="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
+
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="card">
+                        <h2 class="text-xl font-semibold text-gray-700 mb-4">1. Cliente (Opcional)</h2>
+                        <div class="autocomplete-container">
+                           <input type="text" id="input-search-cliente" placeholder="Digite para buscar um cliente..." class="form-input w-full mt-1 text-sm">
+                           <div id="results-cliente" class="autocomplete-results hidden"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="text-xl font-semibold text-gray-700 mb-4">2. Adicione Itens</h2>
+                        <div class="flex flex-col md:flex-row items-end gap-3">
+                            <div class="flex-grow w-full autocomplete-container">
+                                <label class="text-sm">Adicionar Item</label>
+                                <input type="text" id="input-search-produto" placeholder="Digite para buscar uma peça..." class="form-input w-full mt-1 text-sm">
+                                <div id="results-produto" class="autocomplete-results hidden"></div>
+                            </div>
+                            <div class="w-full md:w-auto"><label for="input-produto-qtd" class="block text-sm font-medium text-gray-700">Qtd.</label><input type="number" id="input-produto-qtd" value="1" min="1" class="form-input w-20 mt-1"></div>
+                            <button type="button" id="btn-add-produto" class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg h-10 w-full md:w-auto">Adicionar</button>
+                        </div>
+                        <hr class="my-4">
+                        <div class="flex flex-col md:flex-row items-end gap-3">
+                            <div class="flex-grow w-full autocomplete-container">
+                                <label class="text-sm">Adicionar Serviço</label>
+                                <input type="text" id="input-search-servico" placeholder="Digite para buscar um serviço..." class="form-input w-full mt-1 text-sm">
+                                <div id="results-servico" class="autocomplete-results hidden"></div>
+                            </div>
+                            <button type="button" id="btn-add-servico" class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg h-10 w-full md:w-auto">Adicionar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1">
+                     <div class="card">
+                         <h2 class="text-xl font-semibold text-gray-700 mb-4">Resumo da Venda</h2>
+                         <div id="itens-venda-container" class="min-h-[120px] space-y-2">
+                             <p id="carrinho-vazio-msg" class="text-gray-500 text-center py-4">Nenhum item adicionado.</p>
+                         </div>
+                         <div class="border-t mt-4 pt-4">
+                             <div class="flex justify-between items-center text-2xl font-bold"><span class="text-gray-800">TOTAL:</span><span id="total-valor" class="text-blue-600">R$ 0,00</span></div>
+                         </div>
+                         <button type="submit" id="btn-finalizar-venda" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg mt-6 text-lg shadow disabled:bg-gray-400 disabled:cursor-not-allowed">Finalizar Venda</button>
+                    </div>
+                </div>
+
+            </div> </form>
+        
+        <div id="feedback-alert" class="hidden"></div> 
+        <div id="venda-confirmacao" class="card mt-6 text-center" style="display: none;">
+            <h2 class="text-2xl font-bold text-green-600">Venda Finalizada com Sucesso!</h2>
+            <p id="confirmacao-texto" class="text-gray-700 mt-2 mb-4"></p>
+            <button id="btn-imprimir-recibo" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow">Imprimir Recibo</button>
+            <button id="btn-nova-venda" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow ml-3">Registar Nova Venda</button>
+        </div>
+    </div>
+    
+    <template id="recibo-template">
+                        <html>
+        <head>
+            <title>Recibo de Venda</title>
+            <style>
+                body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; color: #333; }
+                .recibo-box { border: 1px solid #ccc; padding: 20px; max-width: 800px; margin: auto; }
+                .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                .header h1 { font-size: 24px; margin: 0; }
+                .header p { margin: 0; font-size: 14px; }
+                .details { text-align: right; }
+                .details h2 { font-size: 20px; margin: 0; }
+                .cliente-info { margin-top: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+                .cliente-info h3 { font-size: 16px; margin: 0 0 5px 0; }
+                .cliente-info p { margin: 0; font-size: 14px; }
+                .itens-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                .itens-table th { background-color: #f2f2f2; padding: 8px; text-align: left; border-bottom: 2px solid #ddd; }
+                .itens-table td { padding: 8px; border-bottom: 1px solid #eee; }
+                .total-section { margin-top: 20px; text-align: right; }
+                .total-section h2 { font-size: 22px; font-weight: bold; }
+                .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #555; }
+            </style>
+        </head>
+        <body>
+            <div class="recibo-box">
+                <div class="header">
+                    <div><h1>Saulo Cardoso Oficina de Motos</h1><p>Avenida Central, 33 - Inajá-PE</p></div>
+                    <div class="details"><h2>RECIBO DE VENDA</h2><p><strong>Venda #<span data-recibo="venda-id"></span></strong></p><p>Data: <span data-recibo="data"></span></p></div>
+                </div>
+                <div class="cliente-info">
+                    <h3>Cliente:</h3>
+                    <p data-recibo="cliente-nome"></p>
+                </div>
+                <table class="itens-table">
+                    <thead><tr><th>Descrição</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Vlr. Unit.</th><th style-="text-align: right;">Subtotal</th></tr></thead>
+                    <tbody data-recibo="itens-tabela"></tbody>
+                </table>
+                <div class="total-section"><h2>TOTAL: <span data-recibo="total"></span></h2></div>
+                <div class="footer"><p>Obrigado pela sua preferência!</p></div>
+            </div>
+        </body>
+        </html>
+        </template>
+
+    <script src="js/gestao_vendas.js"></script>
+</body>
+</html>

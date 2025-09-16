@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Ordens de Serviço</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fontes do Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Ficheiro de Estilos CSS Externo -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="mb-4">
+            <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
+        </div>
+        <div id="feedback-alert" class="feedback-alert"></div>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Ordens de Serviço</h1>
+            <button id="btnNovaOS" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                + Nova OS
+            </button>
+        </div>
+
+        <!-- Tabela de OS -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">OS #</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Placa</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Cliente</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Data de Entrada</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-os" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Abrir/Editar OS -->
+    <div id="os-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2 id="os-modal-title" class="text-2xl font-bold text-gray-800 mb-4">Ordem de Serviço</h2>
+            <div id="os-modal-body"></div>
+        </div>
+    </div>
+    
+    <!-- MOLDE DO RECIBO DA OS (INVISÍVEL) -->
+    <template id="os-recibo-template">
+        <html>
+        <head>
+            <title>Ordem de Serviço</title>
+            <style>
+                body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; color: #333; }
+                .recibo-box { border: 1px solid #ccc; padding: 20px; max-width: 800px; margin: auto; }
+                .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                .header h1 { font-size: 24px; margin: 0; }
+                .header p { margin: 0; font-size: 14px; }
+                .details { text-align: right; }
+                .details h2 { font-size: 20px; margin: 0; }
+                .info-section { margin-top: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+                .info-section h3 { font-size: 16px; margin: 0 0 5px 0; font-weight: bold; }
+                .info-section p { margin: 0; font-size: 14px; }
+                .itens-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                .itens-table th { background-color: #f2f2f2; padding: 8px; text-align: left; border-bottom: 2px solid #ddd; }
+                .itens-table td { padding: 8px; border-bottom: 1px solid #eee; }
+                .total-section { margin-top: 20px; text-align: right; }
+                .total-section h2 { font-size: 22px; font-weight: bold; }
+                .assinatura-section { margin-top: 80px; text-align: center; }
+                .assinatura-section p { margin-top: 0; }
+            </style>
+        </head>
+        <body>
+            <div class="recibo-box">
+                <div class="header">
+                    <div><h1>Saulo Cardoso Oficina de Motos</h1><p>Avenida Central, 33 - Inajá-PE</p></div>
+                    <div class="details"><h2>ORDEM DE SERVIÇO</h2><p><strong>OS #<span data-recibo="os-id"></span></strong></p><p>Data: <span data-recibo="data"></span></p></div>
+                </div>
+                <div class="info-section">
+                    <h3>Dados do Cliente e Veículo</h3>
+                    <p><strong>Cliente:</strong> <span data-recibo="cliente-nome"></span></p>
+                    <p><strong>Veículo:</strong> <span data-recibo="veiculo-modelo"></span> | <strong>Placa:</strong> <span data-recibo="veiculo-placa"></span></p>
+                </div>
+                <div class="info-section">
+                    <h3>Problema Relatado pelo Cliente</h3>
+                    <p data-recibo="problema-relatado"></p>
+                </div>
+                <div class="info-section">
+                    <h3>Diagnóstico Técnico / Serviços a Executar</h3>
+                    <p data-recibo="diagnostico-tecnico"></p>
+                </div>
+                <table class="itens-table">
+                    <thead><tr><th>Descrição</th><th style="text-align: center;">Qtd.</th><th style="text-align: right;">Vlr. Unit.</th><th style="text-align: right;">Subtotal</th></tr></thead>
+                    <tbody data-recibo="itens-tabela"></tbody>
+                </table>
+                <div class="total-section"><h2>TOTAL ORÇADO: <span data-recibo="total"></span></h2></div>
+                <div class="assinatura-section">
+                    <p>_________________________________________</p>
+                    <p>Assinatura do Cliente</p>
+                    <p>(Autorizo a execução dos serviços e a utilização dos itens acima descritos)</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    </template>
+
+    <!-- Ficheiro JavaScript Externo -->
+    <script src="js/gestao_os.js"></script>
+</body>
+</html>

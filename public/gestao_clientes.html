@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Clientes e Veículos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
+        <div id="feedback-alert" class="feedback-alert"></div>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Gestão de Clientes</h1>
+            <button id="btnNovoCliente" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                + Novo Cliente
+            </button>
+        </div>
+
+        <!-- Tabela de Clientes -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Nome</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Contato</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-clientes" class="divide-y divide-gray-200"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Adicionar/Editar Cliente -->
+    <div id="cliente-modal" class="modal-backdrop">
+        <div class="modal-content max-w-md">
+            <h2 id="cliente-modal-title" class="text-2xl font-bold text-gray-800 mb-4">Novo Cliente</h2>
+            <form id="cliente-form">
+                <input type="hidden" id="cliente-id">
+                <div class="mb-4"><label for="cliente-nome" class="block text-sm font-medium text-gray-700">Nome Completo</label><input type="text" id="cliente-nome" required class="form-input mt-1 block w-full rounded-md shadow-sm"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="mb-4"><label for="cliente-telefone" class="block text-sm font-medium text-gray-700">Telefone</label><input type="tel" id="cliente-telefone" class="form-input mt-1 block w-full rounded-md shadow-sm"></div>
+                    <div class="mb-4"><label for="cliente-email" class="block text-sm font-medium text-gray-700">E-mail</label><input type="email" id="cliente-email" class="form-input mt-1 block w-full rounded-md shadow-sm"></div>
+                </div>
+                <div class="mb-4"><label for="cliente-endereco" class="block text-sm font-medium text-gray-700">Endereço</label><textarea id="cliente-endereco" rows="3" class="form-input mt-1 block w-full rounded-md shadow-sm"></textarea></div>
+                <div class="flex justify-end gap-3 mt-4"><button type="button" id="btn-cancelar-cliente" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Gerir Veículos -->
+    <div id="veiculo-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h2 id="veiculo-modal-title" class="text-2xl font-bold text-gray-800 mb-4">Veículos do Cliente</h2>
+            <div id="veiculos-lista" class="mb-6 max-h-60 overflow-y-auto"></div>
+            <hr class="my-4">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Adicionar Novo Veículo</h3>
+            <form id="veiculo-form" class="grid grid-cols-2 gap-4">
+                <input type="hidden" id="veiculo-cliente-id">
+                <div class="col-span-2 sm:col-span-1"><label for="veiculo-placa">Placa</label><input type="text" id="veiculo-placa" required class="form-input mt-1 w-full rounded-md shadow-sm"></div>
+                <div class="col-span-2 sm:col-span-1"><label for="veiculo-marca">Marca</label><input type="text" id="veiculo-marca" class="form-input mt-1 w-full rounded-md shadow-sm"></div>
+                <div class="col-span-2 sm:col-span-1"><label for="veiculo-modelo">Modelo</label><input type="text" id="veiculo-modelo" class="form-input mt-1 w-full rounded-md shadow-sm"></div>
+                <div class="col-span-2 sm:col-span-1"><label for="veiculo-ano">Ano</label><input type="number" id="veiculo-ano" class="form-input mt-1 w-full rounded-md shadow-sm"></div>
+                <div class="col-span-2"><label for="veiculo-cor">Cor</label><input type="text" id="veiculo-cor" class="form-input mt-1 w-full rounded-md shadow-sm"></div>
+                <div class="col-span-2 text-right"><button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Adicionar Veículo</button></div>
+            </form>
+            <div class="text-center mt-6"><button type="button" id="btn-fechar-veiculo" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Fechar</button></div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO ---
+        const API_URL = 'http://localhost:3002/api';
+
+        // --- ELEMENTOS DO DOM ---
+        const tabelaClientesBody = document.getElementById('tabela-clientes');
+        const clienteModal = document.getElementById('cliente-modal');
+        const veiculoModal = document.getElementById('veiculo-modal');
+        const feedbackAlert = document.getElementById('feedback-alert');
+        
+        // --- FUNÇÕES AUXILIARES ---
+        const showAlert = (message, isSuccess = true) => {
+            feedbackAlert.textContent = message;
+            feedbackAlert.className = `feedback-alert p-4 mb-4 text-sm rounded-lg ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+            feedbackAlert.style.display = 'block';
+            setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
+        };
+
+        // --- FUNÇÕES DE CLIENTE ---
+        const renderizarTabelaClientes = async () => {
+            try {
+                const response = await fetch(`${API_URL}/clientes`);
+                if (!response.ok) throw new Error('Erro ao carregar clientes.');
+                const clientes = await response.json();
+                tabelaClientesBody.innerHTML = '';
+                clientes.forEach(cliente => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4"><div class="text-sm font-medium text-gray-900">${cliente.nome}</div></td>
+                        <td class="px-6 py-4"><div class="text-sm text-gray-900">${cliente.telefone || ''}</div><div class="text-sm text-gray-500">${cliente.email || ''}</div></td>
+                        <td class="px-6 py-4 text-right text-sm font-medium">
+                            <button onclick="abrirModalVeiculos(${cliente.id}, '${cliente.nome.replace(/'/g, "\\'")}')" class="bg-gray-600 text-white px-3 py-1 rounded-md text-xs hover:bg-gray-700 mr-2">Ver Veículos</button>
+                            <button onclick="abrirModalCliente(true, ${cliente.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
+                            <button onclick="removerCliente(${cliente.id})" class="text-red-600 hover:text-red-900">Remover</button>
+                        </td>
+                    `;
+                    tabelaClientesBody.appendChild(tr);
+                });
+            } catch (error) {
+                showAlert(error.message, false);
+            }
+        };
+
+        window.abrirModalCliente = async (isEdit = false, clienteId = null) => {
+            const form = document.getElementById('cliente-form');
+            form.reset();
+            document.getElementById('cliente-id').value = '';
+            const title = document.getElementById('cliente-modal-title');
+
+            if (isEdit && clienteId) {
+                title.textContent = 'Editar Cliente';
+                // Idealmente, teríamos uma rota /api/clientes/:id
+                const res = await fetch(`${API_URL}/clientes`);
+                const clientes = await res.json();
+                const cliente = clientes.find(c => c.id === clienteId);
+                if (cliente) {
+                    document.getElementById('cliente-id').value = cliente.id;
+                    document.getElementById('cliente-nome').value = cliente.nome;
+                    document.getElementById('cliente-telefone').value = cliente.telefone;
+                    document.getElementById('cliente-email').value = cliente.email;
+                    document.getElementById('cliente-endereco').value = cliente.endereco;
+                }
+            } else {
+                title.textContent = 'Novo Cliente';
+            }
+            clienteModal.classList.add('active');
+        };
+
+        window.removerCliente = async (id) => {
+            if (confirm('Tem a certeza que deseja remover este cliente? Todos os seus veículos também serão removidos.')) {
+                const response = await fetch(`${API_URL}/clientes/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                showAlert(result.message, response.ok);
+                if(response.ok) await renderizarTabelaClientes();
+            }
+        };
+
+        document.getElementById('cliente-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('cliente-id').value;
+            const data = {
+                nome: document.getElementById('cliente-nome').value,
+                telefone: document.getElementById('cliente-telefone').value,
+                email: document.getElementById('cliente-email').value,
+                endereco: document.getElementById('cliente-endereco').value,
+            };
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/clientes/${id}` : `${API_URL}/clientes`;
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            showAlert(result.message, response.ok);
+            if(response.ok) {
+                clienteModal.classList.remove('active');
+                await renderizarTabelaClientes();
+            }
+        });
+
+        // --- FUNÇÕES DE VEÍCULO ---
+        window.abrirModalVeiculos = async (clienteId, clienteNome) => {
+            document.getElementById('veiculo-modal-title').textContent = `Veículos de ${clienteNome}`;
+            document.getElementById('veiculo-cliente-id').value = clienteId;
+            document.getElementById('veiculo-form').reset();
+            await renderizarListaVeiculos(clienteId);
+            veiculoModal.classList.add('active');
+        };
+
+        const renderizarListaVeiculos = async (clienteId) => {
+            const response = await fetch(`${API_URL}/clientes/${clienteId}/veiculos`);
+            const veiculos = await response.json();
+            const listaDiv = document.getElementById('veiculos-lista');
+            listaDiv.innerHTML = '';
+            if (veiculos.length === 0) {
+                listaDiv.innerHTML = '<p class="text-center text-gray-500">Nenhum veículo registado para este cliente.</p>';
+                return;
+            }
+            veiculos.forEach(v => {
+                listaDiv.innerHTML += `
+                    <div class="flex justify-between items-center p-2 border-b">
+                        <div>
+                            <span class="font-bold text-lg">${v.placa}</span>
+                            <span class="text-sm text-gray-600 ml-2">${v.marca || ''} ${v.modelo || ''}</span>
+                        </div>
+                        <button onclick="removerVeiculo(${v.id}, ${v.cliente_id})" class="text-red-500 text-xs hover:text-red-700">Remover</button>
+                    </div>
+                `;
+            });
+        };
+
+        document.getElementById('veiculo-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const clienteId = document.getElementById('veiculo-cliente-id').value;
+            const veiculoData = {
+                cliente_id: clienteId,
+                placa: document.getElementById('veiculo-placa').value.toUpperCase(),
+                marca: document.getElementById('veiculo-marca').value,
+                modelo: document.getElementById('veiculo-modelo').value,
+                ano: document.getElementById('veiculo-ano').value || null,
+                cor: document.getElementById('veiculo-cor').value,
+            };
+            const response = await fetch(`${API_URL}/veiculos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(veiculoData)
+            });
+            const result = await response.json();
+            showAlert(result.message, response.ok);
+            if (response.ok) {
+                await renderizarListaVeiculos(clienteId);
+                document.getElementById('veiculo-form').reset();
+            }
+        });
+
+        window.removerVeiculo = async (veiculoId, clienteId) => {
+            if (confirm('Tem a certeza que deseja remover este veículo?')) {
+                const response = await fetch(`${API_URL}/veiculos/${veiculoId}`, { method: 'DELETE' });
+                const result = await response.json();
+                showAlert(result.message, response.ok);
+                if (response.ok) await renderizarListaVeiculos(clienteId);
+            }
+        };
+
+        // --- INICIALIZAÇÃO E EVENTOS ---
+        document.addEventListener('DOMContentLoaded', renderizarTabelaClientes);
+        document.getElementById('btnNovoCliente').addEventListener('click', () => abrirModalCliente(false));
+        document.getElementById('btn-cancelar-cliente').addEventListener('click', () => clienteModal.classList.remove('active'));
+        document.getElementById('btn-fechar-veiculo').addEventListener('click', () => veiculoModal.classList.remove('active'));
+
+    </script>
+</body>
+</html>

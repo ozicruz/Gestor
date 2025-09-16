@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Início - Gestão de Oficina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">Sistema de Gestão de Oficina</h1>
+            <p class="mt-2 text-lg text-gray-600">Selecione um módulo para começar a trabalhar.</p>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            
+            <!-- Card: Ordens de Serviço -->
+            <a href="gestao_os.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12z" />
+                    </svg>
+                    <h3>Ordens de Serviço</h3>
+                    <p>Abra e gira o estado das Ordens de Serviço para cada veículo.</p>
+                </div>
+                <span class="go-arrow">Enter &rarr;</span>
+            </a>
+
+            <!-- Card: Gestão de Pátio -->
+            <a href="gestao_patio.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.5-13.5-3.438 3.438M17.25 4.5l-3.438 3.438m0 0A4.5 4.5 0 1012 16.5a4.5 4.5 0 001.812-8.562z" />
+                    </svg>
+                    <h3>Pátio</h3>
+                    <p>Veja rapidamente todos os veículos que estão atualmente na oficina.</p>
+                </div>
+                <span class="go-arrow">Enter &rarr;</span>
+            </a>
+
+            <!-- Card: Vendas de Balcão -->
+            <a href="gestao_vendas.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c.51 0 .962-.343 1.087-.835l1.821-6.821c.125-.467-.17-1.02-.68-1.147l-15.211-4.042a1.125 1.125 0 0 0-1.316.317l-3.115 4.152a1.125 1.125 0 0 0 .316 1.604l14.412 4.042A1.125 1.125 0 0 0 18 14.25" />
+                    </svg>
+                    <h3>Venda de Balcão</h3>
+                    <p>Registe vendas diretas de produtos para clientes no balcão da loja.</p>
+                </div>
+                <span class="go-arrow">Enter &rarr;</span>
+            </a>
+
+            <!-- Card: Clientes e Veículos -->
+            <a href="gestao_clientes.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-2.308M15 19.128v-3.043m0 0a9.337 9.337 0 0 0-4.121-2.308 9.38 9.38 0 0 0-2.625.372M15 19.128v-3.043m0 0a9.337 9.337 0 0 0-4.121-2.308 9.38 9.38 0 0 0-2.625.372m-4.121 2.308a9.337 9.337 0 0 0-2.625-.372 9.38 9.38 0 0 0-4.121 2.308M15 19.128v-3.043m-6.375 0a9.337 9.337 0 0 0-4.121 2.308" />
+                    </svg>
+                    <h3>Clientes e Veículos</h3>
+                    <p>Gira a base de dados de clientes e as suas respetivas motos.</p>
+                </div>
+                <span class="go-arrow">Enter &rarr;</span>
+            </a>
+
+            <!-- Card: Cadastros -->
+            <a href="cadastros.html" class="nav-card">
+                <div>
+                    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+                    </svg>
+                    <h3>Cadastros</h3>
+                    <p>Gira os seus Produtos (Peças) e Serviços para usar nas Ordens de Serviço.</p>
+                </div>
+                <span class="go-arrow">Enter &rarr;</span>
+            </a>
+
+        </main>
+
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            <p>&copy; <span id="currentYear"></span> ZySystems. Todos os direitos reservados.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+    </script>
+
+</body>
+</html>

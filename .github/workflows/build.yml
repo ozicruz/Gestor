@@ -1,0 +1,30 @@
+name: Build Electron App
+
+on:
+  push:
+    branches: [ "main", "master" ] # Roda sempre que você enviar código para a branch principal
+
+jobs:
+  build:
+    runs-on: windows-latest # Usa uma máquina virtual Windows limpa
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20 # Usa a versão LTS estável do Node.js
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Build the application
+      run: npm run make
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: gestao-oficina-installer
+        path: out/make/squirrel.windows/x64/*.exe # Pega o instalador .exe

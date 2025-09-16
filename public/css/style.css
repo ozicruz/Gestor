@@ -1,0 +1,144 @@
+/* public/css/style.css */
+
+/* Estilos gerais que se aplicam a todas as páginas */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: rgb(216, 216, 216);
+}
+
+/* Estilos para os modais (janelas pop-up) */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+    z-index: 50;
+    overflow-y: auto;
+}
+
+.modal-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    width: 90%;
+    transform: translateY(-20px);
+    transition: transform 0.3s;
+}
+
+.modal-backdrop.active .modal-content {
+    transform: translateY(0);
+}
+
+/* Estilo base para campos de formulário para garantir a visibilidade */
+.form-input {
+    border: 1px solid #d1d5db; /* Corresponde a border-gray-300 do Tailwind */
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem; /* rounded-md */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+}
+
+/* Alertas de feedback */
+.feedback-alert {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: 500;
+    display: none;
+}
+
+.feedback-success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.feedback-error {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Estilos para os cartões de navegação (usado no index.html e cadastros.html) */
+.nav-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    padding: 1.5rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.nav-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+}
+.nav-card .icon {
+    width: 48px; height: 48px;
+    margin-bottom: 1rem; color: #3b82f6;
+}
+.nav-card h3 {
+    font-size: 1.25rem; font-weight: 600; color: #1f2937;
+}
+.nav-card p {
+    font-size: 0.875rem; color: #6b7280;
+    margin-top: 0.5rem; flex-grow: 1;
+}
+.nav-card .go-arrow {
+    margin-top: 1rem; font-weight: 600;
+    color: #3b82f6; align-self: flex-end;
+}
+
+/* ================================================= */
+/* === ESTILOS PARA OS CARDS DAS PÁGINAS INTERNAS === */
+/* ================================================= */
+
+/* Define o estilo do card, similar ao .nav-card mas para conteúdo geral. */
+.card {
+    background-color: white; /* Fundo branco */
+    border-radius: 0.75rem; /* Bordas arredondadas (12px) */
+    /* Sombra para dar o efeito de "flutuação" */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+    padding: 1.5rem; /* Espaçamento interno (24px) */
+}
+
+/* Estilos para o autocomplete, para garantir que apareça corretamente */
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-results {
+    position: absolute;
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: white;
+    z-index: 10;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+.autocomplete-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+}
+
+.autocomplete-item:hover {
+    background-color: #f3f4f6; /* bg-gray-100 */
+}
