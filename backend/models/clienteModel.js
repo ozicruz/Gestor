@@ -1,6 +1,13 @@
 // backend/models/clienteModel.js
 const { dbAll, dbRun, dbGet } = require('../database/database');
 
+// --- NOVA FUNÇÃO DE BUSCA ---
+const searchByName = (termo) => {
+    const sql = 'SELECT * FROM Clientes WHERE nome LIKE ? ORDER BY nome';
+    const params = [`%${termo}%`];
+    return dbAll(sql, params);
+};
+
 const findAll = () => {
     return dbAll('SELECT * FROM Clientes ORDER BY nome');
 };
@@ -31,5 +38,6 @@ module.exports = {
     findAll,
     create,
     update,
-    remove
+    remove,
+    searchByName // <-- Adicionar a nova função
 };

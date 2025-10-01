@@ -1,6 +1,15 @@
 // backend/models/produtoModel.js
 const { dbAll, dbGet, dbRun } = require('../database/database');
 
+// --- NOVA FUNÇÃO DE BUSCA ---
+const searchByName = (termo) => {
+    // O operador '%' é um coringa. '%termo%' busca qualquer registro
+    // que contenha o termo em qualquer parte do nome.
+    const sql = 'SELECT * FROM Produtos WHERE nome LIKE ? ORDER BY nome';
+    const params = [`%${termo}%`];
+    return dbAll(sql, params);
+};
+
 const findAll = () => {
     return dbAll('SELECT * FROM Produtos ORDER BY nome');
 };
@@ -34,5 +43,6 @@ module.exports = {
     findById,
     create,
     update,
-    remove
+    remove,
+    searchByName // <-- Adicionar a nova função
 };

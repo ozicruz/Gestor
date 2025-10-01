@@ -79,46 +79,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const setupAutocomplete = (inputId, resultsId, items, type) => {
-        const input = document.getElementById(inputId);
-        const results = document.getElementById(resultsId);
+const setupAutocomplete = (inputId, resultsId, items, type) => {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
 
-        input.addEventListener('input', () => {
-            const query = input.value.toLowerCase();
-            results.innerHTML = '';
-            selectedItems[type] = null;
-            if (type === 'cliente') vendaAtual.cliente_id = null;
-            if (!query) {
-                results.classList.add('hidden');
-                return;
-            }
+    input.addEventListener('input', async () => { // Adiciona async aqui
+        const query = input.value.toLowerCase();
+        results.innerHTML = '';
+        selectedItems[type] = null;
+        if (type === 'cliente') vendaAtual.cliente_id = null;
+        
+        if (!query || query.length < 2) { // Só busca com 2+ caracteres
+            results.classList.add('hidden');
+            return;
+        }
 
-            const filteredItems = items
-                .filter(item => item.nome.toLowerCase().startsWith(query))
-                .sort((a, b) => a.nome.localeCompare(b.nome));
+        // --- LÓGICA ANTIGA DE FILTRO LOCAL É REMOVIDA ---
+        // const filteredItems = items.filter(...) 
+
+        // --- LÓGICA NOVA DE BUSCA NA API ---
+        try {
+            // Define o endpoint correto baseado no tipo
+            let searchEndpoint = '';
+            if (type === 'produto') searchEndpoint = 'produtos';
+            else if (type === 'cliente') searchEndpoint = 'clientes';
+            else if (type === 'servico') searchEndpoint = 'servicos';
+
+            const response = await fetch(`${API_URL}/${searchEndpoint}/search?q=${query}`);
+            const filteredItems = await response.json(); // O backend retorna a lista já filtrada
 
             results.classList.remove('hidden');
-            filteredItems.forEach((item) => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                div.textContent = item.preco_unitario ? `${item.nome} (${formatCurrency(item.preco_unitario)})` : (item.preco ? `${item.nome} (${formatCurrency(item.preco)})` : item.nome);
-                
-                div.addEventListener('click', () => {
-                    input.value = item.nome;
-                    selectedItems[type] = item.id;
-                    if (type === 'cliente') vendaAtual.cliente_id = item.id;
-                    results.classList.add('hidden');
+            if (filteredItems.length === 0) {
+                results.innerHTML = '<div class="autocomplete-item-none">Nenhum resultado encontrado.</div>';
+            } else {
+                filteredItems.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.textContent = item.preco_unitario ? `${item.nome} (${formatCurrency(item.preco_unitario)})` : (item.preco ? `${item.nome} (${formatCurrency(item.preco)})` : item.nome);
+                    
+                    div.addEventListener('click', () => {
+                        input.value = item.nome;
+                        selectedItems[type] = item.id;
+                        if (type === 'cliente') vendaAtual.cliente_id = item.id;
+                        results.classList.add('hidden');
+                    });
+                    results.appendChild(div);
                 });
-                results.appendChild(div);
-            });
-        });
-
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.autocomplete-container') !== input.parentElement) {
-                results.classList.add('hidden');
             }
-        });
-    };
+        } catch (error) {
+            console.error(`Erro ao buscar ${type}:`, error);
+            results.innerHTML = '<div class="autocomplete-item-none">Erro na busca.</div>';
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.autocomplete-container') !== input.parentElement) {
+            results.classList.add('hidden');
+        }
+    });
+};
 
     const renderizarItensVenda = () => {
         itensVendaContainer.innerHTML = '';
@@ -179,24 +198,33 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedItems.produto = null;
     };
 
-    const adicionarServico = () => {
-        const servicoId = selectedItems.servico;
-        if (!servicoId) return alert('Selecione um serviço da lista.');
-        if (vendaAtual.itens.some(item => item.id === servicoId && item.tipo === 'serviço')) return alert('Este serviço já foi adicionado.');
-        
-        const servico = listaServicos.find(s => s.id === servicoId);
-        vendaAtual.itens.push({
-            id: servico.id,
-            nome: servico.nome,
-            tipo: 'serviço',
-            quantidade: 1,
-            precoUnitario: parseFloat(servico.preco),
-            subtotal: parseFloat(servico.preco)
-        });
-        renderizarItensVenda();
-        document.getElementById('input-search-servico').value = '';
-        selectedItems.servico = null;
-    };
+const adicionarServico = () => {
+    const servicoId = selectedItems.servico;
+    // --- LINHAS NOVAS ---
+    const quantidadeInput = document.getElementById('input-servico-qtd');
+    const quantidade = parseInt(quantidadeInput.value);
+
+    if (!servicoId) return alert('Selecione um serviço da lista.');
+    // --- VALIDAÇÃO NOVA ---
+    if (!quantidade || quantidade <= 0) return alert('Insira uma quantidade válida.');
+    
+    if (vendaAtual.itens.some(item => item.id === servicoId && item.tipo === 'serviço')) return alert('Este serviço já foi adicionado.');
+    
+    const servico = listaServicos.find(s => s.id === servicoId);
+    vendaAtual.itens.push({
+        id: servico.id,
+        nome: servico.nome,
+        tipo: 'serviço',
+        quantidade: quantidade, // <-- USA A VARIÁVEL
+        precoUnitario: parseFloat(servico.preco),
+        subtotal: quantidade * parseFloat(servico.preco) // <-- CALCULA O SUBTOTAL
+    });
+    renderizarItensVenda();
+    document.getElementById('input-search-servico').value = '';
+    // --- LINHA NOVA PARA RESETAR O CAMPO DE QUANTIDADE ---
+    quantidadeInput.value = 1; 
+    selectedItems.servico = null;
+};
 
     const removerItem = (index) => {
         vendaAtual.itens.splice(index, 1);
