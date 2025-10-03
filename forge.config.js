@@ -10,9 +10,8 @@ module.exports = {
   makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: { 
-        // Caminho para o ícone que será usado no setup (instalador).
-        // É recomendado usar o mesmo ícone .ico que já preparou.
+      config: {
+        name: 'gestao_oficina',
         setupIcon: './assets/icone.ico'},
     },
     {
