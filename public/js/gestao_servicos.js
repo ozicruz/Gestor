@@ -151,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const servicosFiltrados = todosOsServicos.filter(servico => 
             servico.nome.toLowerCase().includes(termo)
         );
+        servicosFiltrados.sort((a, b) => a.nome.localeCompare(b.nome));
         desenharTabela(servicosFiltrados);
     });
 

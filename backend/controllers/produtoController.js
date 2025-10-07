@@ -62,6 +62,10 @@ const removerProduto = async (req, res) => {
         await Produto.remove(req.params.id);
         res.json({ message: 'Produto removido com sucesso.' });
     } catch (err) {
+        // Adicionar esta verificação
+        if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(400).json({ message: 'Não é possível apagar. Este produto já está em uso em Ordens de Serviço ou Vendas.' });
+        }
         res.status(500).json({ message: 'Erro ao remover produto.', error: err.message });
     }
 };

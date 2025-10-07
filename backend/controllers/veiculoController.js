@@ -12,9 +12,13 @@ const listarVeiculosDoCliente = async (req, res) => {
 
 const buscarVeiculoPorPlaca = async (req, res) => {
     try {
-        const veiculo = await Veiculo.findByPlaca(req.params.placa);
+        const veiculo = await Veiculo.findByPlaca(req.params.placa.toUpperCase());
         if (veiculo) {
-            res.json(veiculo);
+            const veiculoComCliente = {
+                ...veiculo,
+                cliente: { nome: veiculo.cliente_nome }
+            };
+            res.json(veiculoComCliente);
         } else {
             res.status(404).json({ message: 'Veículo não encontrado.' });
         }

@@ -161,9 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // CORREÇÃO: O event listener da busca foi movido para aqui, para dentro do DOMContentLoaded.
     inputBusca.addEventListener('input', () => {
         const termo = inputBusca.value.toLowerCase();
-        const produtosFiltrados = todosOsProdutos.filter(produto => 
-            produto.nome.toLowerCase().includes(termo)
-        );
+        const produtosFiltrados = todosOsProdutos
+            .filter(produto => produto.nome.toLowerCase().includes(termo))
+            .sort((a, b) => a.nome.localeCompare(b.nome)); // <-- ADICIONE ESTA LINHA
+
         desenharTabela(produtosFiltrados);
     });
 

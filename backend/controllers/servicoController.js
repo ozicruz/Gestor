@@ -60,6 +60,9 @@ const removerServico = async (req, res) => {
         await Servico.remove(req.params.id);
         res.json({ message: 'Serviço removido com sucesso.' });
     } catch (err) {
+                if (err.code === 'SQLITE_CONSTRAINT') {
+            return res.status(400).json({ message: 'Não é possível apagar. Este serviço já está em uso em Ordens de Serviço ou Vendas.' });
+        }
         res.status(500).json({ message: 'Erro ao remover serviço.', error: err.message });
     }
 };

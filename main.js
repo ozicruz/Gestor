@@ -1,4 +1,8 @@
 // main.js
+
+if (require('electron-squirrel-startup')) {
+    return;
+}
 const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');

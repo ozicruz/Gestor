@@ -9,6 +9,22 @@ const listarOS = async (req, res) => {
         res.status(500).json({ message: 'Erro ao buscar Ordens de Serviço.', error: err.message });
     }
 };
+const OrdemServico = require('../models/ordemServicoModel');
+
+const criarOrdemServico = async (req, res) => {
+    try {
+        const { placa } = req.body;
+        if (!placa) {
+            return res.status(400).json({ message: 'A placa do veículo é obrigatória.' });
+        }
+        
+        const result = await OrdemServico.create(placa);
+        res.status(201).json({ id: result.id, message: 'Ordem de Serviço criada com sucesso.' });
+    } catch (err) {
+        console.error('--- ERRO DETALHADO NO BACKEND ---', err);
+        res.status(500).json({ message: 'Erro ao criar a Ordem de Serviço.', error: err.message });
+    }
+};
 
 const buscarOSPorId = async (req, res) => {
     try {
@@ -38,4 +54,4 @@ const atualizarOS = async (req, res) => {
     }
 };
 
-module.exports = { listarOS, buscarOSPorId, abrirOS, atualizarOS };
+module.exports = { listarOS, buscarOSPorId, abrirOS, atualizarOS, criarOrdemServico};

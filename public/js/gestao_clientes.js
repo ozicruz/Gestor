@@ -189,8 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const termo = inputBusca.value.toLowerCase();
         const clientesFiltrados = todosOsClientes.filter(cliente =>
             cliente.nome.toLowerCase().includes(termo) ||
-            (cliente.telefone && cliente.telefone.includes(termo))
-        );
+            (cliente.telefone && cliente.telefone.includes(termo)) // Adicionado parêntese de fechamento aqui
+        ).sort((a, b) => a.nome.localeCompare(b.nome));
         desenharTabela(clientesFiltrados);
     });
 

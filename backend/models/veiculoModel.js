@@ -7,9 +7,11 @@ const findByClienteId = (clienteId) => {
 
 const findByPlaca = (placa) => {
     const sql = `
-        SELECT v.id, v.placa, v.marca, v.modelo, c.nome as cliente_nome 
-        FROM Veiculos v 
-        JOIN Clientes c ON v.cliente_id = c.id 
+        SELECT 
+            v.*, 
+            c.nome as cliente_nome 
+        FROM Veiculos v
+        JOIN Clientes c ON v.cliente_id = c.id
         WHERE v.placa = ?`;
     return dbGet(sql, [placa]);
 };
