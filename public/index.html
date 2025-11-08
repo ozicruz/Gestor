@@ -16,63 +16,6 @@
             <p class="mt-2 text-lg text-gray-600">Selecione um módulo para começar a trabalhar.</p>
         </header>
 
-        <section id="dashboard-resumo" class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="dashboard-card bg-blue-100 border-blue-300">
-                <h4 class="text-blue-800">Saldo Atual Total</h4>
-                <p id="card-saldo" class="dashboard-valor text-blue-900">R$ 0,00</p>
-            </div>
-            <div class="dashboard-card bg-green-100 border-green-300">
-                <h4 class="text-green-800">Entradas do Mês</h4>
-                <p id="card-entradas" class="dashboard-valor text-green-900">R$ 0,00</p>
-            </div>
-            <div class="dashboard-card bg-red-100 border-red-300">
-                <h4 class="text-red-800">Saídas do Mês</h4>
-                <p id="card-saidas" class="dashboard-valor text-red-900">R$ 0,00</p>
-            </div>
-            <div class="dashboard-card bg-yellow-100 border-yellow-300">
-                <h4 class="text-yellow-800">A Receber (Vencido)</h4>
-                <p id="card-vencido" class="dashboard-valor text-yellow-900">R$ 0,00</p>
-            </div>
-        </section>
-
-        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            </main>
-
-        <section id="dashboard-movimentos" class="mt-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Últimos Lançamentos</h2>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <table class="w-full" id="tabela-movimentos">
-                    <thead>
-                        <tr class="border-b">
-                            <th class="text-left p-3">Data</th>
-                            <th class="text-left p-3">Descrição</th>
-                            <th class="text-left p-3">Categoria</th>
-                            <th class="text-right p-3">Valor (R$)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-movimentos-corpo">
-                        <tr>
-                            <td colspan="4" class="text-center p-4 text-gray-500">A carregar movimentos...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-
-        <footer class="text-center mt-12 text-gray-500 text-sm">
-            </footer>
-    </div>
-
-    <div id="modalDespesa" class="modal-overlay modal-oculto">
-        </div>
-
-    <div class="max-w-7xl mx-auto">
-        <header class="mb-10 text-center">
-            <h1 class="text-4xl font-bold text-gray-800">Sistema de Gestão de Oficina</h1>
-            <p class="mt-2 text-lg text-gray-600">Selecione um módulo para começar a trabalhar.</p>
-        </header>
-
         <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             
             <!-- Card: Ordens de Serviço -->
@@ -134,16 +77,16 @@
                 </div>
                 <span class="go-arrow">Enter &rarr;</span>
             </a>
-            <button id="btnAbrirModalDespesa" class="nav-card">
+<a href="gestao_financeiro.html" class="nav-card">
     <div>
         <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6A.75.75 0 012.25 5.25v-.75m0 0A.75.75 0 013 4.5A.75.75 0 013.75 3.75v.75m0 0h.75A.75.75 0 015.25 5.25v.75A.75.75 0 014.5 6A.75.75 0 013.75 5.25v-.75m0 0h.75m-1.5 6h.008v.008H3.75v-.008zm1.5 0h.008v.008H5.25v-.008zm1.5 0h.008v.008H6.75v-.008zm1.5 0h.008v.008H8.25v-.008zm1.5 0h.008v.008H9.75v-.008zm1.5 0h.008v.008H11.25v-.008zm1.5 0h.008v.008H12.75v-.008zm1.5 0h.008v.008H14.25v-.008zm1.5 0h.008v.008H15.75v-.008zm1.5 0h.008v.008H17.25v-.008zm1.5 0h.008v.008H18.75v-.008zm-1.5-3h.008v.008H17.25v-.008zm-1.5 0h.008v.008H15.75v-.008zm-1.5 0h.008v.008H14.25v-.008zm-1.5 0h.008v.008H12.75v-.008zm-1.5 0h.008v.008H11.25v-.008zm-1.5 0h.008v.008H9.75v-.008zm-1.5 0h.008v.008H8.25v-.008zm-1.5 0h.008v.008H6.75v-.008zm-1.5 0h.008v.008H5.25v-.008zm-1.5 0h.008v.008H3.75v-.008z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6A.75.75 0 012.25 5.25v-.75m0 0A.75.75 0 013 4.5A.75.75 0 013.75 3.75v.75m0 0h.75A.75.75 0 015.25 5.25v.75A.75.75 0 014.5 6A.75.75 0 013.75 5.25v-.75m0 0h.75m-1.5 6h.008v.008H3.75v-.008zm1.5 0h.008v.008H5.25v-.008zm1.5 0h.008v.008H6.75v-.008zm1.5 0h.008v.008H8.25v-.008zm1.5 0h.008v.008H9.75v-.008zm1.5 0h.008v.008H11.25v-.008zm1.5 0h.008v.008H12.75v-.008zm1.5 0h.008v.008H14.25v-.008zm1.5 0h.008v.008H15.75v-.008zm1.5 0h.008v.008H17.25v-.008zm1.5 0h.008v.008H18.75v-.008zm-1.5-3h.008v.008H17.25v-.008zm-1.5 0h.008v.008H15.75v-.008zm-1.5 0h.008v.008H14.25v-.008zm-1.5 0h.008v.008H12.75v-.008zm-1.a 0h.008v.008H11.25v-.008zm-1.5 0h.008v.008H9.75v-.008zm-1.5 0h.008v.008H8.25v-.008zm-1.5 0h.008v.008H6.75v-.008zm-1.5 0h.008v.008H5.25v-.008zm-1.5 0h.008v.008H3.75v-.008z" />
         </svg>
         <h3>Financeiro</h3>
         <p>Lançar novas despesas, receitas ou ver o fluxo de caixa.</p>
     </div>
-        <span class="go-arrow">Lançar &rarr;</span>
-            </button>
+    <span class="go-arrow">Aceder &rarr;</span>
+</a>
 
         </main>
 

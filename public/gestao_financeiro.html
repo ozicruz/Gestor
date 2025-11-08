@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Financeira - Gestão de Oficina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10">
+            <a href="index.html" class="text-blue-600 hover:text-blue-800">&larr; Voltar para o Início</a>
+            <h1 class="text-4xl font-bold text-gray-800 mt-2">Módulo Financeiro</h1>
+        </header>
+
+        <section id="dashboard-resumo" class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+            </section>
+
+        <section id="dashboard-movimentos" class="mt-12">
+            </section>
+        
+        </div>
+
+    <div id="modalDespesa" class="modal-overlay modal-oculto">
+        </div>
+
+    <script src="js/gestao_financeiro.js"></script>
+</body>
+</html>
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">Sistema de Gestão de Oficina</h1>
+            <p class="mt-2 text-lg text-gray-600">Selecione um módulo para começar a trabalhar.</p>
+        </header>
+
+        <section id="dashboard-resumo" class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="dashboard-card bg-blue-100 border-blue-300">
+                <h4 class="text-blue-800">Saldo Atual Total</h4>
+                <p id="card-saldo" class="dashboard-valor text-blue-900">R$ 0,00</p>
+            </div>
+            <div class="dashboard-card bg-green-100 border-green-300">
+                <h4 class="text-green-800">Entradas do Mês</h4>
+                <p id="card-entradas" class="dashboard-valor text-green-900">R$ 0,00</p>
+            </div>
+            <div class="dashboard-card bg-red-100 border-red-300">
+                <h4 class="text-red-800">Saídas do Mês</h4>
+                <p id="card-saidas" class="dashboard-valor text-red-900">R$ 0,00</p>
+            </div>
+            <div class="dashboard-card bg-yellow-100 border-yellow-300">
+                <h4 class="text-yellow-800">A Receber (Vencido)</h4>
+                <p id="card-vencido" class="dashboard-valor text-yellow-900">R$ 0,00</p>
+            </div>
+        </section>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            </main>
+
+        <section id="dashboard-movimentos" class="mt-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Últimos Lançamentos</h2>
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <table class="w-full" id="tabela-movimentos">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left p-3">Data</th>
+                            <th class="text-left p-3">Descrição</th>
+                            <th class="text-left p-3">Categoria</th>
+                            <th class="text-right p-3">Valor (R$)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-movimentos-corpo">
+                        <tr>
+                            <td colspan="4" class="text-center p-4 text-gray-500">A carregar movimentos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+
+        <footer class="text-center mt-12 text-gray-500 text-sm">
+            </footer>
+    </div>
+
+    <div id="modalDespesa" class="modal-overlay modal-oculto">
+        </div>
