@@ -222,7 +222,7 @@ const seedInitialData = async () => {
         // Categorias
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Venda de Produtos', 'RECEITA');");
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Venda de Serviços', 'RECEITA');");
-        await dbRun("INSERT OR IGGLE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Aluguel', 'DESPESA');");
+        await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Aluguel', 'DESPESA');");
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Salários', 'DESPESA');");
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Fornecedores', 'DESPESA');");
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Outras Receitas', 'RECEITA');");
