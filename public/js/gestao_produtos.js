@@ -1,26 +1,27 @@
-// public/js/gestao_servicos.js (Versão ATUALIZADA com Ordenação e Filtro)
+// public/js/gestao_produtos.js (Versão ATUALIZADA com Ordenação)
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';
 
     // --- ELEMENTOS DO DOM ---
-    const tabelaServicosBody = document.getElementById('tabela-servicos');
-    const modal = document.getElementById('servico-modal');
+    const tabelaProdutosBody = document.getElementById('tabela-produtos');
+    const modal = document.getElementById('produto-modal');
     const modalTitle = document.getElementById('modal-title');
-    const servicoForm = document.getElementById('servico-form');
-    const btnNovoServico = document.getElementById('btnNovoServico');
+    const produtoForm = document.getElementById('produto-form');
+    const btnNovoProduto = document.getElementById('btnNovoProduto');
     const btnCancelar = document.getElementById('btn-cancelar');
     const feedbackAlert = document.getElementById('feedback-alert');
-    const inputId = document.getElementById('servico-id');
-    const inputNome = document.getElementById('servico-nome');
-    const inputDescricao = document.getElementById('servico-descricao');
-    const inputPreco = document.getElementById('servico-preco');
-    const inputBusca = document.getElementById('input-busca-servico');
+    const inputId = document.getElementById('produto-id');
+    const inputNome = document.getElementById('produto-nome');
+    const inputDescricao = document.getElementById('produto-descricao');
+    const inputEstoque = document.getElementById('produto-estoque');
+    const inputPreco = document.getElementById('produto-preco');
+    const inputBusca = document.getElementById('input-busca-produto');
 
     // --- NOVO: Seletores e Variáveis de Ordenação ---
-    const headersTabela = document.querySelectorAll('#tabela-servicos-header th[data-sort]');
-    let todosOsServicos = [];
+    const headersTabela = document.querySelectorAll('#tabela-produtos-header th[data-sort]');
+    let todosOsProdutos = [];
     let sortColumn = 'nome'; // Coluna padrão
     let sortDirection = 'asc'; // Direção padrão
 
@@ -33,16 +34,16 @@ document.addEventListener('DOMContentLoaded', () => {
         feedbackAlert.style.display = 'block';
         setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
     };
-
+    
     // --- FUNÇÕES PRINCIPAIS (CRUD) ---
-
+    
     // 1. Busca os dados da API
-    const carregarServicos = async () => {
+    const carregarProdutos = async () => {
         try {
-            const response = await fetch(`${API_URL}/servicos`);
-            if (!response.ok) throw new Error('Erro ao carregar serviços.');
+            const response = await fetch(`${API_URL}/produtos`);
+            if (!response.ok) throw new Error('Erro ao carregar produtos.');
             
-            todosOsServicos = await response.json();
+            todosOsProdutos = await response.json();
             aplicarFiltroEOrdem(); // Chama a nova função central
         } catch (error) {
             showAlert(error.message, false);
@@ -54,17 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const termo = inputBusca.value.toLowerCase();
 
         // 2a. Filtra
-        const servicosFiltrados = todosOsServicos.filter(servico => 
-            servico.nome.toLowerCase().includes(termo)
+        const produtosFiltrados = todosOsProdutos.filter(produto => 
+            produto.nome.toLowerCase().includes(termo)
         );
 
         // 2b. Ordena (Lógica de ordenação dinâmica)
-        servicosFiltrados.sort((a, b) => {
+        produtosFiltrados.sort((a, b) => {
             let valA = a[sortColumn];
             let valB = b[sortColumn];
 
-            // Trata números (preco)
-            if (sortColumn === 'preco') {
+            // Trata números (estoque, preco)
+            if (sortColumn === 'quantidade_em_estoque' || sortColumn === 'preco_unitario') {
                 valA = parseFloat(valA) || 0;
                 valB = parseFloat(valB) || 0;
             } else { // Trata strings (nome)
@@ -78,61 +79,69 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // 2c. Desenha
-        desenharTabela(servicosFiltrados);
+        desenharTabela(produtosFiltrados);
     };
 
     // 3. A função de desenhar a tabela (sem alterações)
-    const desenharTabela = (servicosParaRenderizar) => {
-        tabelaServicosBody.innerHTML = '';
-        if (servicosParaRenderizar.length === 0) {
-            tabelaServicosBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">Nenhum serviço encontrado.</td></tr>`;
+    const desenharTabela = (produtosParaRenderizar) => {
+        tabelaProdutosBody.innerHTML = '';
+        if (produtosParaRenderizar.length === 0) {
+            tabelaProdutosBody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-4">Nenhum produto encontrado.</td></tr>`;
             return;
         }
-        servicosParaRenderizar.forEach(servico => {
+        produtosParaRenderizar.forEach(produto => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${servico.nome}</div><div class="text-sm text-gray-500">${(servico.descricao || '').substring(0, 40)}...</div></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(servico.preco)}</td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${produto.nome}</div><div class="text-sm text-gray-500">${(produto.descricao || '').substring(0, 40)}...</div></td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${produto.quantidade_em_estoque}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(produto.preco_unitario)}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button data-action="editar-servico" data-servico-id="${servico.id}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
-                    <button data-action="remover-servico" data-servico-id="${servico.id}" class="text-red-600 hover:text-red-900">Remover</button>
+                    <button data-action="editar-produto" data-produto-id="${produto.id}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
+                    <button data-action="remover-produto" data-produto-id="${produto.id}" class="text-red-600 hover:text-red-900">Remover</button>
                 </td>
             `;
-            tabelaServicosBody.appendChild(tr);
+            tabelaProdutosBody.appendChild(tr);
         });
     };
 
     // --- Funções do Modal (abrir, fechar, remover) ---
-    // (O seu código original de abrirModal, fecharModal, e removerServico fica aqui, sem alterações)
-    const abrirModal = async (isEdit = false, servicoId = null) => {
-        servicoForm.reset();
+    // (O seu código original de abrirModal, fecharModal, e removerProduto fica aqui, sem alterações)
+    const abrirModal = async (isEdit = false, produtoId = null) => {
+        produtoForm.reset();
         inputId.value = '';
-        if (isEdit && servicoId) {
-            modalTitle.textContent = 'Editar Serviço';
-            const servico = todosOsServicos.find(s => s.id === servicoId);
-            if (servico) {
-                inputId.value = servico.id;
-                inputNome.value = servico.nome;
-                inputDescricao.value = servico.descricao;
-                inputPreco.value = parseFloat(servico.preco).toFixed(2).replace('.', ',');
+        if (isEdit && produtoId) {
+            modalTitle.textContent = 'Editar Produto';
+            try {
+                const response = await fetch(`${API_URL}/produtos/${produtoId}`);
+                if (!response.ok) throw new Error('Produto não encontrado.');
+                const produto = await response.json();
+                
+                inputId.value = produto.id;
+                inputNome.value = produto.nome;
+                inputDescricao.value = produto.descricao;
+                inputEstoque.value = produto.quantidade_em_estoque;
+                inputPreco.value = parseFloat(produto.preco_unitario).toFixed(2).replace('.', ',');
+            } catch (error) {
+                showAlert(error.message, false);
+                return;
             }
         } else {
-            modalTitle.textContent = 'Novo Serviço';
+            modalTitle.textContent = 'Novo Produto';
         }
         modal.classList.add('active');
-        setTimeout(() => { document.getElementById('servico-nome').focus(); }, 100);
+        setTimeout(() => { document.getElementById('produto-nome').focus(); }, 100);
     };
 
     const fecharModal = () => modal.classList.remove('active');
 
-    const removerServico = async (id) => {
-        if (confirm('Tem a certeza que deseja remover este serviço?')) {
+    const removerProduto = async (id) => {
+        if (confirm('Tem a certeza que deseja remover este produto?')) {
             try {
-                const response = await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_URL}/produtos/${id}`, { method: 'DELETE' });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message);
                 showAlert(result.message);
-                carregarServicos(); // Recarrega a lista
+                carregarProdutos(); // Recarrega a lista
             } catch (error) {
                 showAlert(error.message, false);
             }
@@ -140,52 +149,53 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- EVENT LISTENERS ---
-    btnNovoServico.addEventListener('click', () => abrirModal(false));
+    btnNovoProduto.addEventListener('click', () => abrirModal(false));
     btnCancelar.addEventListener('click', fecharModal);
     
     // Listener do Formulário
-    servicoForm.addEventListener('submit', async (e) => {
+    produtoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = inputId.value;
-        const servicoData = {
+        const produtoData = {
             nome: inputNome.value,
             descricao: inputDescricao.value,
-            preco: parseCurrency(inputPreco.value)
+            quantidade_em_estoque: parseInt(inputEstoque.value, 10),
+            preco_unitario: parseCurrency(inputPreco.value)
         };
 
         const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_URL}/servicos/${id}` : `${API_URL}/servicos`;
+        const url = id ? `${API_URL}/produtos/${id}` : `${API_URL}/produtos`;
 
         try {
             const response = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(servicoData)
+                body: JSON.stringify(produtoData)
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.message);
             
             showAlert(result.message);
             fecharModal();
-            carregarServicos(); // Recarrega a lista
+            carregarProdutos(); // Recarrega a lista
         } catch (error) {
             showAlert(error.message, false);
         }
     });
 
     // Listener da Tabela (para Editar/Remover)
-    tabelaServicosBody.addEventListener('click', (e) => {
+    tabelaProdutosBody.addEventListener('click', (e) => {
         const button = e.target.closest('[data-action]');
         if (!button) return;
 
         const action = button.dataset.action;
-        const servicoId = parseInt(button.dataset.servicoId);
+        const produtoId = button.dataset.produtoId;
 
-        if (action === 'editar-servico') {
-            abrirModal(true, servicoId);
+        if (action === 'editar-produto') {
+            abrirModal(true, parseInt(produtoId));
         }
-        if (action === 'remover-servico') {
-            removerServico(servicoId);
+        if (action === 'remover-produto') {
+            removerProduto(parseInt(produtoId));
         }
     });
 
@@ -197,9 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
         header.addEventListener('click', () => {
             const newSortColumn = header.dataset.sort;
             
+            // Se clicar na mesma coluna, inverte a direção
             if (sortColumn === newSortColumn) {
                 sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
             } else {
+                // Se clicar numa nova coluna, define-a como padrão (asc)
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
@@ -210,14 +222,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (h.dataset.sort === sortColumn) {
                     arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 } else {
-                    arrow.innerHTML = ''; 
+                    arrow.innerHTML = ''; // Limpa setas das outras colunas
                 }
             });
 
+            // Re-renderiza a tabela com a nova ordem
             aplicarFiltroEOrdem();
         });
     });
 
     // --- INICIALIZAÇÃO ---
-    carregarServicos();
+    carregarProdutos();
 });

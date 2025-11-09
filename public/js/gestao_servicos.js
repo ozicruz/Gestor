@@ -1,4 +1,4 @@
-// public/js/gestao_servicos.js
+// public/js/gestao_servicos.js (Versão ATUALIZADA com Ordenação e Filtro)
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURAÇÃO ---
@@ -16,9 +16,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputNome = document.getElementById('servico-nome');
     const inputDescricao = document.getElementById('servico-descricao');
     const inputPreco = document.getElementById('servico-preco');
-    const inputBusca = document.getElementById('input-busca-servico'); // CORRIGIDO
+    const inputBusca = document.getElementById('input-busca-servico');
 
+    // --- NOVO: Seletores e Variáveis de Ordenação ---
+    const headersTabela = document.querySelectorAll('#tabela-servicos-header th[data-sort]');
     let todosOsServicos = [];
+    let sortColumn = 'nome'; // Coluna padrão
+    let sortDirection = 'asc'; // Direção padrão
 
     // --- FUNÇÕES AUXILIARES ---
     const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -30,8 +34,54 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
     };
 
-    // --- FUNÇÕES PRINCIPAIS ---
+    // --- FUNÇÕES PRINCIPAIS (CRUD) ---
 
+    // 1. Busca os dados da API
+    const carregarServicos = async () => {
+        try {
+            const response = await fetch(`${API_URL}/servicos`);
+            if (!response.ok) throw new Error('Erro ao carregar serviços.');
+            
+            todosOsServicos = await response.json();
+            aplicarFiltroEOrdem(); // Chama a nova função central
+        } catch (error) {
+            showAlert(error.message, false);
+        }
+    };
+
+    // 2. ATUALIZADO: Função central que filtra, ordena e desenha
+    const aplicarFiltroEOrdem = () => {
+        const termo = inputBusca.value.toLowerCase();
+
+        // 2a. Filtra
+        const servicosFiltrados = todosOsServicos.filter(servico => 
+            servico.nome.toLowerCase().includes(termo)
+        );
+
+        // 2b. Ordena (Lógica de ordenação dinâmica)
+        servicosFiltrados.sort((a, b) => {
+            let valA = a[sortColumn];
+            let valB = b[sortColumn];
+
+            // Trata números (preco)
+            if (sortColumn === 'preco') {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+            } else { // Trata strings (nome)
+                valA = (valA || '').toLowerCase();
+                valB = (valB || '').toLowerCase();
+            }
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // 2c. Desenha
+        desenharTabela(servicosFiltrados);
+    };
+
+    // 3. A função de desenhar a tabela (sem alterações)
     const desenharTabela = (servicosParaRenderizar) => {
         tabelaServicosBody.innerHTML = '';
         if (servicosParaRenderizar.length === 0) {
@@ -52,18 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const renderizarTabela = async () => {
-        try {
-            const response = await fetch(`${API_URL}/servicos`);
-            if (!response.ok) throw new Error('Erro ao carregar serviços.');
-            const servicos = await response.json();
-            todosOsServicos = servicos;
-            desenharTabela(todosOsServicos);
-        } catch (error) {
-            showAlert(error.message, false);
-        }
-    };
-
+    // --- Funções do Modal (abrir, fechar, remover) ---
+    // (O seu código original de abrirModal, fecharModal, e removerServico fica aqui, sem alterações)
     const abrirModal = async (isEdit = false, servicoId = null) => {
         servicoForm.reset();
         inputId.value = '';
@@ -80,8 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modalTitle.textContent = 'Novo Serviço';
         }
         modal.classList.add('active');
-            // Força o foco no primeiro campo após a animação do modal (100ms)
-    setTimeout(() => { document.getElementById('servico-nome').focus(); }, 100);
+        setTimeout(() => { document.getElementById('servico-nome').focus(); }, 100);
     };
 
     const fecharModal = () => modal.classList.remove('active');
@@ -93,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message);
                 showAlert(result.message);
-                renderizarTabela();
+                carregarServicos(); // Recarrega a lista
             } catch (error) {
                 showAlert(error.message, false);
             }
@@ -104,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnNovoServico.addEventListener('click', () => abrirModal(false));
     btnCancelar.addEventListener('click', fecharModal);
     
+    // Listener do Formulário
     servicoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = inputId.value;
@@ -127,12 +167,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             showAlert(result.message);
             fecharModal();
-            renderizarTabela();
+            carregarServicos(); // Recarrega a lista
         } catch (error) {
             showAlert(error.message, false);
         }
     });
 
+    // Listener da Tabela (para Editar/Remover)
     tabelaServicosBody.addEventListener('click', (e) => {
         const button = e.target.closest('[data-action]');
         if (!button) return;
@@ -148,15 +189,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    inputBusca.addEventListener('input', () => {
-        const termo = inputBusca.value.toLowerCase();
-        const servicosFiltrados = todosOsServicos.filter(servico => 
-            servico.nome.toLowerCase().includes(termo)
-        );
-        servicosFiltrados.sort((a, b) => a.nome.localeCompare(b.nome));
-        desenharTabela(servicosFiltrados);
+    // ATUALIZADO: Listener da Busca (agora só chama a função central)
+    inputBusca.addEventListener('input', aplicarFiltroEOrdem);
+
+    // --- NOVO: Listener para ORDENAÇÃO ---
+    headersTabela.forEach(header => {
+        header.addEventListener('click', () => {
+            const newSortColumn = header.dataset.sort;
+            
+            if (sortColumn === newSortColumn) {
+                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                sortColumn = newSortColumn;
+                sortDirection = 'asc';
+            }
+            
+            // Atualiza as setas
+            headersTabela.forEach(h => {
+                const arrow = h.querySelector('.sort-arrow');
+                if (h.dataset.sort === sortColumn) {
+                    arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
+                } else {
+                    arrow.innerHTML = ''; 
+                }
+            });
+
+            aplicarFiltroEOrdem();
+        });
     });
 
     // --- INICIALIZAÇÃO ---
-    renderizarTabela();
+    carregarServicos();
 });
