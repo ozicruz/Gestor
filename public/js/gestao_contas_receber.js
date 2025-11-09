@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const baixaValorRecebido = document.getElementById('baixaValorRecebido');
     const baixaDataPagamento = document.getElementById('baixaDataPagamento');
     const baixaContaCaixa = document.getElementById('baixaContaCaixa');
+    const baixaFormaPagamento = document.getElementById('baixaFormaPagamento');
     
     // --- 2. FUNÇÕES DE FORMATAÇÃO ---
     function formatarMoeda(valor) {
@@ -129,6 +130,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function carregarFormasPagamentoBaixa() {
+        try {
+            const response = await fetch('http://localhost:3002/api/financeiro/formaspagamento');
+            const formas = await response.json();
+        
+            baixaFormaPagamento.innerHTML = '<option value="">Selecione a forma...</option>';
+            formas.forEach(forma => {
+            // Só mostramos opções A_VISTA (Dinheiro, Pix, Cartão)
+            // Não faz sentido pagar "fiado" com mais "fiado"
+            if (forma.TipoLancamento === 'A_VISTA') { 
+                const option = document.createElement('option');
+                option.value = forma.id;
+                option.textContent = forma.Nome;
+                baixaFormaPagamento.appendChild(option);
+            }
+            });
+        } catch (err) {
+            console.error('Erro ao carregar formas de pagamento:', err);
+            baixaFormaPagamento.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
+
     // Abre o modal e preenche com os dados da dívida
     function abrirModalBaixa(id, descricao, valor) {
         modalBaixaTitulo.textContent = `Receber Pagamento (${descricao})`;
@@ -138,6 +161,8 @@ document.addEventListener('DOMContentLoaded', () => {
         baixaDataPagamento.value = new Date().toISOString().split('T')[0]; // Sugere data de hoje
         
         carregarContasBaixa(); // Carrega as contas
+        carregarFormasPagamentoBaixa();
+
         modalBaixa.classList.remove('modal-oculto');
     }
 
@@ -166,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ValorRecebido: parseFloat(baixaValorRecebido.value),
             DataPagamento: baixaDataPagamento.value,
             ContaCaixaID: parseInt(baixaContaCaixa.value)
+            FormaPagamentoID: parseInt(baixaFormaPagamento.value)
         };
 
         // Validações
@@ -179,6 +205,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (!dadosBaixa.ContaCaixaID) {
             alert("A conta/caixa de destino é obrigatória.");
+            return;
+        }
+        if (!dadosBaixa.FormaPagamentoID) {
+            alert("A forma de pagamento é obrigatória.");
             return;
         }
         
