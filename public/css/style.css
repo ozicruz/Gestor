@@ -6,42 +6,6 @@ body {
     background-color: rgb(216, 216, 216);
 }
 
-/* Estilos para os modais (janelas pop-up) */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
-    z-index: 50;
-    overflow-y: auto;
-}
-
-.modal-backdrop.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-.modal-content {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 0.5rem;
-    width: 90%;
-    transform: translateY(-20px);
-    transition: transform 0.3s;
-}
-
-.modal-backdrop.active .modal-content {
-    transform: translateY(0);
-}
-
 /* Estilo base para campos de formulário para garantir a visibilidade */
 .form-input {
     border: 1px solid #d1d5db; /* Corresponde a border-gray-300 do Tailwind */
@@ -177,6 +141,19 @@ body {
 /* A classe que esconde o modal */
 .modal-oculto {
     display: none;
+}
+
+/* Para modais grandes como o de OS, que precisam de mais espaço */
+.modal-content-large {
+    position: relative; /* Posição relativa ao overlay que faz scroll */
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    z-index: 100;
+    width: 90%;
+    max-width: 1024px; /* 6xl do Tailwind - MUITO LARGO */
+    margin: 2rem auto; /* Permite scroll se for muito alto */
 }
 
 

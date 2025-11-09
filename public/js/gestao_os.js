@@ -91,7 +91,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // --- FUNÇÕES DO MODAL ---
-    const fecharModal = () => { osModal.classList.remove('active'); osModalBody.innerHTML = ''; osAtual = null; };
+// --- CORREÇÃO 1: Mudar de .remove('active') para .add('modal-oculto') ---
+    const fecharModal = () => { 
+        osModal.classList.add('modal-oculto'); 
+        osModalBody.innerHTML = ''; 
+        osAtual = null; 
+    };
+    
     const abrirModalNovaOS = () => {
         osModalTitle.textContent = 'Nova Ordem de Serviço';
         osModalBody.innerHTML = `
@@ -110,7 +116,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </form>
         `;
-        osModal.classList.add('active');
+        // --- CORREÇÃO 2: Mudar de .add('active') para .remove('modal-oculto') ---
+        osModal.classList.remove('modal-oculto');
     };
     const procurarPlaca = async () => {
         const placaInput = osModalBody.querySelector('#input-placa');
@@ -394,6 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             setupAutocompleteOS('input-os-servico', listaServicos, 'servico');
             osModal.classList.add('active');
         } catch (error) { showAlert(error.message, false); fecharModal(); }
+        osModal.classList.remove('modal-oculto');
     };
 
     // --- EVENT LISTENERS ---
