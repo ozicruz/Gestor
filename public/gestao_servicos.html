@@ -4,12 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão de Serviços</title>
-    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fontes do Google -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Ficheiro de Estilos CSS Externo -->
     <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        th[data-sort] {
+            cursor: pointer;
+            user-select: none;
+        }
+        th[data-sort]:hover {
+            background-color: #e5e7eb; /* cinza-200 */
+        }
+    </style>
 </head>
 <body class="p-4 md:p-8">
 
@@ -24,53 +31,33 @@
         </div>
 
         <div class="mb-4">
-        <input type="text" id="input-busca-servico" placeholder="🔎 Pesquisar por nome..." class="form-input w-full md:w-1/3">
+            <input type="text" id="input-busca-servico" placeholder="🔎 Pesquisar por nome..." class="form-input w-full md:w-1/3">
         </div>
 
-        <!-- Tabela de Serviços -->
         <div class="bg-white rounded-lg shadow overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full">
-                    <thead class="bg-gray-100">
+                    <thead class="bg-gray-100" id="tabela-servicos-header">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Nome do Serviço</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Preço</th>
+                            <th data-sort="nome" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                Nome do Serviço <span class="sort-arrow"> ▲</span>
+                            </th>
+                            <th data-sort="preco" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                Preço <span class="sort-arrow"></span>
+                            </th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="tabela-servicos" class="divide-y divide-gray-200"></tbody>
+                    <tbody id="tabela-servicos" class="divide-y divide-gray-200">
+                        </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Modal para Adicionar/Editar Serviço -->
     <div id="servico-modal" class="modal-backdrop">
-        <div class="modal-content max-w-md">
-            <h2 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">Novo Serviço</h2>
-            <form id="servico-form">
-                <input type="hidden" id="servico-id">
-                <div class="mb-4">
-                    <label for="servico-nome" class="block text-sm font-medium text-gray-700">Nome do Serviço</label>
-                    <input type="text" id="servico-nome" required class="form-input mt-1 block w-full">
-                </div>
-                <div class="mb-4">
-                    <label for="servico-descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
-                    <textarea id="servico-descricao" rows="3" class="form-input mt-1 block w-full"></textarea>
-                </div>
-                <div class="mb-4">
-                    <label for="servico-preco" class="block text-sm font-medium text-gray-700">Preço (R$)</label>
-                    <input type="text" id="servico-preco" required placeholder="50,00" class="form-input mt-1 block w-full">
-                </div>
-                <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" id="btn-cancelar" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
-                </div>
-            </form>
         </div>
-    </div>
 
-    <!-- Ficheiro JavaScript Externo -->
-    <script src="js/gestao_servicos.js"></script>
+    <script src="js/gestao_servicos.js" defer></script>
 </body>
 </html>
