@@ -71,112 +71,124 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- FUNÇÕES PRINCIPAIS ---
 
-    const setupAutocomplete = (inputId, resultsId, type) => {
-        // ... (o seu código de setupAutocomplete não muda) ...
-        // (Copie e cole o seu código original de setupAutocomplete aqui)
-        const input = document.getElementById(inputId);
-        const results = document.getElementById(resultsId);
-        let activeIndex = -1;
+const setupAutocomplete = (inputId, resultsId, type) => {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    let activeIndex = -1;
 
-        const updateActiveItem = () => {
-            const items = results.querySelectorAll('.autocomplete-item');
-            items.forEach((item, index) => {
-                if (index === activeIndex) {
-                    item.classList.add('active');
-                    item.scrollIntoView({ block: 'nearest' });
-                } else {
-                    item.classList.remove('active');
-                }
-            });
-        };
-
-        input.addEventListener('input', async () => {
-            const query = input.value.toLowerCase();
-            results.innerHTML = '';
-            activeIndex = -1;
-            selectedItems[type] = null;
-            if (type === 'cliente') vendaAtual.cliente_id = null;
-            
-            if (!query || query.length < 2) {
-                results.classList.add('hidden');
-                return;
-            }
-
-            try {
-                let searchEndpoint = '';
-                if (type === 'produto') searchEndpoint = 'produtos';
-                else if (type === 'cliente') searchEndpoint = 'clientes';
-                else if (type === 'servico') searchEndpoint = 'servicos';
-
-                const response = await fetch(`${API_URL}/${searchEndpoint}/search?q=${query}`);
-                if (!response.ok) throw new Error('A resposta da rede não foi bem-sucedida.');
-                
-                const filteredItems = await response.json();
-
-                results.classList.remove('hidden');
-                if (filteredItems.length === 0) {
-                    results.innerHTML = '<div class="autocomplete-item-none">Nenhum resultado encontrado.</div>';
-                } else {
-                    filteredItems.forEach((item) => {
-                        const div = document.createElement('div');
-                        div.className = 'autocomplete-item';
-                        
-                        if (type === 'cliente') {
-                            div.textContent = item.nome;
-                        } else {
-                            const preco = item.preco_unitario || item.preco || 0;
-                            div.textContent = `${item.nome} (${formatCurrency(preco)})`;
-                        }
-                        
-                        div.addEventListener('click', () => {
-                            input.value = item.nome;
-                            selectedItems[type] = item.id;
-                            if (type === 'cliente') vendaAtual.cliente_id = item.id;
-                            results.classList.add('hidden');
-                        });
-                        results.appendChild(div);
-                    });
-                }
-            } catch (error) {
-                console.error(`Erro ao buscar ${type}:`, error);
-                results.innerHTML = `<div class="autocomplete-item-none">Erro na busca.</div>`;
-            }
-        });
-
-        input.addEventListener('keydown', (e) => {
-            const items = results.querySelectorAll('.autocomplete-item');
-            if (results.classList.contains('hidden') || items.length === 0) return;
-
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                activeIndex = (activeIndex + 1) % items.length;
-                updateActiveItem();
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                activeIndex = (activeIndex - 1 + items.length) % items.length;
-                updateActiveItem();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (activeIndex > -1) {
-                    items[activeIndex].click();
-                    
-                    if (type === 'produto') {
-                        document.getElementById('input-produto-qtd').focus();
-                    } else if (type === 'servico') {
-                        document.getElementById('input-servico-qtd').focus();
-                    }
-                }
-            } else if (e.key === 'Escape') {
-                results.classList.add('hidden');
-            }
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.autocomplete-container')) {
-                results.classList.add('hidden');
+    const updateActiveItem = () => {
+        const items = results.querySelectorAll('.autocomplete-item');
+        items.forEach((item, index) => {
+            if (index === activeIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('active');
             }
         });
     };
+
+    input.addEventListener('input', async () => {
+        const query = input.value.toLowerCase();
+        results.innerHTML = '';
+        activeIndex = -1;
+        selectedItems[type] = null;
+        if (type === 'cliente') vendaAtual.cliente_id = null;
+        
+        // --- CORREÇÃO DO BUG B ---
+        // Removido o 'query.length < 2'. Agora busca com 1 dígito.
+        if (!query) {
+            results.classList.add('hidden');
+            return;
+        }
+        // --- FIM DA CORREÇÃO ---
+
+        try {
+            let searchEndpoint = '';
+            if (type === 'produto') searchEndpoint = 'produtos';
+            else if (type === 'cliente') searchEndpoint = 'clientes';
+            else if (type === 'servico') searchEndpoint = 'servicos';
+
+            const response = await fetch(`${API_URL}/${searchEndpoint}/search?q=${query}`);
+            if (!response.ok) throw new Error('A resposta da rede não foi bem-sucedida.');
+            
+            const filteredItems = await response.json();
+
+            results.classList.remove('hidden');
+            if (filteredItems.length === 0) {
+                results.innerHTML = '<div class="autocomplete-item-none">Nenhum resultado encontrado.</div>';
+            } else {
+                filteredItems.forEach((item) => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    
+                    // --- CORREÇÃO DO BUG A ---
+                    if (type === 'cliente') {
+                        div.textContent = item.nome;
+                    } else {
+                        // Agora também busca e mostra o stock!
+                        const preco = item.preco_unitario || item.preco || 0;
+                        const stock = item.quantidade_em_estoque; // (Para Produtos)
+                        
+                        if (type === 'produto') {
+                            div.textContent = `${item.nome} | Stock: ${stock} | (${formatCurrency(preco)})`;
+                        } else {
+                            // Serviços não têm stock
+                            div.textContent = `${item.nome} (${formatCurrency(preco)})`;
+                        }
+                    }
+                    // --- FIM DA CORREÇÃO ---
+                    
+                    div.addEventListener('click', () => {
+                        input.value = item.nome;
+                        selectedItems[type] = item.id;
+                        if (type === 'cliente') vendaAtual.cliente_id = item.id;
+                        results.classList.add('hidden');
+                    });
+                    results.appendChild(div);
+                });
+            }
+        } catch (error) {
+            console.error(`Erro ao buscar ${type}:`, error);
+            results.innerHTML = `<div class="autocomplete-item-none">Erro na busca.</div>`;
+        }
+    });
+
+    // ... (O resto da sua função 'input.addEventListener('keydown', ...)' continua igual) ...
+    input.addEventListener('keydown', (e) => {
+        const items = results.querySelectorAll('.autocomplete-item');
+        if (results.classList.contains('hidden') || items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = (activeIndex + 1) % items.length;
+            updateActiveItem();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = (activeIndex - 1 + items.length) % items.length;
+            updateActiveItem();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex > -1) {
+                items[activeIndex].click();
+                
+                if (type === 'produto') {
+                    document.getElementById('input-produto-qtd').focus();
+                } else if (type === 'servico') {
+                    document.getElementById('input-servico-qtd').focus();
+                }
+            }
+        } else if (e.key === 'Escape') {
+            results.classList.add('hidden');
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.autocomplete-container')) {
+            results.classList.add('hidden');
+        }
+    });
+};
     
     // --- ATUALIZADO: Carregar dados financeiros ---
     const popularDadosIniciais = async () => {
