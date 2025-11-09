@@ -7,6 +7,10 @@ const veiculoController = require('../controllers/veiculoController');
 // Rotas para Clientes
 router.get('/clientes', clienteController.listarClientes);
 router.get('/clientes/search', clienteController.buscarClientesPorNome);
+// Rota para buscar UM cliente
+router.get('/clientes/:id', clienteController.getClientePorId);
+// Rota para buscar VENDAS de um cliente
+router.get('/clientes/:id/vendas', clienteController.getVendasPorCliente);
 router.post('/clientes', clienteController.criarCliente);
 router.put('/clientes/:id', clienteController.atualizarCliente);
 router.delete('/clientes/:id', clienteController.removerCliente);

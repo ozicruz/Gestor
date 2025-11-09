@@ -25,6 +25,30 @@ const listarClientes = async (req, res) => {
     }
 };
 
+// Controller para buscar UM cliente
+const getClientePorId = async (req, res) => {
+    try {
+        const cliente = await Cliente.findById(req.params.id);
+        if (cliente) {
+            res.json(cliente);
+        } else {
+            res.status(404).json({ message: 'Cliente não encontrado.' });
+        }
+    } catch (err) {
+        res.status(500).json({ message: 'Erro ao buscar cliente.', error: err.message });
+    }
+};
+
+// Controller para buscar VENDAS do cliente
+const getVendasPorCliente = async (req, res) => {
+    try {
+        const vendas = await Cliente.findVendasByClienteId(req.params.id);
+        res.json(vendas);
+    } catch (err) {
+        res.status(500).json({ message: 'Erro ao buscar vendas do cliente.', error: err.message });
+    }
+};
+
 const criarCliente = async (req, res) => {
     // ... (código existente inalterado)
     try {
@@ -57,8 +81,10 @@ const removerCliente = async (req, res) => {
 
 module.exports = {
     listarClientes,
+    getClientePorId,
+    getVendasPorCliente,
     criarCliente,
     atualizarCliente,
     removerCliente,
-    buscarClientesPorNome // <-- Adicionar a nova função aqui
+    buscarClientesPorNome
 };

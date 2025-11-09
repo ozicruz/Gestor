@@ -42,6 +42,38 @@ const findAll = () => {
     return dbAll(sql);
 };
 
+    const findById = (id) => {
+        // Usamos a mesma consulta 'avançada' para obter o status
+        const sql = `
+            SELECT 
+                c.*, 
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1 FROM Lancamentos l
+                        WHERE l.ClienteID = c.id AND l.Status = 'PENDENTE' AND l.DataVencimento < DATE('now')
+                    ) THEN 'vermelho'
+                    WHEN EXISTS (
+                        SELECT 1 FROM Lancamentos l
+                        WHERE l.ClienteID = c.id AND l.Status = 'PENDENTE'
+                    ) THEN 'laranja'
+                    ELSE 'verde'
+                END AS statusFinanceiro
+            FROM Clientes c
+            WHERE c.id = ?
+        `;
+        return dbGet(sql, [id]); // dbGet (retorna só um)
+    };
+
+    const findVendasByClienteId = (clienteId) => {
+        const sql = `
+            SELECT id, data, total 
+            FROM Vendas 
+            WHERE cliente_id = ? 
+            ORDER BY data DESC
+        `;
+        return dbAll(sql, [clienteId]);
+    };
+
 const create = (cliente) => {
     const { nome, telefone, email, endereco } = cliente;
     return dbRun(
@@ -66,6 +98,8 @@ const remove = (id) => {
 
 module.exports = {
     findAll,
+    findById,
+    findVendasByClienteId,
     create,
     update,
     remove,
