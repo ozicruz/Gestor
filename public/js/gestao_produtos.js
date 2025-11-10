@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Funções do Modal (abrir, fechar, remover) ---
-    // (O seu código original de abrirModal, fecharModal, e removerProduto fica aqui, sem alterações)
+
     const abrirModal = async (isEdit = false, produtoId = null) => {
         produtoForm.reset();
         inputId.value = '';
@@ -128,11 +128,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             modalTitle.textContent = 'Novo Produto';
         }
-        modal.classList.add('active');
+        modal.classList.remove('modal-oculto');
         setTimeout(() => { document.getElementById('produto-nome').focus(); }, 100);
     };
 
-    const fecharModal = () => modal.classList.remove('active');
+    const fecharModal = () => modal.classList.add('modal-oculto');
 
     const removerProduto = async (id) => {
         if (confirm('Tem a certeza que deseja remover este produto?')) {

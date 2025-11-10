@@ -118,11 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             modalTitle.textContent = 'Novo Serviço';
         }
-        modal.classList.add('active');
+        modal.classList.remove('modal-oculto');
         setTimeout(() => { document.getElementById('servico-nome').focus(); }, 100);
     };
 
-    const fecharModal = () => modal.classList.remove('active');
+    const fecharModal = () => modal.classList.add('modal-oculto');
 
     const removerServico = async (id) => {
         if (confirm('Tem a certeza que deseja remover este serviço?')) {

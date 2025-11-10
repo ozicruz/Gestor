@@ -7,6 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+    th[data-sort] { cursor: pointer; user-select: none; }
+    th[data-sort]:hover { background-color: #e5e7eb; }
+    </style>
 </head>
 <body class="p-4 md:p-8">
 
@@ -45,12 +49,20 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Últimos Lançamentos</h2>
             <div class="bg-white p-6 rounded-lg shadow-lg">
                 <table class="w-full" id="tabela-movimentos">
-                    <thead>
+                    <thead class="bg-gray-100" id="tabela-movimentos-header">
                         <tr class="border-b">
-                            <th class="text-left p-3">Data</th>
-                            <th class="text-left p-3">Descrição</th>
-                            <th class="text-left p-3">Categoria</th>
-                            <th class="text-right p-3">Valor (R$)</th>
+                            <th data-sort="DataPagamento" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                Data <span class="sort-arrow"> ▼</span>
+                            </th>
+                            <th data-sort="Descricao" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                Descrição <span class="sort-arrow"></span>
+                            </th>
+                            <th data-sort="CategoriaNome" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                Categoria <span class="sort-arrow"></span>
+                            </th>
+                            <th data-sort="Valor" class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                Valor (R$) <span class="sort-arrow"></span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="tabela-movimentos-corpo">

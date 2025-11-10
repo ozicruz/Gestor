@@ -1,39 +1,34 @@
-// public/js/gestao_contas_receber.js
+// public/js/gestao_contas_receber.js (Versão ATUALIZADA com Ordenação)
 
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. REFERÊNCIAS AOS ELEMENTOS ---
-    // Cards de Resumo
     const cardTotalReceber = document.getElementById('card-total-receber');
     const cardTotalVencido = document.getElementById('card-total-vencido');
     const cardReceberHoje = document.getElementById('card-receber-hoje');
-    
-    // Tabela de Pendências
     const tabelaCorpo = document.getElementById('tabela-pendencias-corpo');
-
-    // Modal de Baixa (Pagamento)
     const modalBaixa = document.getElementById('modalBaixa');
     const formBaixa = document.getElementById('formBaixa');
     const btnFecharModalBaixa = document.getElementById('btnFecharModalBaixa');
     const modalBaixaTitulo = document.getElementById('modalBaixaTitulo');
-    const baixaLancamentoId = document.getElementById('baixaLancamentoId'); // Input escondido
+    const baixaLancamentoId = document.getElementById('baixaLancamentoId');
     const baixaValorOriginal = document.getElementById('baixaValorOriginal');
     const baixaValorRecebido = document.getElementById('baixaValorRecebido');
     const baixaDataPagamento = document.getElementById('baixaDataPagamento');
     const baixaContaCaixa = document.getElementById('baixaContaCaixa');
     const baixaFormaPagamento = document.getElementById('baixaFormaPagamento');
-    
+
+    // --- NOVO: Seletores e Variáveis de Ordenação ---
+    const headersTabela = document.querySelectorAll('#tabela-pendencias-header th[data-sort]');
+    let todasAsPendencias = []; // Guarda a lista completa
+    let sortColumn = 'DataVencimento'; // Coluna padrão (Vencimento)
+    let sortDirection = 'asc'; // Direção padrão (mais antigos primeiro)
+
     // --- 2. FUNÇÕES DE FORMATAÇÃO ---
     function formatarMoeda(valor) {
-        return new Intl.NumberFormat('pt-BR', { 
-            style: 'currency', 
-            currency: 'BRL' 
-        }).format(valor);
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
-    
-    // Formata data 'AAAA-MM-DD' para 'DD/MM/AAAA'
     function formatarData(dataISO) {
-        // Adiciona timeZone 'UTC' para evitar problemas de fuso horário
         return new Date(dataISO).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
     }
 
@@ -42,16 +37,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Função ÚNICA para atualizar TUDO
     async function atualizarPainel() {
         console.log("A atualizar painel de Contas a Receber...");
-        await atualizarCardsResumo();
-        await atualizarTabelaPendencias();
+        await Promise.all([
+            atualizarCardsResumo(),
+            carregarPendenciasDaAPI() // Carrega os dados da tabela
+        ]);
     }
 
-    // Função para os CARDS
+    // Função para os CARDS (sem alteração)
     async function atualizarCardsResumo() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contasareceber/resumo');
             const resumo = await response.json();
-
             cardTotalReceber.textContent = formatarMoeda(resumo.TotalAReceber);
             cardTotalVencido.textContent = formatarMoeda(resumo.TotalVencido);
             cardReceberHoje.textContent = formatarMoeda(resumo.ReceberHoje);
@@ -61,62 +57,96 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Função para a TABELA
-    async function atualizarTabelaPendencias() {
+    // --- NOVO: Funções refatoradas para a Tabela (com ordenação) ---
+
+    // 1. Busca os dados da API
+    async function carregarPendenciasDaAPI() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contasareceber');
-            const pendencias = await response.json();
-
-            tabelaCorpo.innerHTML = ''; // Limpa a tabela
-
-            if (pendencias.length === 0) {
-                tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhuma pendência encontrada.</td></tr>';
-                return;
-            }
-
-            const hoje = new Date(new Date().toISOString().split('T')[0]); // Data de hoje, sem hora
-
-            pendencias.forEach(p => {
-                const dataVenc = new Date(p.DataVencimento);
-                let statusClasse = 'text-gray-700'; // A vencer
-                if (dataVenc < hoje) {
-                    statusClasse = 'text-red-600 font-bold'; // Vencido
-                }
-
-                const linha = `
-                    <tr class="border-t">
-                        <td class="p-3">${p.ClienteNome || 'Consumidor Final'}</td>
-                        <td class="p-3">${p.Descricao}</td>
-                        <td class="p-3 ${statusClasse}">${formatarData(p.DataVencimento)}</td>
-                        <td class="p-3 text-right font-semibold">${formatarMoeda(p.Valor)}</td>
-                        <td class="p-3 text-center">
-                            <button data-acao="dar-baixa" 
-                                    data-id="${p.id}" 
-                                    data-valor="${p.Valor}" 
-                                    data-descricao="${p.Descricao}"
-                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg text-sm shadow">
-                                Receber
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tabelaCorpo.innerHTML += linha;
-            });
-
+            todasAsPendencias = await response.json();
+            aplicarFiltroEOrdem(); // Chama a função para ordenar e desenhar
         } catch (err) {
             console.error("Erro ao buscar pendências:", err);
             tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Erro ao carregar pendências.</td></tr>';
         }
     }
+
+    // 2. Função central que ordena e chama o "desenho"
+    const aplicarFiltroEOrdem = () => {
+        // (Sem filtro por enquanto, mas podemos adicionar um inputBusca aqui no futuro)
+        const pendenciasFiltradas = [...todasAsPendencias];
+
+        // Ordena
+        pendenciasFiltradas.sort((a, b) => {
+            let valA = a[sortColumn];
+            let valB = b[sortColumn];
+
+            if (sortColumn === 'Valor') {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+            } else if (sortColumn === 'DataVencimento') {
+                valA = new Date(valA);
+                valB = new Date(valB);
+            } else { 
+                valA = (valA || '').toLowerCase();
+                valB = (valB || '').toLowerCase();
+            }
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // 3. Desenha
+        desenharTabela(pendenciasFiltradas);
+    };
+
+    // 4. Função que desenha a tabela
+    const desenharTabela = (pendenciasParaRenderizar) => {
+        tabelaCorpo.innerHTML = ''; // Limpa a tabela
+        if (pendenciasParaRenderizar.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhuma pendência encontrada.</td></tr>';
+            return;
+        }
+
+        const hoje = new Date(new Date().toISOString().split('T')[0]); 
+
+        pendenciasParaRenderizar.forEach(p => {
+            const dataVenc = new Date(p.DataVencimento);
+            let statusClasse = 'text-gray-700'; // A vencer
+            if (dataVenc < hoje) {
+                statusClasse = 'text-red-600 font-bold'; // Vencido
+            }
+
+            const linha = `
+                <tr class="border-t hover:bg-gray-50">
+                    <td class="p-3">${p.ClienteNome || 'Consumidor Final'}</td>
+                    <td class="p-3">${p.Descricao}</td>
+                    <td class="p-3 ${statusClasse}">${formatarData(p.DataVencimento)}</td>
+                    <td class="p-3 text-right font-semibold">${formatarMoeda(p.Valor)}</td>
+                    <td class="p-3 text-center">
+                        <button data-acao="dar-baixa" 
+                                data-id="${p.id}" 
+                                data-valor="${p.Valor}" 
+                                data-descricao="${p.Descricao}"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg text-sm shadow">
+                            Receber
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tabelaCorpo.innerHTML += linha;
+        });
+    };
     
-    // --- 4. LÓGICA DO MODAL DE "DAR BAIXA" ---
+    // --- 4. LÓGICA DO MODAL "DAR BAIXA" (sem alteração) ---
+    // (O seu código original de carregarContasBaixa, carregarFormasPagamentoBaixa, abrirModalBaixa, etc., fica aqui)
+    // (Vou colar por si, para garantir)
     
-    // Carrega as Contas/Caixa para o dropdown do modal
     async function carregarContasBaixa() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contascaixa');
             const contas = await response.json();
-            
             baixaContaCaixa.innerHTML = '<option value="">Selecione a conta...</option>';
             contas.forEach(conta => {
                 const option = document.createElement('option');
@@ -134,17 +164,14 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/formaspagamento');
             const formas = await response.json();
-        
             baixaFormaPagamento.innerHTML = '<option value="">Selecione a forma...</option>';
             formas.forEach(forma => {
-            // Só mostramos opções A_VISTA (Dinheiro, Pix, Cartão)
-            // Não faz sentido pagar "fiado" com mais "fiado"
-            if (forma.TipoLancamento === 'A_VISTA') { 
-                const option = document.createElement('option');
-                option.value = forma.id;
-                option.textContent = forma.Nome;
-                baixaFormaPagamento.appendChild(option);
-            }
+                if (forma.TipoLancamento === 'A_VISTA') { 
+                    const option = document.createElement('option');
+                    option.value = forma.id;
+                    option.textContent = forma.Nome;
+                    baixaFormaPagamento.appendChild(option);
+                }
             });
         } catch (err) {
             console.error('Erro ao carregar formas de pagamento:', err);
@@ -152,26 +179,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Abre o modal e preenche com os dados da dívida
     function abrirModalBaixa(id, descricao, valor) {
         modalBaixaTitulo.textContent = `Receber Pagamento (${descricao})`;
         baixaLancamentoId.value = id;
         baixaValorOriginal.textContent = formatarMoeda(valor);
-        baixaValorRecebido.value = valor; // Sugere o valor total
-        baixaDataPagamento.value = new Date().toISOString().split('T')[0]; // Sugere data de hoje
+        baixaValorRecebido.value = valor; 
+        baixaDataPagamento.value = new Date().toISOString().split('T')[0]; 
         
-        carregarContasBaixa(); // Carrega as contas
-        carregarFormasPagamentoBaixa();
-
+        carregarContasBaixa(); 
+        carregarFormasPagamentoBaixa(); 
         modalBaixa.classList.remove('modal-oculto');
     }
 
-    // Fecha o modal
     btnFecharModalBaixa.addEventListener('click', () => {
         modalBaixa.classList.add('modal-oculto');
     });
 
-    // Event listener na tabela para apanhar cliques nos botões "Receber"
     tabelaCorpo.addEventListener('click', (e) => {
         const botao = e.target.closest('[data-acao="dar-baixa"]');
         if (botao) {
@@ -182,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Submissão do formulário de pagamento (Amortização)
     formBaixa.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -194,26 +216,20 @@ document.addEventListener('DOMContentLoaded', () => {
             FormaPagamentoID: parseInt(baixaFormaPagamento.value)
         };
 
-        // Validações
         if (!dadosBaixa.ValorRecebido || dadosBaixa.ValorRecebido <= 0) {
-            alert("O valor recebido deve ser maior que zero.");
-            return;
+            alert("O valor recebido deve ser maior que zero."); return;
         }
         if (!dadosBaixa.DataPagamento) {
-            alert("A data de pagamento é obrigatória.");
-            return;
-        }
-        if (!dadosBaixa.ContaCaixaID) {
-            alert("A conta/caixa de destino é obrigatória.");
-            return;
+            alert("A data de pagamento é obrigatória."); return;
         }
         if (!dadosBaixa.FormaPagamentoID) {
-            alert("A forma de pagamento é obrigatória.");
-            return;
+            alert("A forma de pagamento é obrigatória."); return;
+        }
+        if (!dadosBaixa.ContaCaixaID) {
+            alert("A conta/caixa de destino é obrigatória."); return;
         }
         
         try {
-            // Chama a nossa API de baixa/amortização!
             const response = await fetch(`http://localhost:3002/api/financeiro/lancamento/${id}/baixar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -221,15 +237,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const resultado = await response.json();
-            if (!response.ok) {
-                throw new Error(resultado.message);
-            }
+            if (!response.ok) { throw new Error(resultado.message); }
 
             alert('Pagamento registrado com sucesso!');
-            modalBaixa.classList.add('modal-oculto'); // Fecha o modal
+            modalBaixa.classList.add('modal-oculto'); 
             
-            // ATUALIZA O PAINEL INTEIRO!
-            // (Os cartões vão mudar, e a dívida vai desaparecer ou ter o valor reduzido)
+            // ATUALIZADO: Recarrega tudo (Cards e Tabela)
             await atualizarPainel();
 
         } catch (err) {
@@ -238,7 +251,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- NOVO: Listener para ORDENAÇÃO ---
+    headersTabela.forEach(header => {
+        header.addEventListener('click', () => {
+            const newSortColumn = header.dataset.sort;
+            if (sortColumn === newSortColumn) {
+                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                sortColumn = newSortColumn;
+                sortDirection = 'asc';
+            }
+            
+            headersTabela.forEach(h => {
+                const arrow = h.querySelector('.sort-arrow');
+                if (h.dataset.sort === sortColumn) {
+                    arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
+                } else {
+                    arrow.innerHTML = ''; 
+                }
+            });
+
+            // Re-renderiza a tabela com a nova ordem
+            aplicarFiltroEOrdem();
+        });
+    });
+
     // --- 5. CARREGAMENTO INICIAL ---
-    // Chama a função principal quando a página carrega
     atualizarPainel();
 });
