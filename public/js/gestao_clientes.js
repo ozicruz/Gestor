@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await response.json();
         showAlert(result.message, response.ok);
         if(response.ok) {
-            clienteModal.classList.remove('active');
+            clienteModal.classList.add('modal-oculto');
             await carregarClientes(); // Recarrega a lista
         }
     });
@@ -175,7 +175,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btnNovoCliente').addEventListener('click', () => abrirModalCliente());
-    clienteModal.classList.add('modal-oculto');
+    document.getElementById('btn-cancelar-cliente').addEventListener('click', () => {
+        // clienteModal.classList.remove('active'); // Linha antiga
+        clienteModal.classList.add('modal-oculto'); // Linha nova
+    });
 
     // O modal de VEÍCULOS e os botões de EDITAR/REMOVER foram movidos para a 'detalhe_cliente.js'
     // Por isso, removemos os 'event listeners' antigos daqui.
