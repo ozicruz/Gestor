@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         document.getElementById('cliente-id').value = '';
         document.getElementById('cliente-modal-title').textContent = 'Novo Cliente';
-        clienteModal.classList.add('active');
+        clienteModal.classList.remove('modal-oculto');
     };
 
     // Salva o NOVO cliente
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Este formulário agora só cria NOVOS clientes
         if (id) { 
-            clienteModal.classList.remove('active');
+            clienteModal.classList.add('modal-oculto');
             return; // Formulário de edição estará noutra página
         } 
 
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btnNovoCliente').addEventListener('click', () => abrirModalCliente());
-    document.getElementById('btn-cancelar-cliente').addEventListener('click', () => clienteModal.classList.remove('active'));
+    clienteModal.classList.add('modal-oculto');
 
     // O modal de VEÍCULOS e os botões de EDITAR/REMOVER foram movidos para a 'detalhe_cliente.js'
     // Por isso, removemos os 'event listeners' antigos daqui.
