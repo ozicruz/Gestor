@@ -134,10 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Botão Editar (Abre o modal)
     btnEditar.addEventListener('click', () => {
-        clienteModal.classList.add('active');
+        clienteModal.classList.remove('modal-oculto'); // <-- CORREÇÃO
     });
     btnCancelarCliente.addEventListener('click', () => {
-        clienteModal.classList.remove('active');
+        clienteModal.classList.add('modal-oculto'); // <-- CORREÇÃO
     });
 
     // Submissão do formulário de EDIÇÃO
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showAlert(result.message, response.ok);
         
         if(response.ok) {
-            clienteModal.classList.remove('active');
+            clienteModal.classList.add('modal-oculto');
             await carregarCliente(id); // Recarrega os dados do perfil
         }
     });
