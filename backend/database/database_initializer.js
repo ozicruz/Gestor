@@ -232,6 +232,7 @@ const seedInitialData = async () => {
 
         // Conta Caixa Padrão
         await dbRun("INSERT OR IGNORE INTO ContasCaixa (Nome, SaldoInicial) VALUES ('Caixa Principal', 0.0);");
+        await dbRun("UPDATE FormasPagamento SET aceitaParcelas = 1, maxParcelas = 12 WHERE Nome = 'Cartão de Crédito';");
         
         console.log('🌱 Sementeira concluída.');
     } catch (err) {
