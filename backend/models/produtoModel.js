@@ -28,20 +28,20 @@ const findById = (id) => {
 // ... (resto das funções criar, atualizar, remover ficam iguais) ...
 
 const create = (produto) => {
-    // ATUALIZADO: Adicionado 'valor_custo'
-    const { nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo } = produto;
+    // ATUALIZADO: Adicionado 'stock_minimo'
+    const { nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, stock_minimo } = produto;
     return dbRun(
-        'INSERT INTO Produtos (nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo) VALUES (?, ?, ?, ?, ?)',
-        [nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo]
+        'INSERT INTO Produtos (nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, stock_minimo) VALUES (?, ?, ?, ?, ?, ?)',
+        [nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, stock_minimo]
     );
 };
 
 const update = (id, produto) => {
-    // ATUALIZADO: Adicionado 'valor_custo'
-    const { nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo } = produto;
+    // ATUALIZADO: Adicionado 'stock_minimo'
+    const { nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, stock_minimo } = produto;
     return dbRun(
-        'UPDATE Produtos SET nome = ?, descricao = ?, quantidade_em_estoque = ?, preco_unitario = ?, valor_custo = ? WHERE id = ?',
-        [nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, id]
+        'UPDATE Produtos SET nome = ?, descricao = ?, quantidade_em_estoque = ?, preco_unitario = ?, valor_custo = ?, stock_minimo = ? WHERE id = ?',
+        [nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, stock_minimo, id]
     );
 };
 

@@ -1,10 +1,10 @@
-// public/js/gestao_produtos.js (Versão ATUALIZADA com Ordenação)
+// public/js/gestao_produtos.js (Versão Final com Stock Mínimo)
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';
 
-    // --- ELEMENTOS DO DOM ---
+    // --- ELEMENTOS DO DOM (ATUALIZADO) ---
     const tabelaProdutosBody = document.getElementById('tabela-produtos');
     const modal = document.getElementById('produto-modal');
     const modalTitle = document.getElementById('modal-title');
@@ -18,25 +18,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputEstoque = document.getElementById('produto-estoque');
     const inputPreco = document.getElementById('produto-preco');
     const inputCusto = document.getElementById('produto-custo');
+    const inputStockMinimo = document.getElementById('produto-stock-minimo'); // --- NOVO ---
     const inputBusca = document.getElementById('input-busca-produto');
-
-    // --- NOVO: Seletores e Variáveis de Ordenação ---
     const headersTabela = document.querySelectorAll('#tabela-produtos-header th[data-sort]');
-    let todosOsProdutos = [];
-    let sortColumn = 'nome'; // Coluna padrão
-    let sortDirection = 'asc'; // Direção padrão
 
-    // --- FUNÇÕES AUXILIARES ---
-const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-    // Função que converte "19,90" para 19.90 (número)
+    let todosOsProdutos = [];
+    let sortColumn = 'nome'; 
+    let sortDirection = 'asc'; 
+
+    // --- FUNÇÕES AUXILIARES (CORRIGIDAS) ---
+    
     const parseCurrency = (value) => {
-        if (typeof value !== 'string') return value;
-        return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+        if (typeof value !== 'string') {
+            return (typeof value === 'number') ? value : 0;
+        }
+        const soNumerosEVirgula = value.replace(/[^0-9,]/g, '');
+        const numeroComPonto = soNumerosEVirgula.replace(',', '.');
+        return parseFloat(numeroComPonto) || 0;
     };
-    // Função que converte 19.9 para "19,90" (texto para input)
+    
     const formatCurrencyForInput = (value) => {
         return (parseFloat(value) || 0).toFixed(2).replace('.', ',');
     };
+    
+    const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
     
     const showAlert = (message, isSuccess = true) => {
         feedbackAlert.textContent = message;
@@ -47,38 +52,33 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
     
     // --- FUNÇÕES PRINCIPAIS (CRUD) ---
     
-    // 1. Busca os dados da API
     const carregarProdutos = async () => {
         try {
             const response = await fetch(`${API_URL}/produtos`);
             if (!response.ok) throw new Error('Erro ao carregar produtos.');
             
             todosOsProdutos = await response.json();
-            aplicarFiltroEOrdem(); // Chama a nova função central
+            aplicarFiltroEOrdem(); 
         } catch (error) {
             showAlert(error.message, false);
         }
     };
 
-    // 2. ATUALIZADO: Função central que filtra, ordena e desenha
     const aplicarFiltroEOrdem = () => {
         const termo = inputBusca.value.toLowerCase();
-
-        // 2a. Filtra
         const produtosFiltrados = todosOsProdutos.filter(produto => 
             produto.nome.toLowerCase().includes(termo)
         );
 
-        // 2b. Ordena (Lógica de ordenação dinâmica)
+        // ATUALIZADO: Adicionado 'stock_minimo'
         produtosFiltrados.sort((a, b) => {
             let valA = a[sortColumn];
             let valB = b[sortColumn];
 
-            // Trata números (estoque, preco)
-            if (sortColumn === 'quantidade_em_estoque' || sortColumn === 'preco_unitario') {
+            if (['quantidade_em_estoque', 'preco_unitario', 'valor_custo', 'stock_minimo'].includes(sortColumn)) {
                 valA = parseFloat(valA) || 0;
                 valB = parseFloat(valB) || 0;
-            } else { // Trata strings (nome)
+            } else { 
                 valA = (valA || '').toLowerCase();
                 valB = (valB || '').toLowerCase();
             }
@@ -87,29 +87,24 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-
-        // 2c. Desenha
+        
         desenharTabela(produtosFiltrados);
     };
 
-// 3. A função de desenhar a tabela (ATUALIZADA)
+    // ATUALIZADO: Adicionada coluna "Stock Mín."
     const desenharTabela = (produtosParaRenderizar) => {
         tabelaProdutosBody.innerHTML = '';
         if (produtosParaRenderizar.length === 0) {
-            tabelaProdutosBody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">Nenhum produto encontrado.</td></tr>`;
+            tabelaProdutosBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum produto encontrado.</td></tr>`;
             return;
         }
         produtosParaRenderizar.forEach(produto => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${produto.nome}</div>
-                    <div class="text-sm text-gray-500">${(produto.descricao || '').substring(0, 40)}...</div>
-                </td>
+                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${produto.nome}</div><div class="text-sm text-gray-500">${(produto.descricao || '').substring(0, 40)}...</div></td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${produto.quantidade_em_estoque}</td>
-                
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${produto.stock_minimo}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(produto.valor_custo)}</td>
-                
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(produto.preco_unitario)}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button data-action="editar-produto" data-produto-id="${produto.id}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
@@ -120,38 +115,37 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
         });
     };
 
-// --- Funções do Modal (ATUALIZADAS) ---
+    // --- Funções do Modal (ATUALIZADAS) ---
     
     const abrirModal = async (isEdit = false, produtoId = null) => {
         produtoForm.reset();
         inputId.value = '';
         if (isEdit && produtoId) {
             modalTitle.textContent = 'Editar Produto';
-            try {
-                // Usamos a lista local em vez de buscar na API
-                const produto = todosOsProdutos.find(p => p.id === produtoId);
-                if (!produto) throw new Error('Produto não encontrado na lista local.');
-                
+            const produto = todosOsProdutos.find(p => p.id === produtoId);
+            if (produto) {
                 inputId.value = produto.id;
                 inputNome.value = produto.nome;
                 inputDescricao.value = produto.descricao;
                 inputEstoque.value = produto.quantidade_em_estoque;
-                // ATUALIZADO: Popula o Custo e o Preço
+                inputStockMinimo.value = produto.stock_minimo || 0; // --- NOVO ---
                 inputCusto.value = formatCurrencyForInput(produto.valor_custo);
                 inputPreco.value = formatCurrencyForInput(produto.preco_unitario);
-            } catch (error) {
-                showAlert(error.message, false);
+            } else {
+                showAlert('Erro: Produto não encontrado para edição.', false);
                 return;
             }
         } else {
             modalTitle.textContent = 'Novo Produto';
+            inputCusto.value = '0,00';
+            inputPreco.value = '0,00';
+            inputEstoque.value = 0;
+            inputStockMinimo.value = 0; // --- NOVO ---
         }
-        // CORRIGIDO: Usa a classe nova para ABRIR
         modal.classList.remove('modal-oculto');
         setTimeout(() => { inputNome.focus(); }, 100);
     };
 
-    // CORRIGIDO: Usa a classe nova para FECHAR
     const fecharModal = () => modal.classList.add('modal-oculto');
 
     const removerProduto = async (id) => {
@@ -161,7 +155,7 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message);
                 showAlert(result.message);
-                carregarProdutos(); // Recarrega a lista
+                carregarProdutos(); 
             } catch (error) {
                 showAlert(error.message, false);
             }
@@ -172,18 +166,19 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
     btnNovoProduto.addEventListener('click', () => abrirModal(false));
     btnCancelar.addEventListener('click', fecharModal);
     
-// Listener do Formulário (ATUALIZADO)
+    // Listener do Formulário (ATUALIZADO)
     produtoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = inputId.value;
         
-        // ATUALIZADO: Adiciona 'valor_custo'
+        // ATUALIZADO: Adiciona 'stock_minimo'
         const produtoData = {
             nome: inputNome.value,
             descricao: inputDescricao.value,
             quantidade_em_estoque: parseInt(inputEstoque.value, 10),
             preco_unitario: parseCurrency(inputPreco.value),
-            valor_custo: parseCurrency(inputCusto.value) // --- NOVO ---
+            valor_custo: parseCurrency(inputCusto.value),
+            stock_minimo: parseInt(inputStockMinimo.value, 10) // --- NOVO ---
         };
 
         const method = id ? 'PUT' : 'POST';
@@ -200,7 +195,7 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
             
             showAlert(result.message);
             fecharModal();
-            carregarProdutos(); // Recarrega a lista
+            carregarProdutos(); 
         } catch (error) {
             showAlert(error.message, false);
         }
@@ -222,34 +217,30 @@ const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'curre
         }
     });
 
-    // ATUALIZADO: Listener da Busca (agora só chama a função central)
+    // Listener da Busca
     inputBusca.addEventListener('input', aplicarFiltroEOrdem);
 
-    // --- NOVO: Listener para ORDENAÇÃO ---
+    // Listener para ORDENAÇÃO
     headersTabela.forEach(header => {
         header.addEventListener('click', () => {
             const newSortColumn = header.dataset.sort;
             
-            // Se clicar na mesma coluna, inverte a direção
             if (sortColumn === newSortColumn) {
                 sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
             } else {
-                // Se clicar numa nova coluna, define-a como padrão (asc)
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
             
-            // Atualiza as setas
             headersTabela.forEach(h => {
                 const arrow = h.querySelector('.sort-arrow');
                 if (h.dataset.sort === sortColumn) {
                     arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 } else {
-                    arrow.innerHTML = ''; // Limpa setas das outras colunas
+                    arrow.innerHTML = ''; 
                 }
             });
 
-            // Re-renderiza a tabela com a nova ordem
             aplicarFiltroEOrdem();
         });
     });

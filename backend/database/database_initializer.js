@@ -115,6 +115,21 @@ try {
     } catch (err) {
         console.error('Erro durante a migração Produtos (custo):', err.message);
     }
+
+    // --- (MIGRAÇÃO 5) ---
+    try {
+        console.log('MIGRANDO: A verificar coluna de stock_minimo em Produtos...');
+        const colunasProduto = await dbAll("PRAGMA table_info(Produtos);");
+
+        const temStockMinimo = colunasProduto.some(col => col.name === 'stock_minimo');
+        if (!temStockMinimo) {
+            console.log('MIGRANDO: A adicionar coluna "stock_minimo" a Produtos...');
+            // Adiciona a coluna com um valor padrão de 0
+            await dbRun('ALTER TABLE Produtos ADD COLUMN stock_minimo INTEGER NOT NULL DEFAULT 0;');
+        }
+    } catch (err) {
+        console.error('Erro durante a migração Produtos (stock_minimo):', err.message);
+    }
 };
 
 // --- (O resto do seu ficheiro 'createTables' e 'seedInitialData' fica igual) ---

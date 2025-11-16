@@ -14,6 +14,7 @@ const patioRoutes = require('./routes/patioRoutes');
 const vendaRoutes = require('./routes/vendaRoutes');
 const ordemServicoRoutes = require('./routes/ordemServicoRoutes');
 const financeiroRoutes = require('./routes/financeiroRoutes');
+const relatorioRoutes = require('./routes/relatorioRoutes');
 
 const app = express();
 app.use(cors());
@@ -27,6 +28,7 @@ app.use('/api', patioRoutes);
 app.use('/api', vendaRoutes);
 app.use('/api', ordemServicoRoutes);
 app.use('/api/financeiro', financeiroRoutes);
+app.use('/api/relatorios', relatorioRoutes);
 
 // Função para iniciar o servidor
 const startServer = (port) => {

@@ -248,3 +248,12 @@ body {
     color: #16A34A; /* green-600 */
     font-weight: 500;
 }
+
+/* NOVO: Estilo para cabeçalhos de tabela ordenáveis */
+th[data-sort] { 
+    cursor: pointer; 
+    user-select: none; 
+}
+th[data-sort]:hover { 
+    background-color: #e5e7eb; /* cinza-200 */
+}
