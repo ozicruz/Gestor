@@ -257,3 +257,26 @@ th[data-sort] {
 th[data-sort]:hover { 
     background-color: #e5e7eb; /* cinza-200 */
 }
+/* --- NOVO: Barra de Rolagem para a Tabela do Dashboard --- */
+
+#table-scroll-container {
+    /* Define uma altura máxima. O scroll só aparece se a tabela for maior que isto. */
+    max-height: 500px; 
+    
+    /* Adiciona a barra de rolagem vertical (Y) automaticamente */
+    overflow-y: auto;
+    
+    /* (Opcional) Adiciona uma pequena borda para separar da tabela */
+    border-top: 1px solid #e5e7eb; /* cinza-200 */
+    border-bottom: 1px solid #e5e7eb; /* cinza-200 */
+}
+
+/* Faz o cabeçalho da tabela "colar" no topo ao rolar */
+.table-sticky-header th {
+    position: sticky;
+    top: 0;
+    /* (Usamos a cor de fundo do seu thead) */
+    background-color: #f9fafb; /* bg-gray-100 */
+    /* Garante que o cabeçalho fica acima do conteúdo */
+    z-index: 10; 
+}

@@ -22,12 +22,9 @@ jobs:
 
     - name: Build the application
       run: npm run make
-# --- CORREÇÃO IMEDIATA ---
-    # O passo abaixo foi desativado (comentado com '#')
-    # Isto vai impedir o GitHub de salvar o .exe e vai parar o erro da "quota".
-    #- name: Upload Artifact
-     # uses: actions/upload-artifact@v4
-      #with:
-       # name: gestao-oficina-installer
-        #path: out/make/squirrel.windows/x64/*.exe
-# --- FIM CORREÇÃO IMEDIATA ---
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gestao-oficina-installer
+        path: out/make/squirrel.windows/x64/*.exe

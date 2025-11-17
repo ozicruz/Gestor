@@ -27,15 +27,17 @@
                     <label for="data-fim" class="block text-sm font-medium text-gray-700">Data Fim:</label>
                     <input type="date" id="data-fim" class="form-input mt-1">
                 </div>
-                <button type="submit" id="btn-gerar-dre" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow h-10">
-                    Relatório DRE
-                </button>
-                <button type="button" id="btn-gerar-produtos" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow h-10">
-                    Relatório de Produtos
-                </button>
-                <button type="button" id="btn-gerar-stock" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg shadow h-10">
-                    Relatório de Stock Baixo
-                </button>
+            <button type="submit" id="btn-gerar-dre" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                Gerar Relatório DRE
+            </button>
+
+            <button type="button" id="btn-gerar-produtos" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                Gerar Relatório de Produtos
+            </button>
+
+            <button type="button" id="btn-gerar-stock" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                Ver Relatório de Stock Baixo
+            </button>
             </form>
         </div>
 
@@ -46,5 +48,91 @@
     </div>
 
     <script src="js/relatorios.js" defer></script>
+
+<template id="relatorio-template">
+    <html>
+    <head>
+        <title>Relatório da Oficina</title>
+        <style>
+            body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; color: #333; font-size: 12px; }
+            .relatorio-box { border: 1px solid #eee; padding: 20px; max-width: 800px; margin: auto; }
+            
+            /* --- CABEÇALHO CORRIGIDO --- */
+            .header .empresa h1 { 
+                font-size: 20px; 
+                margin: 0; 
+                color: #000;
+            }
+            .header .empresa p { 
+                margin: 0; 
+                font-size: 12px; 
+                color: #555; 
+            }
+            .header .detalhes { 
+                margin-top: 15px; 
+                border-top: 2px solid #000; 
+                padding-top: 10px;
+            }
+            .header .detalhes h2 { 
+                font-size: 18px; 
+                margin: 0 0 5px 0; 
+                color: #333;
+            }
+            .header .detalhes p {
+                margin: 0;
+                font-size: 12px;
+            }
+            /* --- FIM DA CORREÇÃO --- */
+
+            .relatorio-conteudo { margin-top: 20px; }
+            
+            /* Estilos do DRE (copiados de relatorios.js) */
+            .dre-container { font-size: 14px; }
+            .dre-section h3 { font-size: 1.25rem; font-weight: 600; color: #374151; }
+            .dre-section .details { padding-left: 1rem; border-left: 2px solid #e5e7eb; margin-top: 4px; }
+            .dre-section .details p { margin: 2px 0; color: #4b5563; }
+            .dre-section .details .total { font-weight: bold; color: #1f2937; margin-top: 4px; }
+            .dre-total-bruto { border-top: 1px solid #ccc; padding-top: 8px; font-size: 1.5rem; font-weight: bold; color: #2563EB; }
+            .dre-total-liquido { border-top: 2px solid #1f2937; padding-top: 1rem; margin-top: 1rem; font-size: 1.75rem; font-weight: bold; }
+            .text-green-600 { color: #16A34A; }
+            .text-red-600 { color: #DC2626; }
+            
+            /* Estilos da Tabela (para Produtos e Stock) */
+            .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .report-table th, .report-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
+            .report-table th { background-color: #f9f9f9; font-size: 11px; text-transform: uppercase; }
+            .report-table .text-right { text-align: right; }
+            .report-table .text-center { text-align: center; }
+            .report-table .font-bold { font-weight: bold; }
+            .report-table .text-red-600 { color: #DC2626; }
+            .report-table .text-green-600 { color: #16A34A; }
+            .report-table .text-blue-600 { color: #2563EB; }
+            
+        </style>
+    </head>
+    <body>
+        <div class="relatorio-box">
+            
+            <div class="header">
+                <div class="empresa">
+                    <h1>Saulo Cardoso Oficina de Motos</h1>
+                    <p>Avenida Central, 33 - Inajá-PE</p>
+                </div>
+                
+                <div class="detalhes">
+                    <h2 data-relatorio="titulo">Relatório Financeiro</h2>
+                    <p>Período: <span data-relatorio="periodo"></span></p>
+                </div>
+            </div>
+            
+            <div id="relatorio-conteudo-pdf" class="relatorio-conteudo">
+                </div>
+            
+        </div>
+    </body>
+    </html>
+</template>
+</body>
+</html>
 </body>
 </html>
