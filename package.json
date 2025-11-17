@@ -1,7 +1,7 @@
 {
   "name": "gestao-oficina",
   "productName": "Gestor de Oficina",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Sistema de Gestão para Oficinas",
   "main": "main.js",
   "scripts": {
