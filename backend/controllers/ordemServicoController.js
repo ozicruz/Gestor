@@ -17,7 +17,7 @@ const criarOrdemServico = async (req, res) => {
         if (!placa) {
             return res.status(400).json({ message: 'A placa do veículo é obrigatória.' });
         }
-        
+
         const result = await OrdemServico.create(placa);
         res.status(201).json({ id: result.id, message: 'Ordem de Serviço criada com sucesso.' });
     } catch (err) {
@@ -54,4 +54,4 @@ const atualizarOS = async (req, res) => {
     }
 };
 
-module.exports = { listarOS, buscarOSPorId, abrirOS, atualizarOS, criarOrdemServico};
+module.exports = { listarOS, buscarOSPorId, abrirOS, atualizarOS, criarOrdemServico };

@@ -15,22 +15,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const enderecoEl = document.getElementById('detalhe-endereco');
     const btnEditar = document.getElementById('btn-editar-cliente');
     const btnRemover = document.getElementById('btn-remover-cliente');
-    
+
     // Histórico de Compras
     const tabelaHistorico = document.getElementById('tabela-historico-compras');
 
     // Veículos
     const veiculosLista = document.getElementById('veiculos-lista');
     const veiculoForm = document.getElementById('veiculo-form');
-    
+
     // Modais
     const clienteModal = document.getElementById('cliente-modal');
     const btnCancelarCliente = document.getElementById('btn-cancelar-cliente');
     const clienteForm = document.getElementById('cliente-form');
-    
+
     // --- FUNÇÕES AUXILIARES ---
     const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    const formatarData = (dataISO) => new Date(dataISO).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+    const formatarData = (dataISO) => new Date(dataISO).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
     const showAlert = (message, isSuccess = true) => {
         feedbackAlert.textContent = message;
@@ -40,19 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- FUNÇÕES DE CARREGAMENTO (AS 3 APIs) ---
-    
+
     // 1. Carrega o Perfil Principal do Cliente
     const carregarCliente = async (id) => {
         try {
             const response = await fetch(`${API_URL}/clientes/${id}`);
             if (!response.ok) throw new Error('Cliente não encontrado.');
             const cliente = await response.json();
-            
+
             nomeEl.textContent = cliente.nome;
             telEl.textContent = cliente.telefone || 'Não informado';
             emailEl.textContent = cliente.email || 'Não informado';
             enderecoEl.textContent = cliente.endereco || 'Não informado';
-            
+
             // Define o Status (igual ao da lista)
             switch (cliente.statusFinanceiro) {
                 case 'vermelho':
@@ -65,14 +65,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     statusEl.innerHTML = `<span class="px-2 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">Cliente em dia</span>`;
                     break;
             }
-            
+
             // Prepara o formulário de edição (escondido)
             document.getElementById('cliente-id').value = cliente.id;
             document.getElementById('cliente-nome').value = cliente.nome;
             document.getElementById('cliente-telefone').value = cliente.telefone;
             document.getElementById('cliente-email').value = cliente.email;
             document.getElementById('cliente-endereco').value = cliente.endereco;
-            
+
         } catch (error) {
             showAlert(error.message, false);
             nomeEl.textContent = "Erro ao carregar cliente.";
@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_URL}/clientes/${id}/vendas`);
             const vendas = await response.json();
-            
+
             tabelaHistorico.innerHTML = '';
             if (vendas.length === 0) {
                 tabelaHistorico.innerHTML = '<tr><td colspan="3" class="text-center p-4 text-gray-500">Nenhum histórico de compras encontrado.</td></tr>';
@@ -158,8 +158,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const result = await response.json();
         showAlert(result.message, response.ok);
-        
-        if(response.ok) {
+
+        if (response.ok) {
             clienteModal.classList.add('modal-oculto');
             await carregarCliente(id); // Recarrega os dados do perfil
         }
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (confirm('Tem a certeza que deseja remover este cliente? Todos os seus veículos e histórico de OS serão apagados.')) {
             const response = await fetch(`${API_URL}/clientes/${clienteId}`, { method: 'DELETE' });
             const result = await response.json();
-            if(response.ok) {
+            if (response.ok) {
                 alert('Cliente removido com sucesso.');
                 window.location.href = 'gestao_clientes.html'; // Volta para a lista
             } else {
@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Pega o ID da URL (ex: ...html?id=1)
         const urlParams = new URLSearchParams(window.location.search);
         clienteId = urlParams.get('id');
-        
+
         if (clienteId) {
             // Define o ID no formulário de veículos
             document.getElementById('veiculo-cliente-id').value = clienteId;

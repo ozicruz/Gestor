@@ -195,7 +195,7 @@ const getDRE = async (data_inicio, data_fim) => {
         GROUP BY 
             l.CategoriaID, l.Tipo, c.Nome
     `;
-    
+
     // Consulta 2: Calcula o Custo da Mercadoria Vendida (CMV)
     // Multiplica a quantidade vendida (Itens_Venda) pelo custo (Produtos)
     const sqlCMV = `

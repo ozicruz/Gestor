@@ -42,9 +42,9 @@ const findAll = () => {
     return dbAll(sql);
 };
 
-    const findById = (id) => {
-        // Usamos a mesma consulta 'avançada' para obter o status
-        const sql = `
+const findById = (id) => {
+    // Usamos a mesma consulta 'avançada' para obter o status
+    const sql = `
             SELECT 
                 c.*, 
                 CASE
@@ -61,18 +61,18 @@ const findAll = () => {
             FROM Clientes c
             WHERE c.id = ?
         `;
-        return dbGet(sql, [id]); // dbGet (retorna só um)
-    };
+    return dbGet(sql, [id]); // dbGet (retorna só um)
+};
 
-    const findVendasByClienteId = (clienteId) => {
-        const sql = `
+const findVendasByClienteId = (clienteId) => {
+    const sql = `
             SELECT id, data, total 
             FROM Vendas 
             WHERE cliente_id = ? 
             ORDER BY data DESC
         `;
-        return dbAll(sql, [clienteId]);
-    };
+    return dbAll(sql, [clienteId]);
+};
 
 const create = (cliente) => {
     const { nome, telefone, email, endereco } = cliente;

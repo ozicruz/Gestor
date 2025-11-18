@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. PREENCHER OS DROPDOWNS QUANDO A PÁGINA CARREGA ---
-    
+
     const selectCategorias = document.getElementById('despesaCategoria');
     const selectContas = document.getElementById('despesaConta');
 
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Chamamos a API GET que testámos (filtrando por DESPESA)
             const response = await fetch('http://localhost:3002/api/financeiro/categorias?tipo=DESPESA');
             const categorias = await response.json();
-            
+
             selectCategorias.innerHTML = '<option value="">Selecione...</option>'; // Limpa o "A carregar..."
             categorias.forEach(cat => {
                 const option = document.createElement('option');
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Chamamos a API GET que testámos
             const response = await fetch('http://localhost:3002/api/financeiro/contascaixa');
             const contas = await response.json();
-            
+
             selectContas.innerHTML = '<option value="">Selecione...</option>';
             contas.forEach(conta => {
                 const option = document.createElement('option');

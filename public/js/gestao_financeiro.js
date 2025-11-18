@@ -25,9 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function formatarMoeda(valor) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
-    
+
     function formatarData(dataISO) {
-        return new Date(dataISO).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        return new Date(dataISO).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     }
 
     // --- 3. FUNÇÕES DE ATUALIZAÇÃO DO DASHBOARD ---
@@ -87,14 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sortColumn === 'Valor') {
                 valA = parseFloat(valA) || 0;
                 valB = parseFloat(valB) || 0;
-            } 
+            }
             // Trata datas
             else if (sortColumn === 'DataPagamento') {
                 valA = new Date(valA);
                 valB = new Date(valB);
             }
             // Trata strings (Descricao, CategoriaNome)
-            else { 
+            else {
                 valA = (valA || '').toLowerCase();
                 valB = (valB || '').toLowerCase();
             }
@@ -132,19 +132,19 @@ document.addEventListener('DOMContentLoaded', () => {
             tabelaCorpo.innerHTML += linha;
         });
     };
-    
+
     // --- 4. LÓGICA DO MODAL (sem alteração) ---
     // (O seu código de btnAbrir, btnFechar, carregarCategorias, carregarContas, e formDespesa.submit)
     // (Copie e cole o seu código original destas funções aqui)
-    
+
     // (Vou colar por si, para garantir)
     if (btnAbrir && btnFechar && modal) {
         btnAbrir.addEventListener('click', () => {
             modal.classList.remove('modal-oculto');
-            carregarCategorias(); 
-            carregarContas();     
+            carregarCategorias();
+            carregarContas();
             const dataInput = document.getElementById('despesaData');
-            if(dataInput) dataInput.value = new Date().toISOString().split('T')[0];
+            if (dataInput) dataInput.value = new Date().toISOString().split('T')[0];
         });
         btnFechar.addEventListener('click', () => {
             modal.classList.add('modal-oculto');
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/categorias?tipo=DESPESA');
             const categorias = await response.json();
-            selectCategorias.innerHTML = '<option value="">Selecione...</option>'; 
+            selectCategorias.innerHTML = '<option value="">Selecione...</option>';
             categorias.forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.id;
@@ -187,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (formDespesa) {
         formDespesa.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
+            e.preventDefault();
             const dadosDespesa = {
                 Descricao: document.getElementById('despesaDescricao').value,
                 Valor: parseFloat(document.getElementById('despesaValor').value),
@@ -204,8 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (response.status === 201) {
                     alert('Despesa lançada com sucesso!');
-                    formDespesa.reset(); 
-                    modal.classList.add('modal-oculto'); 
+                    formDespesa.reset();
+                    modal.classList.add('modal-oculto');
                     await atualizarDashboard(); // ATUALIZADO: Agora recarrega tudo
                 } else {
                     const erro = await response.json();
@@ -228,13 +228,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
-            
+
             headersTabela.forEach(h => {
                 const arrow = h.querySelector('.sort-arrow');
                 if (h.dataset.sort === sortColumn) {
                     arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 } else {
-                    arrow.innerHTML = ''; 
+                    arrow.innerHTML = '';
                 }
             });
 

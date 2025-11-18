@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES AUXILIARES ---
     const formatCurrency = (value) => {
         const valor = parseFloat(value) || 0;
-        return new Intl.NumberFormat('pt-BR', { 
-            style: 'currency', 
-            currency: 'BRL' 
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
         }).format(valor);
     };
 
@@ -28,58 +28,58 @@ document.addEventListener('DOMContentLoaded', () => {
         // ... (código igual ao anterior)
     };
     // --- NOVO: FUNÇÃO DE IMPRESSÃO ---
-const adicionarBotaoImprimir = (tituloRelatorio, conteudoHTML, usarPeriodo = true) => {
-    const btnImprimir = document.createElement('button');
-    btnImprimir.innerHTML = '&#128424; Imprimir / Salvar PDF'; // Ícone de impressora
-    btnImprimir.className = 'bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow mt-6';
+    const adicionarBotaoImprimir = (tituloRelatorio, conteudoHTML, usarPeriodo = true) => {
+        const btnImprimir = document.createElement('button');
+        btnImprimir.innerHTML = '&#128424; Imprimir / Salvar PDF'; // Ícone de impressora
+        btnImprimir.className = 'bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow mt-6';
 
-    // MUDANÇA 1: O listener do botão agora é 'async'
-    btnImprimir.addEventListener('click', async () => { 
+        // MUDANÇA 1: O listener do botão agora é 'async'
+        btnImprimir.addEventListener('click', async () => {
 
-        // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
-        let dadosEmpresa = {};
-        try {
-            const response = await fetch(`${API_URL}/empresa`);
-            if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
-            dadosEmpresa = await response.json();
-        } catch (err) {
-            console.error(err);
-            showAlert('Erro ao carregar dados da empresa para o relatório.', false);
-        }
-        // --- FIM DA MUDANÇA 2 ---
+            // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
+            let dadosEmpresa = {};
+            try {
+                const response = await fetch(`${API_URL}/empresa`);
+                if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
+                dadosEmpresa = await response.json();
+            } catch (err) {
+                console.error(err);
+                showAlert('Erro ao carregar dados da empresa para o relatório.', false);
+            }
+            // --- FIM DA MUDANÇA 2 ---
 
-        const template = document.getElementById('relatorio-template');
-        const clone = template.content.cloneNode(true);
+            const template = document.getElementById('relatorio-template');
+            const clone = template.content.cloneNode(true);
 
-        // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
-        clone.querySelector('[data-relatorio="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
-        clone.querySelector('[data-relatorio="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
-        // --- FIM DA MUDANÇA 3 ---
+            // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
+            clone.querySelector('[data-relatorio="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
+            clone.querySelector('[data-relatorio="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
+            // --- FIM DA MUDANÇA 3 ---
 
-        let periodo = "Período Completo";
-        if (usarPeriodo && inputDataInicio.valueAsDate && inputDataFim.valueAsDate) {
-             periodo = `${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', {timeZone: 'UTC'})}`;
-        }
+            let periodo = "Período Completo";
+            if (usarPeriodo && inputDataInicio.valueAsDate && inputDataFim.valueAsDate) {
+                periodo = `${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
+            }
 
-        clone.querySelector('[data-relatorio="titulo"]').textContent = tituloRelatorio;
-        clone.querySelector('[data-relatorio="periodo"]').textContent = periodo;
-        clone.getElementById('relatorio-conteudo-pdf').innerHTML = conteudoHTML;
+            clone.querySelector('[data-relatorio="titulo"]').textContent = tituloRelatorio;
+            clone.querySelector('[data-relatorio="periodo"]').textContent = periodo;
+            clone.getElementById('relatorio-conteudo-pdf').innerHTML = conteudoHTML;
 
-        const htmlContent = new XMLSerializer().serializeToString(clone);
-        const filename = `${tituloRelatorio.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+            const htmlContent = new XMLSerializer().serializeToString(clone);
+            const filename = `${tituloRelatorio.replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
 
-        if (window.electronAPI) {
-            window.electronAPI.send('print-to-pdf', { html: htmlContent, name: filename });
-        } else {
-            alert('Funcionalidade de impressão não disponível (window.electronAPI não encontrado).');
-        }
-    });
+            if (window.electronAPI) {
+                window.electronAPI.send('print-to-pdf', { html: htmlContent, name: filename });
+            } else {
+                alert('Funcionalidade de impressão não disponível (window.electronAPI não encontrado).');
+            }
+        });
 
-    areaRelatorio.appendChild(btnImprimir);
-};
+        areaRelatorio.appendChild(btnImprimir);
+    };
 
     // --- Funções do Relatório DRE (O seu código antigo) ---
-    
+
     const desenharDRE = (dreData) => {
         // ... (código igual ao anterior, que desenha o DRE)
         // (Vou colar por si para garantir)
@@ -89,11 +89,11 @@ const adicionarBotaoImprimir = (tituloRelatorio, conteudoHTML, usarPeriodo = tru
         } = dreData;
 
         areaRelatorio.innerHTML = '';
-        areaRelatorio.style.textAlign = 'left'; 
+        areaRelatorio.style.textAlign = 'left';
 
         const header = document.createElement('h2');
         header.className = "text-2xl font-bold text-gray-800 mb-4";
-        header.textContent = `DRE de ${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', {timeZone: 'UTC'})}`;
+        header.textContent = `DRE de ${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
         areaRelatorio.appendChild(header);
         // (Criamos uma div separada para o conteúdo a ser impresso)
         const conteudoDRE = document.createElement('div');
@@ -144,17 +144,17 @@ const adicionarBotaoImprimir = (tituloRelatorio, conteudoHTML, usarPeriodo = tru
             btnGerarDRE.textContent = "Gerar Relatório DRE";
         }
     };
-    
+
     // --- Funções do Relatório de PRODUTOS (NOVAS) ---
-    
+
     // 1. Desenha a tabela de produtos
-const desenharTabelaProdutos = (produtos) => {
-        areaRelatorio.innerHTML = ''; 
+    const desenharTabelaProdutos = (produtos) => {
+        areaRelatorio.innerHTML = '';
         areaRelatorio.style.textAlign = 'left';
 
         const header = document.createElement('h2');
         header.className = "text-2xl font-bold text-gray-800 mb-4";
-        header.textContent = `Relatório de Produtos Mais Lucrativos (${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', {timeZone: 'UTC'})} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', {timeZone: 'UTC'})})`;
+        header.textContent = `Relatório de Produtos Mais Lucrativos (${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })})`;
         areaRelatorio.appendChild(header);
 
         if (produtos.length === 0) {
@@ -192,10 +192,10 @@ const desenharTabelaProdutos = (produtos) => {
             `;
         });
         tabelaHTML += `</tbody></table></div></div>`;
-        
+
         conteudoTabela.innerHTML = tabelaHTML;
         areaRelatorio.appendChild(conteudoTabela);
-        
+
         // NOVO: Adiciona o botão de imprimir
         adicionarBotaoImprimir("Relatório de Produtos Mais Lucrativos", tabelaHTML);
     };
@@ -224,10 +224,10 @@ const desenharTabelaProdutos = (produtos) => {
     };
 
     // --- FUNÇÕES DO RELATÓRIO DE STOCK BAIXO (NOVAS) ---
-    
+
     // 1. Desenha a tabela de Stock Baixo
-const desenharTabelaStockBaixo = (produtos) => {
-        areaRelatorio.innerHTML = ''; 
+    const desenharTabelaStockBaixo = (produtos) => {
+        areaRelatorio.innerHTML = '';
         areaRelatorio.style.textAlign = 'left';
 
         const header = document.createElement('h2');
@@ -269,10 +269,10 @@ const desenharTabelaStockBaixo = (produtos) => {
             `;
         });
         tabelaHTML += `</tbody></table></div></div>`;
-        
+
         conteudoTabela.innerHTML = tabelaHTML;
         areaRelatorio.appendChild(conteudoTabela);
-        
+
         // NOVO: Adiciona o botão de imprimir (este não precisa de datas)
         adicionarBotaoImprimir("Relatório de Stock Baixo", tabelaHTML);
     };
@@ -295,9 +295,9 @@ const desenharTabelaStockBaixo = (produtos) => {
             btnGerarStock.textContent = "Ver Relatório de Stock Baixo";
         }
     };
-    
+
     // --- EVENT LISTENERS ---
-    
+
     // Listener do Botão DRE (O seu código antigo)
     formDRE.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -312,7 +312,7 @@ const desenharTabelaStockBaixo = (produtos) => {
     // --- INICIALIZAÇÃO ---
     const hoje = new Date();
     const inicioDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    
+
     inputDataInicio.value = inicioDoMes.toISOString().split('T')[0];
     inputDataFim.value = hoje.toISOString().split('T')[0];
 });

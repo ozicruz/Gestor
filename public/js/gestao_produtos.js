@@ -23,11 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const headersTabela = document.querySelectorAll('#tabela-produtos-header th[data-sort]');
 
     let todosOsProdutos = [];
-    let sortColumn = 'nome'; 
-    let sortDirection = 'asc'; 
+    let sortColumn = 'nome';
+    let sortDirection = 'asc';
 
     // --- FUNÇÕES AUXILIARES (CORRIGIDAS) ---
-    
+
     const parseCurrency = (value) => {
         if (typeof value !== 'string') {
             return (typeof value === 'number') ? value : 0;
@@ -36,29 +36,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const numeroComPonto = soNumerosEVirgula.replace(',', '.');
         return parseFloat(numeroComPonto) || 0;
     };
-    
+
     const formatCurrencyForInput = (value) => {
         return (parseFloat(value) || 0).toFixed(2).replace('.', ',');
     };
-    
+
     const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-    
+
     const showAlert = (message, isSuccess = true) => {
         feedbackAlert.textContent = message;
         feedbackAlert.className = `feedback-alert p-4 mb-4 text-sm rounded-lg ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
         feedbackAlert.style.display = 'block';
         setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
     };
-    
+
     // --- FUNÇÕES PRINCIPAIS (CRUD) ---
-    
+
     const carregarProdutos = async () => {
         try {
             const response = await fetch(`${API_URL}/produtos`);
             if (!response.ok) throw new Error('Erro ao carregar produtos.');
-            
+
             todosOsProdutos = await response.json();
-            aplicarFiltroEOrdem(); 
+            aplicarFiltroEOrdem();
         } catch (error) {
             showAlert(error.message, false);
         }
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const aplicarFiltroEOrdem = () => {
         const termo = inputBusca.value.toLowerCase();
-        const produtosFiltrados = todosOsProdutos.filter(produto => 
+        const produtosFiltrados = todosOsProdutos.filter(produto =>
             produto.nome.toLowerCase().includes(termo)
         );
 
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (['quantidade_em_estoque', 'preco_unitario', 'valor_custo', 'stock_minimo'].includes(sortColumn)) {
                 valA = parseFloat(valA) || 0;
                 valB = parseFloat(valB) || 0;
-            } else { 
+            } else {
                 valA = (valA || '').toLowerCase();
                 valB = (valB || '').toLowerCase();
             }
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
         });
-        
+
         desenharTabela(produtosFiltrados);
     };
 
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Funções do Modal (ATUALIZADAS) ---
-    
+
     const abrirModal = async (isEdit = false, produtoId = null) => {
         produtoForm.reset();
         inputId.value = '';
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message);
                 showAlert(result.message);
-                carregarProdutos(); 
+                carregarProdutos();
             } catch (error) {
                 showAlert(error.message, false);
             }
@@ -165,12 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- EVENT LISTENERS ---
     btnNovoProduto.addEventListener('click', () => abrirModal(false));
     btnCancelar.addEventListener('click', fecharModal);
-    
+
     // Listener do Formulário (ATUALIZADO)
     produtoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = inputId.value;
-        
+
         // ATUALIZADO: Adiciona 'stock_minimo'
         const produtoData = {
             nome: inputNome.value,
@@ -192,10 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.message);
-            
+
             showAlert(result.message);
             fecharModal();
-            carregarProdutos(); 
+            carregarProdutos();
         } catch (error) {
             showAlert(error.message, false);
         }
@@ -224,20 +224,20 @@ document.addEventListener('DOMContentLoaded', () => {
     headersTabela.forEach(header => {
         header.addEventListener('click', () => {
             const newSortColumn = header.dataset.sort;
-            
+
             if (sortColumn === newSortColumn) {
                 sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
             } else {
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
-            
+
             headersTabela.forEach(h => {
                 const arrow = h.querySelector('.sort-arrow');
                 if (h.dataset.sort === sortColumn) {
                     arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 } else {
-                    arrow.innerHTML = ''; 
+                    arrow.innerHTML = '';
                 }
             });
 

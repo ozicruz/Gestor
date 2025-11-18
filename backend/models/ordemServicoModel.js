@@ -46,7 +46,7 @@ const findById = async (id) => {
         JOIN Veiculos v ON os.veiculo_id = v.id 
         JOIN Clientes c ON v.cliente_id = c.id 
         WHERE os.id = ?`, [id]);
-    
+
     if (os) {
         os.itens = await dbAll(`
             SELECT io.id, io.produto_id, io.quantidade, io.valor_unitario, p.nome 
@@ -66,11 +66,11 @@ const findById = async (id) => {
 
 const update = async (id, os) => {
     const { problema_relatado, diagnostico_tecnico, status, itens, servicos } = os;
-    
+
     await dbRun('BEGIN TRANSACTION');
     try {
         await dbRun(
-            'UPDATE Ordens_Servico SET problema_relatado = ?, diagnostico_tecnico = ?, status = ? WHERE id = ?', 
+            'UPDATE Ordens_Servico SET problema_relatado = ?, diagnostico_tecnico = ?, status = ? WHERE id = ?',
             [problema_relatado, diagnostico_tecnico, status, id]
         );
 
@@ -80,7 +80,7 @@ const update = async (id, os) => {
                 await dbRun('INSERT INTO Itens_OS (os_id, produto_id, quantidade, valor_unitario) VALUES (?, ?, ?, ?)', [id, item.produto_id, item.quantidade, item.valor_unitario]);
             }
         }
-        
+
         await dbRun('DELETE FROM Servicos_OS WHERE os_id = ?', [id]);
         if (servicos && servicos.length > 0) {
             for (const servico of servicos) {

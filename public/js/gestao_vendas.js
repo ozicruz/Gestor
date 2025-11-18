@@ -4,11 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CONFIGURAÇÃO E VARIÁVEIS GLOBAIS ---
     const API_URL = 'http://localhost:3002/api';
-    
+
     let listaClientes = [], listaProdutos = [], listaServicos = [];
     let listaFormasPagamento = [];
     let listaContasCaixa = [];
-    
+
     let vendaAtual = {
         cliente_id: null,
         itens: [],
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
         FormaPagamentoID: null,
         ContaCaixaID: null,
         DataVencimento: null,
-        numParcelas: 1 
+        numParcelas: 1
     };
 
     let selectedItems = { cliente: null, produto: null, servico: null };
@@ -39,14 +39,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnNovaVenda = document.getElementById('btn-nova-venda');
     const btnImprimirRecibo = document.getElementById('btn-imprimir-recibo');
     const feedbackAlert = document.getElementById('feedback-alert'); // <-- Esta estava a faltar na declaração
-    
+
     // Referências do Resumo (Corrigido)
     const inputDescontoValor = document.getElementById('desconto-valor');
     const selectDescontoTipo = document.getElementById('desconto-tipo');
     const blocoDesconto = document.getElementById('bloco-desconto');
     const descontoAplicadoContainer = document.getElementById('desconto-aplicado-container');
     const descontoAplicadoValor = document.getElementById('desconto-aplicado-valor');
-    
+
     // Referências do Acréscimo (Corrigido)
     const inputAcrescimoValor = document.getElementById('acrescimo-valor');
     const selectAcrescimoTipo = document.getElementById('acrescimo-tipo');
@@ -66,25 +66,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputDescontoValor) {
         inputDescontoValor.addEventListener('input', () => {
             vendaAtual.desconto_valor = parseFloat(inputDescontoValor.value) || 0;
-            renderizarItensVenda(); 
+            renderizarItensVenda();
         });
     }
     if (selectDescontoTipo) {
         selectDescontoTipo.addEventListener('change', () => {
             vendaAtual.desconto_tipo = selectDescontoTipo.value;
-            renderizarItensVenda(); 
+            renderizarItensVenda();
         });
     }
     if (inputAcrescimoValor) {
         inputAcrescimoValor.addEventListener('input', () => {
             vendaAtual.acrescimo_valor = parseFloat(inputAcrescimoValor.value) || 0;
-            renderizarItensVenda(); 
+            renderizarItensVenda();
         });
     }
     if (selectAcrescimoTipo) {
         selectAcrescimoTipo.addEventListener('change', () => {
             vendaAtual.acrescimo_tipo = selectAcrescimoTipo.value;
-            renderizarItensVenda(); 
+            renderizarItensVenda();
         });
     }
 
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = document.getElementById(inputId);
         const results = document.getElementById(resultsId);
         if (!input || !results) return; // <-- Verificação de segurança
-        
+
         let activeIndex = -1;
 
         const updateActiveItem = () => {
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             activeIndex = -1;
             selectedItems[type] = null;
             if (type === 'cliente') vendaAtual.cliente_id = null;
-            
+
             if (!query) { // Busca com 1 dígito
                 results.classList.add('hidden');
                 return;
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await fetch(`${API_URL}/${searchEndpoint}/search?q=${query}`);
                 if (!response.ok) throw new Error('A resposta da rede não foi bem-sucedida.');
-                
+
                 const filteredItems = await response.json();
 
                 results.classList.remove('hidden');
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     filteredItems.forEach((item) => {
                         const div = document.createElement('div');
                         div.className = 'autocomplete-item';
-                        
+
                         if (type === 'cliente') {
                             div.textContent = item.nome;
                         } else {
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 div.textContent = `${item.nome} (${formatCurrency(preco)})`;
                             }
                         }
-                        
+
                         div.addEventListener('click', () => {
                             input.value = item.nome;
                             selectedItems[type] = item.id;
@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
-    
+
     // --- FUNÇÃO DE CARREGAMENTO DE DADOS (Corrigida e Limpa) ---
     const popularDadosIniciais = async () => {
         try {
@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES DE RENDERIZAÇÃO E CÁLCULO (Corrigida) ---
     const renderizarItensVenda = () => {
         if (!itensVendaContainer) return; // <-- Verificação de segurança
-        
+
         itensVendaContainer.innerHTML = '';
         let subtotal = 0;
 
@@ -272,11 +272,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="font-semibold w-24 text-right">${formatCurrency(item.subtotal)}</p>
                     <button type="button" data-action="remover-item" data-index="${index}" class="ml-3 text-red-500 hover:text-red-700 font-bold">X</button>`;
                 itensVendaContainer.appendChild(itemDiv);
-                subtotal += item.subtotal; 
+                subtotal += item.subtotal;
             });
         }
         vendaAtual.subtotal = subtotal;
-        
+
         // --- CÁLCULO TOTAL (Corrigido com verificações) ---
         let valorDoDesconto = 0;
         let valorDoAcrescimo = 0;
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 valorDoDesconto = vendaAtual.desconto_valor;
             }
         }
-        
+
         if (blocoAcrescimo && !blocoAcrescimo.classList.contains('hidden')) {
             if (vendaAtual.acrescimo_tipo === '%') {
                 valorDoAcrescimo = subtotal * (vendaAtual.acrescimo_valor / 100);
@@ -312,19 +312,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (descontoAplicadoContainer) {
             if (valorDoDesconto > 0) {
-                if(descontoAplicadoValor) descontoAplicadoValor.textContent = `- ${formatCurrency(valorDoDesconto)}`;
+                if (descontoAplicadoValor) descontoAplicadoValor.textContent = `- ${formatCurrency(valorDoDesconto)}`;
                 descontoAplicadoContainer.classList.remove('hidden');
             } else {
                 descontoAplicadoContainer.classList.add('hidden');
             }
         }
-        
+
         const totalEl = document.getElementById('total-valor');
         if (totalEl) totalEl.textContent = formatCurrency(totalFinal);
-        
+
         if (btnFinalizarVenda) btnFinalizarVenda.disabled = vendaAtual.itens.length === 0;
     };
-    
+
     // --- FUNÇÕES DE ADICIONAR/REMOVER ITENS ---
     const adicionarProduto = async () => {
         const produtoId = selectedItems.produto;
@@ -376,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             renderizarItensVenda();
             document.getElementById('input-search-servico').value = '';
-            document.getElementById('input-servico-qtd').value = 1; 
+            document.getElementById('input-servico-qtd').value = 1;
             selectedItems.servico = null;
         } catch (error) {
             showAlert(error.message, false);
@@ -391,49 +391,49 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- FUNÇÕES DE LÓGICA DE PAGAMENTO (A SUA LÓGICA) ---
     function handleFormaPagamentoChange() {
         const formaSelecionadaEl = selectFormaPagamento.options[selectFormaPagamento.selectedIndex];
-        
+
         // Reseta tudo o que for condicional
         blocoParcelamento.classList.add('hidden');
         blocoContaCaixa.classList.add('hidden');
         blocoDataVencimento.classList.add('hidden');
         blocoDesconto.classList.remove('hidden'); // <<-- DESCONTO VISÍVEL por padrão
         blocoAcrescimo.classList.add('hidden'); // <<-- ACRÉSCIMO OCULTO por padrão
-        
-        inputAcrescimoValor.value = 0; 
+
+        inputAcrescimoValor.value = 0;
         vendaAtual.acrescimo_valor = 0;
 
         if (!formaSelecionadaEl || !formaSelecionadaEl.value) {
-            renderizarItensVenda(); 
+            renderizarItensVenda();
             return;
         }
 
         const tipo = formaSelecionadaEl.dataset.tipo;
         const aceitaParcelas = formaSelecionadaEl.dataset.aceitaParcelas === '1';
-        
+
         if (tipo === 'A_PRAZO') { // "Fiado"
             blocoDataVencimento.classList.remove('hidden');
-            blocoDesconto.classList.add('hidden'); 
-            inputDescontoValor.value = 0; 
+            blocoDesconto.classList.add('hidden');
+            inputDescontoValor.value = 0;
             vendaAtual.desconto_valor = 0;
-            vendaAtual.numParcelas = 1; 
-        } 
+            vendaAtual.numParcelas = 1;
+        }
         else if (aceitaParcelas) { // "Cartão de Crédito"
-            blocoContaCaixa.classList.remove('hidden'); 
-            blocoParcelamento.classList.remove('hidden'); 
+            blocoContaCaixa.classList.remove('hidden');
+            blocoParcelamento.classList.remove('hidden');
             preencherOpcoesParcela(formaSelecionadaEl.dataset.maxParcelas);
-            atualizarBlocoParcelamento(); 
-        } 
+            atualizarBlocoParcelamento();
+        }
         else { // "Pix / Dinheiro"
             blocoContaCaixa.classList.remove('hidden');
             vendaAtual.numParcelas = 1;
         }
-        
-        renderizarItensVenda(); 
+
+        renderizarItensVenda();
     }
-    
+
     function preencherOpcoesParcela(maxParcelas) {
         selectNumParcelas.innerHTML = '';
-        maxParcelas = parseInt(maxParcelas) || 1; 
+        maxParcelas = parseInt(maxParcelas) || 1;
         for (let i = 1; i <= maxParcelas; i++) {
             const option = document.createElement('option');
             option.value = i;
@@ -451,17 +451,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const numParcelas = parseInt(selectNumParcelas.value) || 1;
-        vendaAtual.numParcelas = numParcelas; 
+        vendaAtual.numParcelas = numParcelas;
 
         if (numParcelas > 1) {
             blocoAcrescimo.classList.remove('hidden');
-        } 
+        }
         else {
             blocoAcrescimo.classList.add('hidden');
             inputAcrescimoValor.value = 0;
             vendaAtual.acrescimo_valor = 0;
         }
-        
+
         renderizarItensVenda();
     }
 
@@ -471,15 +471,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const contaId = selectContaCaixa.value;
         const dataVenc = inputDataVencimento.value;
         const formaSelecionada = listaFormasPagamento.find(f => f.id == formaId);
-        
+
         vendaAtual.FormaPagamentoID = parseInt(formaId);
-        vendaAtual.numParcelas = parseInt(selectNumParcelas.value) || 1; 
-        
+        vendaAtual.numParcelas = parseInt(selectNumParcelas.value) || 1;
+
         if (!formaId || !formaSelecionada) {
             showAlert('Por favor, selecione uma Forma de Pagamento.', false); return;
         }
         if (formaSelecionada.TipoLancamento === 'A_VISTA' && !contaId) {
-            showAlert('Por favor, selecione a Conta/Caixa de destino.', false); return; 
+            showAlert('Por favor, selecione a Conta/Caixa de destino.', false); return;
         }
         if (formaSelecionada.TipoLancamento === 'A_PRAZO') {
             if (!vendaAtual.cliente_id) {
@@ -489,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showAlert('Por favor, insira a Data de Vencimento para o fiado.', false); return;
             }
         }
-        
+
         vendaAtual.ContaCaixaID = (formaSelecionada.TipoLancamento === 'A_VISTA') ? parseInt(contaId) : null;
         vendaAtual.DataVencimento = (formaSelecionada.TipoLancamento === 'A_PRAZO') ? dataVenc : null;
 
@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ultimaVendaSalva = { ...vendaAtual, id: result.id, data: new Date() };
             confirmacaoTextoEl.textContent = `Venda #${result.id} | Valor Total: ${formatCurrency(vendaAtual.total)}`;
             const parentGrid = vendaForm.querySelector('.grid');
-            if(parentGrid) parentGrid.style.display = 'none';
+            if (parentGrid) parentGrid.style.display = 'none';
             vendaConfirmacaoEl.style.display = 'block';
 
         } catch (error) {
@@ -518,30 +518,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- FUNÇÃO DE IMPRESSÃO ---
-const imprimirRecibo = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
-    if (!ultimaVendaSalva) return;
+    const imprimirRecibo = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
+        if (!ultimaVendaSalva) return;
 
-    // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
-    let dadosEmpresa = {};
-    try {
-        const response = await fetch(`${API_URL}/empresa`);
-        if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
-        dadosEmpresa = await response.json();
-    } catch (err) {
-        console.error(err);
-        showAlert('Erro ao carregar dados da empresa para o recibo.', false);
-        // Continua mesmo se falhar, mas o recibo sairá com placeholders
-    }
-    // --- FIM DA MUDANÇA 2 ---
+        // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
+        let dadosEmpresa = {};
+        try {
+            const response = await fetch(`${API_URL}/empresa`);
+            if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
+            dadosEmpresa = await response.json();
+        } catch (err) {
+            console.error(err);
+            showAlert('Erro ao carregar dados da empresa para o recibo.', false);
+            // Continua mesmo se falhar, mas o recibo sairá com placeholders
+        }
+        // --- FIM DA MUDANÇA 2 ---
 
-    const template = document.getElementById('recibo-template');
-    const clone = template.content.cloneNode(true);
-    const cliente = listaClientes.find(c => c.id === ultimaVendaSalva.cliente_id);
+        const template = document.getElementById('recibo-template');
+        const clone = template.content.cloneNode(true);
+        const cliente = listaClientes.find(c => c.id === ultimaVendaSalva.cliente_id);
 
-    // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
-    clone.querySelector('[data-recibo="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
-    clone.querySelector('[data-recibo="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
-    // --- FIM DA MUDANÇA 3 ---
+        // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
+        clone.querySelector('[data-recibo="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
+        clone.querySelector('[data-recibo="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
+        // --- FIM DA MUDANÇA 3 ---
 
         clone.querySelector('[data-recibo="venda-id"]').textContent = ultimaVendaSalva.id;
         clone.querySelector('[data-recibo="data"]').textContent = new Date(ultimaVendaSalva.data).toLocaleDateString('pt-BR');
@@ -568,14 +568,14 @@ const imprimirRecibo = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
             clone.querySelector('[data-recibo="desconto"]').textContent = `- ${formatCurrency(ultimaVendaSalva.desconto_valor)}`;
             descontoInfo.classList.remove('hidden');
         }
-        
+
         // Lógica do Acréscimo (NOVO)
         const acrescimoInfo = clone.querySelector('[data-recibo="acrescimo-info"]');
         if (ultimaVendaSalva.acrescimo_valor > 0) {
             clone.querySelector('[data-recibo="acrescimo"]').textContent = `+ ${formatCurrency(ultimaVendaSalva.acrescimo_valor)}`;
             acrescimoInfo.classList.remove('hidden');
         }
-        
+
         // Lógica da Forma de Pagamento (já existente)
         const pagtoInfo = clone.querySelector('[data-recibo="pagamento-info"]');
         const pagtoFormaEl = clone.querySelector('[data-recibo="pagamento-forma"]');
@@ -586,7 +586,7 @@ const imprimirRecibo = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
 
         if (formaPagamento) {
             pagtoFormaEl.textContent = formaPagamento.Nome;
-            pagtoInfo.classList.remove('hidden'); 
+            pagtoInfo.classList.remove('hidden');
             if (ultimaVendaSalva.numParcelas > 1) {
                 parcelaDetalheEl.textContent = `${ultimaVendaSalva.numParcelas}x`;
                 parcelaInfo.classList.remove('hidden');
@@ -598,34 +598,34 @@ const imprimirRecibo = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
         window.electronAPI.send('print-to-pdf', { html: htmlContent, name: filename });
     };
 
-const resetarParaNovaVenda = () => {
+    const resetarParaNovaVenda = () => {
         window.location.reload();
     };
 
     // --- REGISTO DOS EVENT LISTENERS (Corrigido com verificações) ---
-    if(btnAddProduto) btnAddProduto.addEventListener('click', adicionarProduto);
-    if(btnAddServico) btnAddServico.addEventListener('click', adicionarServico);
-    if(vendaForm) vendaForm.addEventListener('submit', (e) => {
+    if (btnAddProduto) btnAddProduto.addEventListener('click', adicionarProduto);
+    if (btnAddServico) btnAddServico.addEventListener('click', adicionarServico);
+    if (vendaForm) vendaForm.addEventListener('submit', (e) => {
         e.preventDefault();
         finalizarVenda();
     });
-    if(btnNovaVenda) btnNovaVenda.addEventListener('click', resetarParaNovaVenda);
-    if(btnImprimirRecibo) btnImprimirRecibo.addEventListener('click', imprimirRecibo);
-    if(itensVendaContainer) itensVendaContainer.addEventListener('click', (e) => {
+    if (btnNovaVenda) btnNovaVenda.addEventListener('click', resetarParaNovaVenda);
+    if (btnImprimirRecibo) btnImprimirRecibo.addEventListener('click', imprimirRecibo);
+    if (itensVendaContainer) itensVendaContainer.addEventListener('click', (e) => {
         const button = e.target.closest('[data-action="remover-item"]');
         if (button) {
             removerItem(parseInt(button.dataset.index));
         }
     });
 
-    if(selectFormaPagamento) selectFormaPagamento.addEventListener('change', handleFormaPagamentoChange);
-    if(selectNumParcelas) selectNumParcelas.addEventListener('change', atualizarBlocoParcelamento);
+    if (selectFormaPagamento) selectFormaPagamento.addEventListener('change', handleFormaPagamentoChange);
+    if (selectNumParcelas) selectNumParcelas.addEventListener('change', atualizarBlocoParcelamento);
 
     // --- INICIALIZAÇÃO DA PÁGINA ---
     setupAutocomplete('input-search-cliente', 'results-cliente', 'cliente');
     setupAutocomplete('input-search-produto', 'results-produto', 'produto');
     setupAutocomplete('input-search-servico', 'results-servico', 'servico');
-    
-    popularDadosIniciais(); 
+
+    popularDadosIniciais();
     renderizarItensVenda();
 });

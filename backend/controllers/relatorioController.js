@@ -27,8 +27,8 @@ const listarStockBaixo = async (req, res) => {
     }
 };
 
-module.exports = { 
+module.exports = {
     listarProdutosMaisVendidos,
-    listarStockBaixo 
- 
+    listarStockBaixo
+
 };

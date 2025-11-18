@@ -19,11 +19,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const osModal = document.getElementById('os-modal');
     const osModalTitle = document.getElementById('os-modal-title');
     const osModalBody = document.getElementById('os-modal-body');
-    
+
     // --- CARREGAMENTO INICIAL DE DADOS ---
     await (async () => {
         try {
-            const [produtosRes, servicosRes] = await Promise.all([ fetch(`${API_URL}/produtos`), fetch(`${API_URL}/servicos`) ]);
+            const [produtosRes, servicosRes] = await Promise.all([fetch(`${API_URL}/produtos`), fetch(`${API_URL}/servicos`)]);
             listaProdutos = await produtosRes.json();
             listaServicos = await servicosRes.json();
         } catch (error) { console.error('Erro ao carregar produtos e serviços:', error); }
@@ -91,13 +91,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // --- FUNÇÕES DO MODAL ---
-// --- CORREÇÃO 1: Mudar de .remove('active') para .add('modal-oculto') ---
-    const fecharModal = () => { 
-        osModal.classList.add('modal-oculto'); 
-        osModalBody.innerHTML = ''; 
-        osAtual = null; 
+    // --- CORREÇÃO 1: Mudar de .remove('active') para .add('modal-oculto') ---
+    const fecharModal = () => {
+        osModal.classList.add('modal-oculto');
+        osModalBody.innerHTML = '';
+        osAtual = null;
     };
-    
+
     const abrirModalNovaOS = () => {
         osModalTitle.textContent = 'Nova Ordem de Serviço';
         osModalBody.innerHTML = `
@@ -145,10 +145,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             infoDiv.classList.remove('hidden');
         }
     };
-    const criarNovaOS = async () => { 
+    const criarNovaOS = async () => {
         const placa = osModalBody.querySelector('#input-placa').value.toUpperCase();
         try {
-            const response = await fetch(`${API_URL}/ordens-servico`,{
+            const response = await fetch(`${API_URL}/ordens-servico`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ placa })
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showAlert(error.message, false);
         }
     };
-    
+
     // --- LÓGICA DE EDIÇÃO COMPLETA ---
     const setupAutocompleteOS = (inputId, items, type) => {
         const input = document.getElementById(inputId);
@@ -210,7 +210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const servicosLista = document.getElementById('os-servicos-lista');
         const totalModal = document.getElementById('os-total-valor');
         if (!itensLista || !servicosLista || !totalModal) return;
-        
+
         itensLista.innerHTML = '';
         servicosLista.innerHTML = '';
         let total = 0;
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ produto_id: produtoId, quantidade })
             });
             if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
-            
+
             await abrirModalEdicaoOS(osAtual.id);
         } catch (error) { showAlert(error.message, false); }
     };
@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ servico_id: servicoId, quantidade })
             });
             if (!response.ok) throw new Error('Falha ao adicionar serviço.');
-            
+
             await abrirModalEdicaoOS(osAtual.id);
         } catch (error) { showAlert(error.message, false); }
     };
@@ -304,32 +304,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             showAlert(error.message, false);
         }
     };
-    
-const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
-    if (!osAtual) return showAlert('Nenhuma OS aberta para imprimir.', false);
 
-    // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
-    let dadosEmpresa = {};
-    try {
-        const response = await fetch(`${API_URL}/empresa`);
-        if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
-        dadosEmpresa = await response.json();
-    } catch (err) {
-        console.error(err);
-        showAlert('Erro ao carregar dados da empresa para o recibo.', false);
-    }
-    // --- FIM DA MUDANÇA 2 ---
+    const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
+        if (!osAtual) return showAlert('Nenhuma OS aberta para imprimir.', false);
 
-    const template = document.getElementById('os-recibo-template');
-    if (!template) return showAlert('Molde de impressão não encontrado no HTML.', false);
+        // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
+        let dadosEmpresa = {};
+        try {
+            const response = await fetch(`${API_URL}/empresa`);
+            if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
+            dadosEmpresa = await response.json();
+        } catch (err) {
+            console.error(err);
+            showAlert('Erro ao carregar dados da empresa para o recibo.', false);
+        }
+        // --- FIM DA MUDANÇA 2 ---
 
-    const clone = template.content.cloneNode(true);
+        const template = document.getElementById('os-recibo-template');
+        if (!template) return showAlert('Molde de impressão não encontrado no HTML.', false);
 
-    // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
-    clone.querySelector('[data-recibo="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
-    clone.querySelector('[data-recibo="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
-    // --- FIM DA MUDANÇA 3 ---
-        
+        const clone = template.content.cloneNode(true);
+
+        // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
+        clone.querySelector('[data-recibo="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
+        clone.querySelector('[data-recibo="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
+        // --- FIM DA MUDANÇA 3 ---
+
         clone.querySelector('[data-recibo="os-id"]').textContent = osAtual.id;
         clone.querySelector('[data-recibo="data"]').textContent = new Date(osAtual.data_entrada).toLocaleDateString('pt-BR');
         clone.querySelector('[data-recibo="cliente-nome"]').textContent = osAtual.cliente_nome;
@@ -338,7 +338,7 @@ const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
         clone.querySelector('[data-recibo="problema-relatado"]').textContent = osAtual.problema_relatado || 'Nenhum problema relatado.';
         clone.querySelector('[data-recibo="diagnostico-tecnico"]').textContent = osAtual.diagnostico_tecnico || 'Nenhum diagnóstico informado.';
         clone.querySelector('[data-recibo="total"]').textContent = formatCurrency(osAtual.total);
-        
+
         const tabelaItensBody = clone.querySelector('[data-recibo="itens-tabela"]');
         let htmlItens = '';
         osAtual.itens.forEach(item => {
@@ -361,7 +361,7 @@ const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
             const response = await fetch(`${API_URL}/ordens-servico/${osId}`);
             if (!response.ok) throw new Error('Não foi possível carregar os dados da OS.');
             osAtual = await response.json();
-            
+
             osModalTitle.textContent = `Editando Ordem de Serviço #${osAtual.id}`;
             osModalBody.innerHTML = `
                 <div class="text-sm mb-4 p-4 bg-gray-50 rounded-lg border">
@@ -425,10 +425,10 @@ const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
     // --- EVENT LISTENERS ---
     inputBusca.addEventListener('input', () => {
         const termo = inputBusca.value.toLowerCase();
-        
+
         const osFiltradas = todasAsOS
-            .filter(os => 
-                os.placa.toLowerCase().includes(termo) || 
+            .filter(os =>
+                os.placa.toLowerCase().includes(termo) ||
                 os.cliente_nome.toLowerCase().includes(termo)
             )
             .sort((a, b) => { // <-- LÓGICA DE ORDENAÇÃO CORRIGIDA
@@ -439,7 +439,7 @@ const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
 
                 if ((aClientStartsWith || aPlacaStartsWith) && !(bClientStartsWith || bPlacaStartsWith)) return -1;
                 if (!(aClientStartsWith || aPlacaStartsWith) && (bClientStartsWith || bPlacaStartsWith)) return 1;
-                
+
                 return a.cliente_nome.localeCompare(b.cliente_nome);
             });
 
@@ -475,7 +475,7 @@ const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
         if (e.target.id === 'form-nova-os') await criarNovaOS();
         if (e.target.id === 'form-edit-os') await salvarAlteracoesOS();
     });
-    
+
     // --- INICIALIZAÇÃO ---
     renderizarTabelaOS();
 });

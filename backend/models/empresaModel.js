@@ -15,7 +15,7 @@ const find = () => {
  */
 const update = (empresa) => {
     const { nome_fantasia, razao_social, cnpj_cpf, endereco, telefone, email } = empresa;
-    
+
     return dbRun(
         `UPDATE Empresa SET 
             nome_fantasia = ?, 

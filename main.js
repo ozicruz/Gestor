@@ -1,7 +1,7 @@
 // main.js
 
 if (require('electron-squirrel-startup')) {
-    return;
+  return;
 }
 const { app, BrowserWindow, session, ipcMain, dialog } = require('electron');
 const path = require('path');
@@ -28,7 +28,7 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js')
     }
   });
-  
+
   mainWindow.loadFile(path.join(__dirname, 'public', 'index.html'));
   mainWindow.maximize();
 };
@@ -51,50 +51,50 @@ app.whenReady().then(() => {
 });
 
 ipcMain.on('print-to-pdf', async (event, args) => {
-    const { html, name } = args;
-    const parentWindow = BrowserWindow.fromWebContents(event.sender);
+  const { html, name } = args;
+  const parentWindow = BrowserWindow.fromWebContents(event.sender);
 
-    if (DEBUG_PDF) {
-        console.log('[DEBUG-PDF] A abrir janela de depuração.');
-        const debugWindow = new BrowserWindow({
-            width: 800,
-            height: 600,
-            parent: parentWindow,
-            modal: true,
-            show: true
-        });
-        debugWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
-        debugWindow.webContents.openDevTools();
-    } else {
-        const { filePath, canceled } = await dialog.showSaveDialog(parentWindow, {
-            title: 'Salvar Recibo em PDF',
-            defaultPath: name,
-            filters: [ { name: 'Documentos PDF', extensions: ['pdf'] } ]
-        });
+  if (DEBUG_PDF) {
+    console.log('[DEBUG-PDF] A abrir janela de depuração.');
+    const debugWindow = new BrowserWindow({
+      width: 800,
+      height: 600,
+      parent: parentWindow,
+      modal: true,
+      show: true
+    });
+    debugWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+    debugWindow.webContents.openDevTools();
+  } else {
+    const { filePath, canceled } = await dialog.showSaveDialog(parentWindow, {
+      title: 'Salvar Recibo em PDF',
+      defaultPath: name,
+      filters: [{ name: 'Documentos PDF', extensions: ['pdf'] }]
+    });
 
-        if (!canceled && filePath) {
-            const offscreenWindow = new BrowserWindow({ show: false });
-            offscreenWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+    if (!canceled && filePath) {
+      const offscreenWindow = new BrowserWindow({ show: false });
+      offscreenWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
 
-            offscreenWindow.webContents.on('did-finish-load', () => {
-                setTimeout(async () => {
-                    try {
-                        const pdfData = await offscreenWindow.webContents.printToPDF({
-                            marginsType: 0,
-                            printBackground: true,
-                            pageSize: 'A4'
-                        });
-                        fs.writeFileSync(filePath, pdfData);
-                    } catch (error) {
-                        console.error('Erro ao gerar o PDF:', error);
-                        dialog.showErrorBox('Erro ao Gerar PDF', 'Não foi possível salvar o recibo.');
-                    } finally {
-                        offscreenWindow.close();
-                    }
-                }, 300);
+      offscreenWindow.webContents.on('did-finish-load', () => {
+        setTimeout(async () => {
+          try {
+            const pdfData = await offscreenWindow.webContents.printToPDF({
+              marginsType: 0,
+              printBackground: true,
+              pageSize: 'A4'
             });
-        }
+            fs.writeFileSync(filePath, pdfData);
+          } catch (error) {
+            console.error('Erro ao gerar o PDF:', error);
+            dialog.showErrorBox('Erro ao Gerar PDF', 'Não foi possível salvar o recibo.');
+          } finally {
+            offscreenWindow.close();
+          }
+        }, 300);
+      });
     }
+  }
 });
 
 app.on('before-quit', () => {

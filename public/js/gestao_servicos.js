@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_URL}/servicos`);
             if (!response.ok) throw new Error('Erro ao carregar serviços.');
-            
+
             todosOsServicos = await response.json();
             aplicarFiltroEOrdem(); // Chama a nova função central
         } catch (error) {
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const termo = inputBusca.value.toLowerCase();
 
         // 2a. Filtra
-        const servicosFiltrados = todosOsServicos.filter(servico => 
+        const servicosFiltrados = todosOsServicos.filter(servico =>
             servico.nome.toLowerCase().includes(termo)
         );
 
@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- EVENT LISTENERS ---
     btnNovoServico.addEventListener('click', () => abrirModal(false));
     btnCancelar.addEventListener('click', fecharModal);
-    
+
     // Listener do Formulário
     servicoForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await response.json();
             if (!response.ok) throw new Error(result.message);
-            
+
             showAlert(result.message);
             fecharModal();
             carregarServicos(); // Recarrega a lista
@@ -195,21 +195,21 @@ document.addEventListener('DOMContentLoaded', () => {
     headersTabela.forEach(header => {
         header.addEventListener('click', () => {
             const newSortColumn = header.dataset.sort;
-            
+
             if (sortColumn === newSortColumn) {
                 sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
             } else {
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
-            
+
             // Atualiza as setas
             headersTabela.forEach(h => {
                 const arrow = h.querySelector('.sort-arrow');
                 if (h.dataset.sort === sortColumn) {
                     arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 } else {
-                    arrow.innerHTML = ''; 
+                    arrow.innerHTML = '';
                 }
             });
 

@@ -9,7 +9,7 @@ const create = async (os_id, servicoData) => {
         if (!servico) throw new Error('Serviço não encontrado');
 
         await dbRun('INSERT INTO Servicos_OS (os_id, servico_id, valor, quantidade) VALUES (?, ?, ?, ?)', [os_id, servico_id, servico.preco, quantidade]);
-        
+
         await dbRun('COMMIT');
     } catch (err) {
         await dbRun('ROLLBACK');

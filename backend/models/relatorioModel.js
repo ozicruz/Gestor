@@ -6,7 +6,7 @@ const { dbAll } = require('../database/database');
  * o faturamento bruto, o custo total (CMV) e o lucro bruto de cada um.
  */
 const findProdutosMaisVendidos = (data_inicio, data_fim) => {
-    
+
     // Esta consulta SQL junta Vendas, Itens, Produtos e Lançamentos
     // para garantir que só contamos produtos de VENDAS PAGAS.
     const sql = `
@@ -30,12 +30,12 @@ const findProdutosMaisVendidos = (data_inicio, data_fim) => {
         ORDER BY 
             lucroBruto DESC -- Ordena pelos mais lucrativos
     `;
-    
+
     return dbAll(sql, [data_inicio, data_fim]);
 };
 
 const findStockBaixo = () => {
-    
+
     // Filtra apenas produtos onde o mínimo é maior que 0
     const sql = `
         SELECT 
@@ -50,11 +50,11 @@ const findStockBaixo = () => {
         ORDER BY 
             (stock_minimo - quantidade_em_estoque) DESC -- Ordena pelos mais urgentes
     `;
-    
+
     return dbAll(sql);
 };
 
-module.exports = { 
+module.exports = {
     findProdutosMaisVendidos,
-    findStockBaixo 
+    findStockBaixo
 };

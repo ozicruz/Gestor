@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
     function formatarData(dataISO) {
-        return new Date(dataISO).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        return new Date(dataISO).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     }
 
     // --- 3. FUNÇÕES PRINCIPAIS DE ATUALIZAÇÃO ---
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (sortColumn === 'DataVencimento') {
                 valA = new Date(valA);
                 valB = new Date(valB);
-            } else { 
+            } else {
                 valA = (valA || '').toLowerCase();
                 valB = (valB || '').toLowerCase();
             }
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const hoje = new Date(new Date().toISOString().split('T')[0]); 
+        const hoje = new Date(new Date().toISOString().split('T')[0]);
 
         pendenciasParaRenderizar.forEach(p => {
             const dataVenc = new Date(p.DataVencimento);
@@ -138,11 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
             tabelaCorpo.innerHTML += linha;
         });
     };
-    
+
     // --- 4. LÓGICA DO MODAL "DAR BAIXA" (sem alteração) ---
     // (O seu código original de carregarContasBaixa, carregarFormasPagamentoBaixa, abrirModalBaixa, etc., fica aqui)
     // (Vou colar por si, para garantir)
-    
+
     async function carregarContasBaixa() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contascaixa');
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formas = await response.json();
             baixaFormaPagamento.innerHTML = '<option value="">Selecione a forma...</option>';
             formas.forEach(forma => {
-                if (forma.TipoLancamento === 'A_VISTA') { 
+                if (forma.TipoLancamento === 'A_VISTA') {
                     const option = document.createElement('option');
                     option.value = forma.id;
                     option.textContent = forma.Nome;
@@ -183,11 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBaixaTitulo.textContent = `Receber Pagamento (${descricao})`;
         baixaLancamentoId.value = id;
         baixaValorOriginal.textContent = formatarMoeda(valor);
-        baixaValorRecebido.value = valor; 
-        baixaDataPagamento.value = new Date().toISOString().split('T')[0]; 
-        
-        carregarContasBaixa(); 
-        carregarFormasPagamentoBaixa(); 
+        baixaValorRecebido.value = valor;
+        baixaDataPagamento.value = new Date().toISOString().split('T')[0];
+
+        carregarContasBaixa();
+        carregarFormasPagamentoBaixa();
         modalBaixa.classList.remove('modal-oculto');
     }
 
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     formBaixa.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         const id = baixaLancamentoId.value;
         const dadosBaixa = {
             ValorRecebido: parseFloat(baixaValorRecebido.value),
@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!dadosBaixa.ContaCaixaID) {
             alert("A conta/caixa de destino é obrigatória."); return;
         }
-        
+
         try {
             const response = await fetch(`http://localhost:3002/api/financeiro/lancamento/${id}/baixar`, {
                 method: 'POST',
@@ -240,8 +240,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) { throw new Error(resultado.message); }
 
             alert('Pagamento registrado com sucesso!');
-            modalBaixa.classList.add('modal-oculto'); 
-            
+            modalBaixa.classList.add('modal-oculto');
+
             // ATUALIZADO: Recarrega tudo (Cards e Tabela)
             await atualizarPainel();
 
@@ -261,13 +261,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
-            
+
             headersTabela.forEach(h => {
                 const arrow = h.querySelector('.sort-arrow');
                 if (h.dataset.sort === sortColumn) {
                     arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 } else {
-                    arrow.innerHTML = ''; 
+                    arrow.innerHTML = '';
                 }
             });
 

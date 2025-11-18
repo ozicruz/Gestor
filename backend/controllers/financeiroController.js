@@ -114,7 +114,7 @@ const criarLancamentoManual = async (req, res) => {
 const getContasAReceberResumo = async (req, res) => {
     try {
         const hoje = new Date().toISOString().split('T')[0];
-        
+
         const [totalResult, vencidoResult, hojeResult] = await Promise.all([
             FinanceiroModel.getTotalAReceber(),
             FinanceiroModel.getTotalVencido(hoje),
@@ -180,18 +180,18 @@ const baixarLancamento = async (req, res) => {
 
         // Cenário 1: Pagamento TOTAL
         if (valorRecebidoFloat === valorOriginal) {
-            
+
             // --- ALTERAÇÃO 3: Passar o FormaPagamentoID ---
             await FinanceiroModel.updateLancamentoParaPago(id, DataPagamento, ContaCaixaID, FormaPagamentoID);
-        
-        } 
+
+        }
         // Cenário 2: Pagamento PARCIAL (Amortização)
         else {
-            
+
             // A. Atualiza a dívida original (sem alterações)
             const novoValorPendente = valorOriginal - valorRecebidoFloat;
             await FinanceiroModel.updateLancamentoValorPendente(id, novoValorPendente);
-            
+
             // B. Cria um novo lançamento PAGO com o valor recebido
             const lancamentoPago = {
                 Descricao: `Pagto parcial ref. Lançamento #${id}`,
@@ -237,13 +237,13 @@ const getRelatorioDRE = async (req, res) => {
         let TotalReceitasProdutos = 0;
         let TotalOutrasReceitas = 0;
         let TotalDespesas = 0;
-        
+
         const ReceitasDetalhadas = [];
         const DespesasDetalhadas = [];
 
         for (const grupo of grupos) {
             const total = parseFloat(grupo.TotalPorCategoria);
-            
+
             if (grupo.Tipo === 'RECEITA') {
                 // Separa Receita de Produto das outras
                 if (grupo.CategoriaNome === 'Venda de Produtos') {

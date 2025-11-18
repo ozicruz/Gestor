@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const { initializeDatabase } = require('./database/database_initializer');
-const { db } = require('./database/database'); 
+const { db } = require('./database/database');
 
 initializeDatabase();
 

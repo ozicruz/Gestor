@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
@@ -15,19 +17,22 @@
             <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
             <h1 class="text-3xl font-bold text-gray-800 mt-2">Configurações da Empresa</h1>
         </header>
-        
+
         <div id="feedback-alert" class="feedback-alert" style="display: none;"></div>
 
         <div class="card p-6">
             <form id="form-configuracoes">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
+
                     <div>
-                        <label for="config-nome-fantasia" class="block text-sm font-medium text-gray-700">Nome Fantasia (Nome da Oficina)</label>
-                        <input type="text" id="config-nome-fantasia" class="form-input mt-1 block w-full" placeholder="Ex: Saulo Cardoso Oficina de Motos">
+                        <label for="config-nome-fantasia" class="block text-sm font-medium text-gray-700">Nome Fantasia
+                            (Nome da Oficina)</label>
+                        <input type="text" id="config-nome-fantasia" class="form-input mt-1 block w-full"
+                            placeholder="Ex: Saulo Cardoso Oficina de Motos">
                     </div>
                     <div>
-                        <label for="config-razao-social" class="block text-sm font-medium text-gray-700">Razão Social (Opcional)</label>
+                        <label for="config-razao-social" class="block text-sm font-medium text-gray-700">Razão Social
+                            (Opcional)</label>
                         <input type="text" id="config-razao-social" class="form-input mt-1 block w-full">
                     </div>
                     <div>
@@ -35,26 +40,31 @@
                         <input type="text" id="config-cnpj-cpf" class="form-input mt-1 block w-full">
                     </div>
                 </div>
-                
+
                 <hr class="my-6">
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="config-telefone" class="block text-sm font-medium text-gray-700">Telefone</label>
-                        <input type="text" id="config-telefone" class="form-input mt-1 block w-full" placeholder="Ex: (99) 99999-9999">
+                        <input type="text" id="config-telefone" class="form-input mt-1 block w-full"
+                            placeholder="Ex: (99) 99999-9999">
                     </div>
                     <div>
-                        <label for="config-email" class="block text-sm font-medium text-gray-700">E-mail (Opcional)</label>
+                        <label for="config-email" class="block text-sm font-medium text-gray-700">E-mail
+                            (Opcional)</label>
                         <input type="email" id="config-email" class="form-input mt-1 block w-full">
                     </div>
                     <div class="col-span-2">
-                        <label for="config-endereco" class="block text-sm font-medium text-gray-700">Endereço (Para os recibos)</label>
-                        <input type="text" id="config-endereco" class="form-input mt-1 block w-full" placeholder="Ex: Avenida Central, 99 - Cidade-UF">
+                        <label for="config-endereco" class="block text-sm font-medium text-gray-700">Endereço (Para os
+                            recibos)</label>
+                        <input type="text" id="config-endereco" class="form-input mt-1 block w-full"
+                            placeholder="Ex: Avenida Central, 99 - Cidade-UF">
                     </div>
                 </div>
 
                 <div class="flex justify-end mt-6">
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow">
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow">
                         Salvar Alterações
                     </button>
                 </div>
@@ -64,4 +74,5 @@
 
     <script src="js/configuracoes.js" defer></script>
 </body>
+
 </html>

@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_URL}/patio`);
             if (!response.ok) throw new Error('Não foi possível carregar os dados do pátio.');
-            
+
             const veiculos = await response.json();
             grid.innerHTML = ''; // Limpa a grelha
 

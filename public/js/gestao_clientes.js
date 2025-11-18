@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch(`${API_URL}/clientes`);
             if (!response.ok) throw new Error('Erro ao carregar clientes.');
-            
+
             todosOsClientes = await response.json();
             renderizarTabela(); // Desenha a tabela com todos os clientes
         } catch (error) {
@@ -39,55 +39,55 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // Função para ORDENAR, FILTRAR e DESENHAR a tabela
-        const renderizarTabela = () => {
-            tabelaClientesBody.innerHTML = '';
-            const termo = inputBusca.value.toLowerCase();
+    const renderizarTabela = () => {
+        tabelaClientesBody.innerHTML = '';
+        const termo = inputBusca.value.toLowerCase();
 
-            // 1. Filtra os clientes
-            const clientesFiltrados = todosOsClientes.filter(cliente =>
-                cliente.nome.toLowerCase().includes(termo) ||
-                (cliente.telefone && cliente.telefone.includes(termo))
-            );
+        // 1. Filtra os clientes
+        const clientesFiltrados = todosOsClientes.filter(cliente =>
+            cliente.nome.toLowerCase().includes(termo) ||
+            (cliente.telefone && cliente.telefone.includes(termo))
+        );
 
-            // 2. Ordena os clientes (A sua ordenação por 'statusFinanceiro' vai funcionar aqui!)
-            clientesFiltrados.sort((a, b) => {
-                let valA = a[sortColumn] || '';
-                let valB = b[sortColumn] || '';
-                
-                if (typeof valA === 'string') valA = valA.toLowerCase();
-                if (typeof valB === 'string') valB = valB.toLowerCase();
+        // 2. Ordena os clientes (A sua ordenação por 'statusFinanceiro' vai funcionar aqui!)
+        clientesFiltrados.sort((a, b) => {
+            let valA = a[sortColumn] || '';
+            let valB = b[sortColumn] || '';
 
-                if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-                if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-                return 0;
-            });
+            if (typeof valA === 'string') valA = valA.toLowerCase();
+            if (typeof valB === 'string') valB = valB.toLowerCase();
 
-            if (clientesFiltrados.length === 0) {
-                tabelaClientesBody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-4">Nenhum cliente encontrado.</td></tr>`;
-                return;
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        if (clientesFiltrados.length === 0) {
+            tabelaClientesBody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-4">Nenhum cliente encontrado.</td></tr>`;
+            return;
+        }
+
+        // 3. Desenha as linhas da tabela
+        clientesFiltrados.forEach(cliente => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-50";
+
+            // --- LÓGICA DO NOVO STATUS ---
+            let iconeStatus = '';
+            switch (cliente.statusFinanceiro) {
+                case 'vermelho':
+                    iconeStatus = `<span title="Cliente com débito vencido" class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Vencido</span>`;
+                    break;
+                case 'laranja':
+                    iconeStatus = `<span title="Cliente com débito pendente" class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendente</span>`;
+                    break;
+                case 'verde':
+                    iconeStatus = `<span title="Cliente sem débitos" class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Em dia</span>`;
+                    break;
             }
 
-            // 3. Desenha as linhas da tabela
-            clientesFiltrados.forEach(cliente => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50";
-
-                // --- LÓGICA DO NOVO STATUS ---
-                let iconeStatus = '';
-                switch (cliente.statusFinanceiro) {
-                    case 'vermelho':
-                        iconeStatus = `<span title="Cliente com débito vencido" class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Vencido</span>`;
-                        break;
-                    case 'laranja':
-                        iconeStatus = `<span title="Cliente com débito pendente" class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendente</span>`;
-                        break;
-                    case 'verde':
-                        iconeStatus = `<span title="Cliente sem débitos" class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Em dia</span>`;
-                        break;
-                }
-                
-                // Removemos o ícone da coluna "Nome" e adicionámos a nova coluna "Status" no início
-                tr.innerHTML = `
+            // Removemos o ícone da coluna "Nome" e adicionámos a nova coluna "Status" no início
+            tr.innerHTML = `
                     <td class="px-4 py-4 text-center">
                         ${iconeStatus}
                     </td>
@@ -104,9 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         </a>
                     </td>
                 `;
-                tabelaClientesBody.appendChild(tr);
-            });
-        };
+            tabelaClientesBody.appendChild(tr);
+        });
+    };
 
     // --- O modal de NOVO cliente (o de editar vai para a outra página) ---
     const abrirModalCliente = () => {
@@ -121,12 +121,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('cliente-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('cliente-id').value;
-        
+
         // Este formulário agora só cria NOVOS clientes
-        if (id) { 
+        if (id) {
             clienteModal.classList.add('modal-oculto');
             return; // Formulário de edição estará noutra página
-        } 
+        }
 
         const data = {
             nome: document.getElementById('cliente-nome').value,
@@ -134,23 +134,23 @@ document.addEventListener('DOMContentLoaded', () => {
             email: document.getElementById('cliente-email').value,
             endereco: document.getElementById('cliente-endereco').value,
         };
-        
+
         const response = await fetch(`${API_URL}/clientes`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        
+
         const result = await response.json();
         showAlert(result.message, response.ok);
-        if(response.ok) {
+        if (response.ok) {
             clienteModal.classList.add('modal-oculto');
             await carregarClientes(); // Recarrega a lista
         }
     });
 
     // --- EVENT LISTENERS ---
-    
+
     // Listener para o campo de busca
     inputBusca.addEventListener('input', renderizarTabela);
 
@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sortColumn = newSortColumn;
                 sortDirection = 'asc';
             }
-            
+
             // Remove setas de outros headers
             headersTabela.forEach(h => h.querySelector('.sort-arrow').innerHTML = '');
             // Adiciona seta no header atual

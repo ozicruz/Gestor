@@ -1,14 +1,14 @@
 // public/js/configuracoes.js
 
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';
 
     // --- ELEMENTOS DO DOM ---
     const form = document.getElementById('form-configuracoes');
     const feedbackAlert = document.getElementById('feedback-alert');
-    
+
     // Inputs do formulário
     const inputNomeFantasia = document.getElementById('config-nome-fantasia');
     const inputRazaoSocial = document.getElementById('config-razao-social');
@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Erro ao buscar dados da empresa.');
             }
             const empresa = await response.json();
-            
+
             // Preenche o formulário com os dados
             inputNomeFantasia.value = empresa.nome_fantasia || '';
             inputRazaoSocial.value = empresa.razao_social || '';
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
             inputEndereco.value = empresa.endereco || '';
             inputTelefone.value = empresa.telefone || '';
             inputEmail.value = empresa.email || '';
-            
+
         } catch (error) {
             showAlert(error.message, false);
         }
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // (Envia os dados do formulário para a API para salvar)
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         // Pega os dados do formulário
         const dadosEmpresa = {
             nome_fantasia: inputNomeFantasia.value,
@@ -70,19 +70,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dadosEmpresa)
             });
-            
+
             const result = await response.json();
             if (!response.ok) {
                 throw new Error(result.message);
             }
-            
+
             showAlert('Dados da empresa salvos com sucesso!', true);
 
         } catch (error) {
             showAlert(error.message, false);
         }
     });
-    
+
     // --- 3. INICIALIZAÇÃO ---
     // (Chama a função de carregamento assim que a página abre)
     carregarDadosEmpresa();

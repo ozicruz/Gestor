@@ -16,7 +16,7 @@ const findAllActive = () => {
         JOIN Clientes c ON v.cliente_id = c.id
         WHERE os.status NOT IN ('Finalizada', 'Entregue', 'Cancelada') 
         ORDER BY os.data_entrada ASC`;
-    
+
     return dbAll(sql);
 };
 

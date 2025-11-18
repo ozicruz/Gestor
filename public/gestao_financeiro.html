@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,10 +9,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <style>
-    th[data-sort] { cursor: pointer; user-select: none; }
-    th[data-sort]:hover { background-color: #e5e7eb; }
+        th[data-sort] {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        th[data-sort]:hover {
+            background-color: #e5e7eb;
+        }
     </style>
 </head>
+
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
@@ -21,10 +29,11 @@
         </header>
 
         <div class="mb-8 flex justify-end">
-            <button id="btnAbrirModalDespesa" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+            <button id="btnAbrirModalDespesa"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
                 [ - ] Lançar Nova Despesa
             </button>
-            </div>
+        </div>
 
         <section id="dashboard-resumo" class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="dashboard-card bg-blue-100 border-blue-300">
@@ -48,31 +57,35 @@
         <section id="dashboard-movimentos" class="mt-12">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">Últimos Lançamentos</h2>
             <div class="bg-white p-6 rounded-lg shadow-lg">
-                <div id="table-scroll-container">                
+                <div id="table-scroll-container">
                     <table class="w-full" id="tabela-movimentos">
-                    <thead class="bg-gray-100 table-sticky-header" id="tabela-movimentos-header">
-                        <tr class="border-b">
-                            <th data-sort="DataPagamento" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                Data <span class="sort-arrow"> ▼</span>
-                            </th>
-                            <th data-sort="Descricao" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                Descrição <span class="sort-arrow"></span>
-                            </th>
-                            <th data-sort="CategoriaNome" class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                Categoria <span class="sort-arrow"></span>
-                            </th>
-                            <th data-sort="Valor" class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                Valor (R$) <span class="sort-arrow"></span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-movimentos-corpo">
-                        <tr>
-                            <td colspan="4" class="text-center p-4 text-gray-500">A carregar movimentos...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                        <thead class="bg-gray-100 table-sticky-header" id="tabela-movimentos-header">
+                            <tr class="border-b">
+                                <th data-sort="DataPagamento"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                    Data <span class="sort-arrow"> ▼</span>
+                                </th>
+                                <th data-sort="Descricao"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                    Descrição <span class="sort-arrow"></span>
+                                </th>
+                                <th data-sort="CategoriaNome"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                    Categoria <span class="sort-arrow"></span>
+                                </th>
+                                <th data-sort="Valor"
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                    Valor (R$) <span class="sort-arrow"></span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-movimentos-corpo">
+                            <tr>
+                                <td colspan="4" class="text-center p-4 text-gray-500">A carregar movimentos...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </section>
 
@@ -104,4 +117,5 @@
 
     <script src="js/gestao_financeiro.js" defer></script>
 </body>
+
 </html>

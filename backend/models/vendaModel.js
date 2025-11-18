@@ -3,8 +3,8 @@ const { dbRun, dbGet } = require('../database/database');
 
 const create = (vendaData) => {
     // Agora lemos os campos de acréscimo do frontend
-    const { 
-        cliente_id, os_id, itens, total, 
+    const {
+        cliente_id, os_id, itens, total,
         desconto_tipo, desconto_valor,
         acrescimo_tipo, acrescimo_valor, // <-- NOVOS CAMPOS
         FormaPagamentoID, ContaCaixaID, DataVencimento
@@ -39,9 +39,9 @@ const create = (vendaData) => {
                     );
                 }
             }
-            
+
             // --- 3. LÓGICA DE LANÇAMENTO (A LÓGICA CORRETA E SIMPLES) ---
-            
+
             const formaPag = await dbGet('SELECT * FROM FormasPagamento WHERE id = ?', [FormaPagamentoID]);
             if (!formaPag) throw new Error('Forma de Pagamento inválida.');
 
@@ -58,7 +58,7 @@ const create = (vendaData) => {
                     ClienteID: cliente_id, VendaID: vendaId, FormaPagamentoID: FormaPagamentoID,
                     CategoriaID: categoriaIdVenda, ContaCaixaID: null
                 };
-            } 
+            }
             // --- CENÁRIO 2: "À Vista" (Dinheiro, Pix, Cartão 1x, Cartão 10x) ---
             else {
                 // Qualquer outro tipo de pagamento entra no caixa imediatamente
@@ -80,7 +80,7 @@ const create = (vendaData) => {
                     lancamento.VendaID, lancamento.FormaPagamentoID, lancamento.CategoriaID, lancamento.ContaCaixaID
                 ]
             );
-            
+
             // --- FIM DA LÓGICA DE LANÇAMENTO ---
 
             await dbRun('COMMIT');

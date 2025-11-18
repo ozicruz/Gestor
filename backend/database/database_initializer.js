@@ -5,23 +5,23 @@ const { db, dbRun, dbAll } = require('./database');
 
 // Função que verifica e adiciona colunas (Migrações)
 const runMigrations = async () => {
-    
+
     // --- Migração 1: Servicos_OS ---
-     try {
-         const columns = await dbAll("PRAGMA table_info(Servicos_OS);");
-         const hasQuantidade = columns.some(col => col.name === 'quantidade');
-         if (!hasQuantidade) {
-             console.log('MIGRANDO BASE DE DADOS: A adicionar coluna "quantidade" a Servicos_OS...');
-             await dbRun('ALTER TABLE Servicos_OS ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 1;');
-             console.log('Migração concluída com sucesso!');
-         }
-     } catch (err) {
-         // Ignora erro se a tabela não existir (será criada depois)
-         if (!err.message.includes('no such table: Servicos_OS')) {
-             console.error('Erro durante a migração Servicos_OS:', err.message);
-         }
-     }
-    
+    try {
+        const columns = await dbAll("PRAGMA table_info(Servicos_OS);");
+        const hasQuantidade = columns.some(col => col.name === 'quantidade');
+        if (!hasQuantidade) {
+            console.log('MIGRANDO BASE DE DADOS: A adicionar coluna "quantidade" a Servicos_OS...');
+            await dbRun('ALTER TABLE Servicos_OS ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 1;');
+            console.log('Migração concluída com sucesso!');
+        }
+    } catch (err) {
+        // Ignora erro se a tabela não existir (será criada depois)
+        if (!err.message.includes('no such table: Servicos_OS')) {
+            console.error('Erro durante a migração Servicos_OS:', err.message);
+        }
+    }
+
     // --- Migração 2: Vendas e Servicos_Venda ---
     try {
         // Migração para a tabela Vendas
@@ -30,19 +30,19 @@ const runMigrations = async () => {
         const temDescontoValor = colunasVenda.some(col => col.name === 'desconto_valor');
 
         if (!temDescontoTipo) {
-            console.log('MIGRANDO: A adicionar coluna "desconto_tipo" a Vendas...');
-            await dbRun('ALTER TABLE Vendas ADD COLUMN desconto_tipo TEXT;');
+            console.log('MIGRANDO: A adicionar coluna "desconto_tipo" a Vendas...');
+            await dbRun('ALTER TABLE Vendas ADD COLUMN desconto_tipo TEXT;');
         }
         if (!temDescontoValor) {
-            console.log('MIGRANDO: A adicionar coluna "desconto_valor" a Vendas...');
-            await dbRun('ALTER TABLE Vendas ADD COLUMN desconto_valor REAL DEFAULT 0;');
+            console.log('MIGRANDO: A adicionar coluna "desconto_valor" a Vendas...');
+            await dbRun('ALTER TABLE Vendas ADD COLUMN desconto_valor REAL DEFAULT 0;');
         }
-const temAcrescimoTipo = colunasVenda.some(col => col.name === 'acrescimo_tipo');
+        const temAcrescimoTipo = colunasVenda.some(col => col.name === 'acrescimo_tipo');
         if (!temAcrescimoTipo) {
             console.log('MIGRANDO: A adicionar coluna "acrescimo_tipo" a Vendas...');
             await dbRun('ALTER TABLE Vendas ADD COLUMN acrescimo_tipo TEXT;');
         }
-        
+
         const temAcrescimoValor = colunasVenda.some(col => col.name === 'acrescimo_valor');
         if (!temAcrescimoValor) {
             console.log('MIGRANDO: A adicionar coluna "acrescimo_valor" a Vendas...');
@@ -55,32 +55,32 @@ const temAcrescimoTipo = colunasVenda.some(col => col.name === 'acrescimo_tipo')
             console.log('MIGRANDO: A adicionar coluna "FormaPagamentoID" a Vendas...');
             await dbRun('ALTER TABLE Vendas ADD COLUMN FormaPagamentoID INTEGER;');
         }
-        
+
         const temDataVencimento = colunasVenda.some(col => col.name === 'DataVencimento');
         if (!temDataVencimento) {
             console.log('MIGRANDO: A adicionar coluna "DataVencimento" a Vendas...');
             await dbRun('ALTER TABLE Vendas ADD COLUMN DataVencimento DATE;');
         }
-        
+
         // --- MIGRAÇÃO PARA SERVICOS_VENDA ---
-        const colunasServicoVenda = await dbAll("PRAGMA table_info(Servicos_Venda);");
-        if (!colunasServicoVenda.some(c => c.name === 'quantidade')) {
-            console.log('MIGRANDO: A adicionar coluna "quantidade" a Servicos_Venda...');
-            await dbRun('ALTER TABLE Servicos_Venda ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 1;');
-            console.log('Migração concluída com sucesso!');
-        }
+        const colunasServicoVenda = await dbAll("PRAGMA table_info(Servicos_Venda);");
+        if (!colunasServicoVenda.some(c => c.name === 'quantidade')) {
+            console.log('MIGRANDO: A adicionar coluna "quantidade" a Servicos_Venda...');
+            await dbRun('ALTER TABLE Servicos_Venda ADD COLUMN quantidade INTEGER NOT NULL DEFAULT 1;');
+            console.log('Migração concluída com sucesso!');
+        }
     } catch (err) {
         // Ignora erros de "tabela não existe" (serão criadas depois)
         if (!err.message.includes('no such table')) {
             console.error('Erro durante a migração Vendas/Servicos_Venda:', err.message);
         }
     }
-    
+
     // --- Migração 3: FormasPagamento (ISOLADA) ---
-try {
+    try {
         console.log('MIGRANDO: A verificar colunas de parcelamento em FormasPagamento...');
         const tabelas = await dbAll("SELECT name FROM sqlite_master WHERE type='table' AND name='FormasPagamento';");
-        
+
         if (tabelas.length > 0) { // Só corre se a tabela FormasPagamento existir
             const colunasFP = await dbAll("PRAGMA table_info(FormasPagamento);");
 
@@ -138,7 +138,7 @@ try {
 // Função que cria todas as tabelas (se não existirem)
 const createTables = async () => {
     // Script SQL limpo, sem caracteres especiais
-    const sqlScript = `
+    const sqlScript = `
         CREATE TABLE IF NOT EXISTS Clientes ( 
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
             nome TEXT NOT NULL, 
@@ -280,22 +280,22 @@ const createTables = async () => {
         );
     `;
 
-    try {
+    try {
         // Corre o script statement por statement para evitar erros com 'db.exec'
         const statements = sqlScript.split(';').filter(s => s.trim().length > 0);
         for (const statement of statements) {
             await dbRun(statement);
         }
-    } catch(err) {
-        console.error("Erro ao criar tabelas:", err.message);
-    }
+    } catch (err) {
+        console.error("Erro ao criar tabelas:", err.message);
+    }
 };
 
 // --- FUNÇÃO PARA SEMEAR DADOS INICIAIS ---
 const seedInitialData = async () => {
     try {
         console.log('🌱 A semear dados iniciais (se necessário)...');
-        
+
         // Formas de Pagamento
         await dbRun("INSERT OR IGNORE INTO FormasPagamento (Nome, TipoLancamento) VALUES ('Dinheiro', 'A_VISTA');");
         await dbRun("INSERT OR IGNORE INTO FormasPagamento (Nome, TipoLancamento) VALUES ('Cartão de Débito', 'A_VISTA');");
@@ -312,18 +312,18 @@ const seedInitialData = async () => {
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Outras Receitas', 'RECEITA');");
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Outras Despesas', 'DESPESA');");
         await dbRun("INSERT OR IGNORE INTO CategoriasFinanceiras (Nome, Tipo) VALUES ('Taxas de Cartão', 'DESPESA');");
-        
+
 
         // Conta Caixa Padrão
         await dbRun("INSERT OR IGNORE INTO ContasCaixa (Nome, SaldoInicial) VALUES ('Caixa Principal', 0.0);");
-        
+
         // O UPDATE que você adicionou
         await dbRun("UPDATE FormasPagamento SET aceitaParcelas = 1, maxParcelas = 12 WHERE Nome = 'Cartão de Crédito';");
         /* ============================================= */
         /* ===== NOVO: INSERE A LINHA DA EMPRESA ===== */
         /* ============================================= */
         await dbRun("INSERT OR IGNORE INTO Empresa (id, nome_fantasia) VALUES (1, 'Nome da Sua Empresa Aqui');");
-        
+
         console.log('🌱 Sementeira concluída.');
     } catch (err) {
         console.warn('Aviso ao semear dados (pode ser normal se os dados já existem):', err.message);
@@ -332,11 +332,11 @@ const seedInitialData = async () => {
 
 
 const initializeDatabase = async () => {
-    // A ordem é crucial:
+    // A ordem é crucial:
     // 1. Criar tabelas
-    await createTables();
+    await createTables();
     // 2. Executar migrações (alterar tabelas)
-    await runMigrations();
+    await runMigrations();
     // 3. Semear dados iniciais
     await seedInitialData();
 };

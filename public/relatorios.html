@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale-1.0">
@@ -8,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
@@ -27,81 +29,146 @@
                     <label for="data-fim" class="block text-sm font-medium text-gray-700">Data Fim:</label>
                     <input type="date" id="data-fim" class="form-input mt-1">
                 </div>
-            <button type="submit" id="btn-gerar-dre" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
-                Gerar Relatório DRE
-            </button>
+                <button type="submit" id="btn-gerar-dre"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                    Gerar Relatório DRE
+                </button>
 
-            <button type="button" id="btn-gerar-produtos" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow">
-                Gerar Relatório de Produtos
-            </button>
+                <button type="button" id="btn-gerar-produtos"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                    Gerar Relatório de Produtos
+                </button>
 
-            <button type="button" id="btn-gerar-stock" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg shadow">
-                Ver Relatório de Stock Baixo
-            </button>
+                <button type="button" id="btn-gerar-stock"
+                    class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                    Ver Relatório de Stock Baixo
+                </button>
             </form>
         </div>
 
         <div id="area-relatorio" class="card mt-6 p-6 min-h-[300px]">
-            <p class="text-center text-gray-500">Por favor, selecione um período e clique em "Gerar" para ver o seu Demonstrativo de Resultado (DRE).</p>
-            
-            </div>
+            <p class="text-center text-gray-500">Por favor, selecione um período e clique em "Gerar" para ver o seu
+                Demonstrativo de Resultado (DRE).</p>
+
+        </div>
     </div>
 
     <script src="js/relatorios.js" defer></script>
 
-<template id="relatorio-template">
-    <html>
-    <head>
-        <title>Relatório da Oficina</title>
-        <style>
-            body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; color: #333; font-size: 12px; }
-            .relatorio-box { border: 1px solid #eee; padding: 20px; max-width: 800px; margin: auto; }
-            
-            /* --- CABEÇALHO CORRIGIDO (Sem Flex) --- */
-            .header .empresa h1 { font-size: 20px; margin: 0; color: #000; }
-            .header .empresa p { margin: 0; font-size: 12px; color: #555; }
-            .header .detalhes { margin-top: 15px; border-top: 2px solid #000; padding-top: 10px; }
-            .header .detalhes h2 { font-size: 18px; margin: 0 0 5px 0; color: #333; }
-            .header .detalhes p { margin: 0; font-size: 12px; }
-            /* --- FIM DA CORREÇÃO --- */
+    <template id="relatorio-template">
+        <html>
 
-            .relatorio-conteudo { margin-top: 20px; }
-            
-            /* Estilos do DRE */
-            .dre-container { font-size: 14px; }
-            .dre-section h3 { font-size: 1.25rem; font-weight: 600; color: #374151; }
-            /* ... (e outros estilos .dre-...) ... */
-            
-            /* Estilos da Tabela */
-            .report-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .report-table th, .report-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
-            /* ... (e outros estilos .report-table) ... */
-            
-        </style>
-    </head>
-    <body>
-        <div class="relatorio-box">
-            
-            <div class="header">
-                <div class="empresa">
-                    <h1 data-relatorio="empresa-nome">[Nome da Empresa]</h1>
-                    <p data-relatorio="empresa-endereco">[Endereço da Empresa]</p>
+        <head>
+            <title>Relatório da Oficina</title>
+            <style>
+                body {
+                    font-family: 'Arial', sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    color: #333;
+                    font-size: 12px;
+                }
+
+                .relatorio-box {
+                    border: 1px solid #eee;
+                    padding: 20px;
+                    max-width: 800px;
+                    margin: auto;
+                }
+
+                /* --- CABEÇALHO CORRIGIDO (Sem Flex) --- */
+                .header .empresa h1 {
+                    font-size: 20px;
+                    margin: 0;
+                    color: #000;
+                }
+
+                .header .empresa p {
+                    margin: 0;
+                    font-size: 12px;
+                    color: #555;
+                }
+
+                .header .detalhes {
+                    margin-top: 15px;
+                    border-top: 2px solid #000;
+                    padding-top: 10px;
+                }
+
+                .header .detalhes h2 {
+                    font-size: 18px;
+                    margin: 0 0 5px 0;
+                    color: #333;
+                }
+
+                .header .detalhes p {
+                    margin: 0;
+                    font-size: 12px;
+                }
+
+                /* --- FIM DA CORREÇÃO --- */
+
+                .relatorio-conteudo {
+                    margin-top: 20px;
+                }
+
+                /* Estilos do DRE */
+                .dre-container {
+                    font-size: 14px;
+                }
+
+                .dre-section h3 {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #374151;
+                }
+
+                /* ... (e outros estilos .dre-...) ... */
+
+                /* Estilos da Tabela */
+                .report-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                }
+
+                .report-table th,
+                .report-table td {
+                    padding: 8px;
+                    border-bottom: 1px solid #eee;
+                    text-align: left;
+                }
+
+                /* ... (e outros estilos .report-table) ... */
+            </style>
+        </head>
+
+        <body>
+            <div class="relatorio-box">
+
+                <div class="header">
+                    <div class="empresa">
+                        <h1 data-relatorio="empresa-nome">[Nome da Empresa]</h1>
+                        <p data-relatorio="empresa-endereco">[Endereço da Empresa]</p>
+                    </div>
+
+                    <div class="detalhes">
+                        <h2 data-relatorio="titulo">Relatório Financeiro</h2>
+                        <p>Período: <span data-relatorio="periodo"></span></p>
+                    </div>
                 </div>
-                
-                <div class="detalhes">
-                    <h2 data-relatorio="titulo">Relatório Financeiro</h2>
-                    <p>Período: <span data-relatorio="periodo"></span></p>
+
+                <div id="relatorio-conteudo-pdf" class="relatorio-conteudo">
                 </div>
+
             </div>
-            
-            <div id="relatorio-conteudo-pdf" class="relatorio-conteudo">
-                </div>
-            
-        </div>
-    </body>
-    </html>
-</template>
+        </body>
+
+        </html>
+    </template>
 </body>
+
 </html>
 </body>
+
 </html>
