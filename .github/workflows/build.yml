@@ -23,8 +23,8 @@ jobs:
       - name: Build the application
         run: npm run make
 
-      #- name: Upload Artifact
-       # uses: actions/upload-artifact@v4
-        # with:
-         # name: gestao-oficina-installer
-          # path: out/make/squirrel.windows/x64/*.exe
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gestao-oficina-installer
+          path: out/make/squirrel.windows/x64/*.exe

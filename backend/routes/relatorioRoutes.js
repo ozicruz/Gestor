@@ -9,4 +9,8 @@ router.get('/produtos-mais-vendidos', relatorioController.listarProdutosMaisVend
 // Define a rota: GET /api/relatorios/stock-baixo
 router.get('/stock-baixo', relatorioController.listarStockBaixo);
 
+router.get('/vendas', relatorioController.listarVendasRealizadas);
+
+router.get('/vendas/:id', relatorioController.buscarDetalhesVenda);
+
 module.exports = router;

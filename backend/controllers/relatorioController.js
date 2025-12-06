@@ -27,8 +27,32 @@ const listarStockBaixo = async (req, res) => {
     }
 };
 
+const listarVendasRealizadas = async (req, res) => {
+    const { data_inicio, data_fim } = req.query;
+    if (!data_inicio || !data_fim) {
+        return res.status(400).json({ message: "Datas obrigatórias." });
+    }
+    try {
+        const vendas = await RelatorioModel.findVendasRealizadas(data_inicio, data_fim);
+        res.json(vendas);
+    } catch (err) {
+        res.status(500).json({ message: "Erro ao buscar vendas.", error: err.message });
+    }
+};
+
+const buscarDetalhesVenda = async (req, res) => {
+    try {
+        const detalhes = await RelatorioModel.findVendaDetalhes(req.params.id);
+        if (detalhes) res.json(detalhes);
+        else res.status(404).json({ message: "Venda não encontrada." });
+    } catch (err) {
+        res.status(500).json({ message: "Erro ao buscar detalhes.", error: err.message });
+    }
+};
+
 module.exports = {
     listarProdutosMaisVendidos,
-    listarStockBaixo
-
+    listarStockBaixo,
+    listarVendasRealizadas,
+    buscarDetalhesVenda
 };

@@ -628,4 +628,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
     popularDadosIniciais();
     renderizarItensVenda();
+
+    // ... (dentro de DOMContentLoaded, no final) ...
+
+    // --- LÓGICA DE CADASTRO RÁPIDO DE PRODUTO ---
+    const btnNovoProdutoRapido = document.getElementById('btn-novo-produto-rapido');
+    const modalRapido = document.getElementById('produto-modal');
+    const formRapido = document.getElementById('produto-form-rapido');
+    const btnCancelarRapido = document.getElementById('btn-cancelar-rapido');
+
+    // Função auxiliar de parse (igual à de produtos)
+    const parseCurrency = (value) => {
+        if (typeof value !== 'string') return typeof value === 'number' ? value : 0;
+        return parseFloat(value.replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
+    };
+
+    if (btnNovoProdutoRapido) {
+        btnNovoProdutoRapido.addEventListener('click', () => {
+            formRapido.reset();
+            modalRapido.classList.remove('modal-oculto');
+            setTimeout(() => document.getElementById('rapido-nome').focus(), 100);
+        });
+    }
+
+    if (btnCancelarRapido) {
+        btnCancelarRapido.addEventListener('click', () => {
+            modalRapido.classList.add('modal-oculto');
+        });
+    }
+
+    if (formRapido) {
+        formRapido.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const produtoData = {
+                nome: document.getElementById('rapido-nome').value.toUpperCase(),
+                descricao: 'Cadastro Rápido na Venda',
+                quantidade_em_estoque: parseInt(document.getElementById('rapido-estoque').value) || 0,
+                preco_unitario: parseCurrency(document.getElementById('rapido-preco').value),
+                valor_custo: parseCurrency(document.getElementById('rapido-custo').value),
+                stock_minimo: parseInt(document.getElementById('rapido-minimo').value) || 0
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/produtos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(produtoData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) throw new Error(result.message);
+
+                // Sucesso!
+                modalRapido.classList.add('modal-oculto');
+                
+                // --- A MÁGICA: Preenche o campo de busca e seleciona o produto ---
+                const inputBusca = document.getElementById('input-search-produto');
+                inputBusca.value = produtoData.nome;
+                
+                // Define o item selecionado globalmente (como se tivesse clicado no autocomplete)
+                selectedItems.produto = result.id; 
+                
+                // Foca na quantidade para adicionar logo
+                document.getElementById('input-produto-qtd').focus();
+                
+                // Feedback visual subtil (borda verde momentânea)
+                inputBusca.classList.add('border-green-500', 'ring-1', 'ring-green-500');
+                setTimeout(() => inputBusca.classList.remove('border-green-500', 'ring-1', 'ring-green-500'), 1000);
+
+            } catch (err) {
+                alert('Erro ao cadastrar produto: ' + err.message);
+            }
+        });
+    }
 });

@@ -34,18 +34,21 @@
                     <div class="card">
                         <h2 class="text-xl font-semibold text-gray-700 mb-4">2. Adicione Itens</h2>
                         <div class="flex flex-col md:flex-row items-end gap-3">
-                            <div class="flex-grow w-full autocomplete-container">
+
+                        <div class="flex-grow w-full flex items-end gap-2">
+                            <div class="flex-grow autocomplete-container">
                                 <label class="text-sm">Adicionar Item</label>
-                                <input type="text" id="input-search-produto" placeholder="Digite para buscar um item..."
-                                    class="form-input w-full mt-1 text-sm">
+                                <input type="text" id="input-search-produto" placeholder="Digite para buscar um item..." class="form-input w-full mt-1 text-sm">
                                 <div id="results-produto" class="autocomplete-results hidden"></div>
                             </div>
-                            <div class="w-full md:w-auto"><label for="input-produto-qtd"
-                                    class="block text-sm font-medium text-gray-700">Qtd.</label><input type="number"
-                                    id="input-produto-qtd" value="1" min="1" class="form-input w-20 mt-1"></div>
-                            <button type="button" id="btn-add-produto"
-                                class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg h-10 w-full md:w-auto">Adicionar</button>
+                            <button type="button" id="btn-novo-produto-rapido" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg h-10 shadow" title="Cadastrar Novo Produto">
+                                +
+                            </button>
                         </div>
+
+                        <div class="w-full md:w-auto"><label for="input-produto-qtd" class="block text-sm font-medium text-gray-700">Qtd.</label><input type="number" id="input-produto-qtd" value="1" min="1" class="form-input w-20 mt-1"></div>
+                        <button type="button" id="btn-add-produto" class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg h-10 w-full md:w-auto">Adicionar</button>
+                    </div>
                         <hr class="my-4">
                         <div class="flex flex-col md:flex-row items-end gap-3">
                             <div class="flex-grow w-full autocomplete-container">
@@ -354,6 +357,41 @@
 
         </html>
     </template>
+        <div id="produto-modal" class="modal-overlay modal-oculto">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Novo Produto (Rápido)</h2>
+            <form id="produto-form-rapido">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700">Nome do Produto</label>
+                    <input type="text" id="rapido-nome" required class="form-input mt-1 block w-full">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Valor Custo (R$)</label>
+                        <input type="text" id="rapido-custo" required placeholder="0,00" class="form-input mt-1 block w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Preço Venda (R$)</label>
+                        <input type="text" id="rapido-preco" required placeholder="0,00" class="form-input mt-1 block w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Qtd. Inicial</label>
+                        <input type="number" id="rapido-estoque" required value="1" class="form-input mt-1 block w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Stock Mín.</label>
+                        <input type="number" id="rapido-minimo" value="0" class="form-input mt-1 block w-full">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-4">
+                    <button type="button" id="btn-cancelar-rapido" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Salvar e Usar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script src="js/gestao_vendas.js"></script>
 </body>
