@@ -2,7 +2,7 @@
 
 Um sistema completo de gestão para oficinas mecânicas e auto-peças, desenvolvido com **Electron** e **Node.js**. Focado no controlo operacional e inteligência financeira.
 
-![Status](https://img.shields.io/badge/Status-Concluído-green) ![Tech](https://img.shields.io/badge/Tech-Electron%20%7C%20SQLite%20%7C%20Node.js-blue)
+![Status](https://img.shields.io/badge/Status-Em_Desenvolvimento-yellow) ![Tech](https://img.shields.io/badge/Tech-Electron%20%7C%20SQLite%20%7C%20Node.js-blue)
 
 ## 🚀 Funcionalidades Principais
 
