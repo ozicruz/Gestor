@@ -1,5 +1,3 @@
-// public/js/gestao_patio.js
-
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';

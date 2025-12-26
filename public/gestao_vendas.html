@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,154 +8,148 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
-
-<body class="bg-gray-100 p-4 md:p-8">
+<body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
-        <div class="mb-4">
-            <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
+        <div class="mb-6 flex items-center justify-between">
+            <div>
+                <a href="index.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar</a>
+                <h1 class="text-4xl font-bold text-gray-800 mt-2">Vendas 🛒</h1>
+            </div>
         </div>
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">Venda de Balcão</h1>
 
         <form id="venda-form">
-            <div class="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 lg:gap-6">
 
                 <div class="lg:col-span-2 space-y-6">
-                    <div class="card">
-                        <h2 class="text-xl font-semibold text-gray-700 mb-4">1. Cliente (Opcional)</h2>
-                        <div class="autocomplete-container">
-                            <input type="text" id="input-search-cliente" placeholder="Digite para buscar um cliente..."
-                                class="form-input w-full mt-1 text-sm">
-                            <div id="results-cliente" class="autocomplete-results hidden"></div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <h2 class="text-xl font-semibold text-gray-700 mb-4">2. Adicione Itens</h2>
-                        <div class="flex flex-col md:flex-row items-end gap-3">
-
-                        <div class="flex-grow w-full flex items-end gap-2">
+                    
+                    <div class="card border-l-4 border-teal-500">
+                        <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                            <span>1.</span> Cliente <span class="text-sm font-normal text-gray-400">(Opcional)</span>
+                        </h2>
+                        <div class="flex gap-2">
                             <div class="flex-grow autocomplete-container">
-                                <label class="text-sm">Adicionar Item</label>
-                                <input type="text" id="input-search-produto" placeholder="Digite para buscar um item..." class="form-input w-full mt-1 text-sm">
-                                <div id="results-produto" class="autocomplete-results hidden"></div>
+                                <input type="text" id="input-search-cliente" placeholder="Digite para buscar um cliente..." class="form-input">
+                                <div id="results-cliente" class="autocomplete-results hidden"></div>
                             </div>
-                            <button type="button" id="btn-novo-produto-rapido" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg h-10 shadow" title="Cadastrar Novo Produto">
+                            <button type="button" id="btn-novo-cliente-rapido" class="bg-green-600 hover:bg-green-700 text-white font-bold px-3 rounded-lg shadow" title="Novo Cliente">
                                 +
                             </button>
                         </div>
-
-                        <div class="w-full md:w-auto"><label for="input-produto-qtd" class="block text-sm font-medium text-gray-700">Qtd.</label><input type="number" id="input-produto-qtd" value="1" min="1" class="form-input w-20 mt-1"></div>
-                        <button type="button" id="btn-add-produto" class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg h-10 w-full md:w-auto">Adicionar</button>
                     </div>
-                        <hr class="my-4">
-                        <div class="flex flex-col md:flex-row items-end gap-3">
-                            <div class="flex-grow w-full autocomplete-container">
-                                <label class="text-sm">Adicionar Serviço</label>
-                                <input type="text" id="input-search-servico"
-                                    placeholder="Digite para buscar um serviço..."
-                                    class="form-input w-full mt-1 text-sm">
-                                <div id="results-servico" class="autocomplete-results hidden"></div>
-                            </div>
-                            <div class="w-full md:w-auto"><label for="input-servico-qtd"
-                                    class="block text-sm font-medium text-gray-700">Qtd.</label><input type="number"
-                                    id="input-servico-qtd" value="1" min="1" class="form-input w-20 mt-1"></div>
 
-                            <button type="button" id="btn-add-servico"
-                                class="bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg h-10 w-full md:w-auto">Adicionar</button>
+                    <div class="card border-l-4 border-indigo-500">
+                        <h2 class="text-xl font-bold text-gray-700 mb-4">2. Adicionar Itens</h2>
+                        
+                        <div class="flex flex-col md:flex-row items-end gap-3 mb-6">
+                            <div class="flex-grow w-full flex items-end gap-2">
+                                <div class="flex-grow autocomplete-container">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Buscar Peça / Produto</label>
+                                    <input type="text" id="input-search-produto" placeholder="Digite o nome da peça..." class="form-input">
+                                    <div id="results-produto" class="autocomplete-results hidden"></div>
+                                </div>
+                                <button type="button" id="btn-novo-produto-rapido" class="bg-green-600 hover:bg-green-700 text-white font-bold p-2.5 rounded-lg shadow" title="Cadastro Rápido">
+                                    +
+                                </button>
+                            </div>
+                            <div class="w-full md:w-24">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Qtd.</label>
+                                <input type="number" id="input-produto-qtd" value="1" min="1" class="form-input text-center">
+                            </div>
+                            <button type="button" id="btn-add-produto" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-4 rounded-lg w-full md:w-auto">
+                                Adicionar
+                            </button>
+                        </div>
+
+                        <hr class="border-gray-100 mb-6">
+
+                        <div class="flex flex-col md:flex-row items-end gap-3">
+                            <div class="flex gap-2 w-full"> 
+                                <div class="flex-grow autocomplete-container">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Buscar Serviço (Mão de Obra)</label>
+                                    <input type="text" id="input-search-servico" placeholder="Digite o serviço..." class="form-input">
+                                    <div id="results-servico" class="autocomplete-results hidden"></div>
+                                </div>
+                                <div class="flex items-end"> 
+                                    <button type="button" id="btn-novo-servico-rapido" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-3 rounded-lg shadow mb-[1px]" title="Novo Serviço">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="w-full md:w-24">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Qtd.</label>
+                                <input type="number" id="input-servico-qtd" value="1" min="1" class="form-input text-center">
+                            </div>
+                            <button type="button" id="btn-add-servico" class="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-4 rounded-lg w-full md:w-auto">
+                                Adicionar
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <div class="lg:col-span-1">
-                    <div class="card">
-                        <h2 class="text-xl font-semibold text-gray-700 mb-4">Resumo da Venda</h2>
+                    <div class="card border-l-4 border-blue-600 sticky top-4">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Resumo da Venda</h2>
 
-                        <div id="itens-venda-container" class="min-h-[120px] space-y-2">
-                            <p id="carrinho-vazio-msg" class="text-gray-500 text-center py-4">Nenhum item adicionado.
-                            </p>
+                        <div id="itens-venda-container" class="space-y-2 mb-4 max-h-[300px] overflow-y-auto pr-1">
+                            <p id="carrinho-vazio-msg" class="text-gray-400 text-center py-8 italic">Carrinho vazio.</p>
                         </div>
 
-                        <div class="border-t mt-4 pt-4 space-y-2 text-sm">
-                            <div id="bloco-desconto" class="flex justify-between items-center">
-                                <div class="flex items-center gap-2">
-                                    <label for="desconto-valor" class="text-gray-600">Desconto:</label>
-                                    <select id="desconto-tipo" class="form-input p-1 h-7 text-xs rounded-md">
-                                        <option value="R$">R$</option>
-                                        <option value="%">%</option>
-                                    </select>
+                        <div class="bg-gray-50 p-4 rounded-lg space-y-3">
+                            <div class="flex justify-between items-center text-sm">
+                                <label class="text-gray-600">Desconto:</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="desconto-valor" value="0" class="form-input w-20 text-right h-8 text-sm">
+                                    <select id="desconto-tipo" class="form-input w-14 h-8 text-sm p-1"><option value="R$">R$</option><option value="%">%</option></select>
                                 </div>
-                                <input type="number" id="desconto-valor" value="0" min="0"
-                                    class="form-input w-24 text-right p-1 h-7 text-sm rounded-md">
+                            </div>
+                            
+                            <div id="desconto-aplicado-container" class="flex justify-between items-center text-sm text-green-600 hidden">
+                                <span>Desconto aplicado:</span>
+                                <span id="desconto-aplicado-valor">- R$ 0,00</span>
                             </div>
 
-                            <div id="bloco-acrescimo" class="hidden flex justify-between items-center">
-                                <div class="flex items-center gap-2">
-                                    <label for="acrescimo-valor" class="text-gray-600">Acréscimo (Juros):</label>
-                                    <select id="acrescimo-tipo" class="form-input p-1 h-7 text-xs rounded-md">
-                                        <option value="%">%</option>
-                                        <option value="R$">R$</option>
-                                    </select>
+                             <div id="bloco-acrescimo" class="hidden border-t border-gray-200 pt-2 mt-2">
+                                <div class="flex justify-between items-center text-sm text-blue-600">
+                                    <label>Juros/Acréscimo:</label>
+                                    <div class="flex items-center gap-1">
+                                        <input type="number" id="acrescimo-valor" value="0" class="form-input w-20 text-right h-8 text-sm">
+                                        <select id="acrescimo-tipo" class="form-input w-14 h-8 text-sm p-1"><option value="%">%</option><option value="R$">R$</option></select>
+                                    </div>
                                 </div>
-                                <input type="number" id="acrescimo-valor" value="0" min="0"
-                                    class="form-input w-24 text-right p-1 h-7 text-sm rounded-md">
                             </div>
-                            <div id="desconto-aplicado-container"
-                                class="flex justify-between items-center text-red-600 hidden">
-                                <span>Desconto Aplicado:</span>
-                                <span id="desconto-aplicado-valor" class="font-semibold">- R$ 0,00</span>
-                            </div>
-                        </div>
 
-                        <div class="border-t mt-4 pt-4">
-                            <div class="flex justify-between items-center text-2xl font-bold text-gray-800">
-                                <span>TOTAL:</span>
+                            <div class="flex justify-between items-center text-2xl font-bold text-gray-800 pt-2 border-t border-gray-200">
+                                <span>Total:</span>
                                 <span id="total-valor">R$ 0,00</span>
                             </div>
                         </div>
-                        <div class="border-t mt-4 pt-4 space-y-3">
 
+                        <div class="mt-4 space-y-3">
                             <div>
-                                <label for="select-forma-pagamento" class="block text-sm font-bold text-gray-700">Forma
-                                    de Pagamento:</label>
-                                <select id="select-forma-pagamento" class="form-input w-full mt-1" required>
-                                    <option value="">A carregar formas...</option>
+                                <label class="block text-sm font-bold text-gray-700">Forma de Pagamento</label>
+                                <select id="select-forma-pagamento" class="form-input mt-1" required>
+                                    <option value="">Selecione...</option>
                                 </select>
                             </div>
-
-                            <div id="bloco-parcelamento" class="hidden space-y-2">
-                                <div>
-                                    <label for="select-num-parcelas"
-                                        class="block text-sm font-bold text-gray-700">Número de Parcelas:</label>
-                                    <select id="select-num-parcelas" class="form-input w-full mt-1">
-                                    </select>
-                                </div>
-
-                                <div id="info-taxa-parcela"
-                                    class="hidden text-sm text-gray-700 bg-gray-100 p-2 rounded-md">
-                                    <p>Taxa de 5% (R$ <span id="valor-taxa">0,00</span>) aplicada.</p>
-                                    <p class="font-bold">Total: <span id="total-parcelado">3x de R$ 95,00</span></p>
-                                </div>
+                            
+                            <div id="bloco-parcelamento" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700">Parcelas</label>
+                                <select id="select-num-parcelas" class="form-input mt-1"></select>
                             </div>
-
                             <div id="bloco-conta-caixa" class="hidden">
-                                <label for="select-conta-caixa" class="block text-sm font-bold text-gray-700">Pagar para
-                                    (Conta/Caixa):</label>
-                                <select id="select-conta-caixa" class="form-input w-full mt-1">
-                                    <option value="">A carregar contas...</option>
-                                </select>
+                                <label class="block text-sm font-medium text-gray-700">Conta de Destino</label>
+                                <select id="select-conta-caixa" class="form-input mt-1"></select>
                             </div>
-
                             <div id="bloco-data-vencimento" class="hidden">
-                                <label for="input-data-vencimento" class="block text-sm font-bold text-gray-700">Data de
-                                    Vencimento:</label>
-                                <input type="date" id="input-data-vencimento" class="form-input w-full mt-1">
+                                <label class="block text-sm font-bold text-red-700 mb-1">Data de Vencimento (30 Dias)</label>
+                                <input type="date" id="input-data-vencimento" class="form-input w-full border-red-300 focus:border-red-500 focus:ring-red-500 rounded-lg shadow-sm">
                             </div>
                         </div>
 
-                        <button type="submit" id="btn-finalizar-venda"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg mt-6 text-lg shadow disabled:bg-gray-400 disabled:cursor-not-allowed">Finalizar
-                            Venda</button>
+                        <button type="submit" id="btn-finalizar-venda" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg mt-6 shadow-lg transform transition hover:scale-105">
+                            Finalizar Venda
+                        </button>
                     </div>
                 </div>
 
@@ -164,236 +157,162 @@
         </form>
 
         <div id="feedback-alert" class="hidden"></div>
-        <div id="venda-confirmacao" class="card mt-6 text-center" style="display: none;">
-            <h2 class="text-2xl font-bold text-green-600">Venda Finalizada com Sucesso!</h2>
-            <p id="confirmacao-texto" class="text-gray-700 mt-2 mb-4"></p>
-            <button id="btn-imprimir-recibo"
-                class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow">Imprimir
-                Recibo</button>
-            <button id="btn-nova-venda"
-                class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow ml-3">Registar
-                Nova Venda</button>
-        </div>
     </div>
 
-    <template id="recibo-template">
-        <html>
-
-        <head>
-            <title>Recibo de Venda</title>
-            <style>
-                body {
-                    font-family: 'Arial', sans-serif;
-                    margin: 0;
-                    padding: 20px;
-                    color: #333;
-                    font-size: 12px;
-                }
-
-                .recibo-box {
-                    border: 1px solid #eee;
-                    padding: 20px;
-                    max-width: 800px;
-                    margin: auto;
-                    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-                }
-
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    border-bottom: 2px solid #000;
-                    padding-bottom: 10px;
-                    margin-bottom: 20px;
-                }
-
-                .header .empresa h1 {
-                    font-size: 20px;
-                    margin: 0;
-                }
-
-                .header .empresa p {
-                    margin: 0;
-                    font-size: 12px;
-                    color: #555;
-                }
-
-                .header .detalhes {
-                    text-align: right;
-                }
-
-                .header .detalhes h2 {
-                    font-size: 18px;
-                    margin: 0;
-                }
-
-                .cliente-info {
-                    margin-bottom: 20px;
-                }
-
-                .cliente-info p {
-                    margin: 2px 0;
-                }
-
-                .itens-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 10px;
-                }
-
-                .itens-table th,
-                .itens-table td {
-                    padding: 8px;
-                    border-bottom: 1px solid #eee;
-                    text-align: left;
-                }
-
-                .itens-table th {
-                    background-color: #f9f9f9;
-                    font-size: 11px;
-                    text-transform: uppercase;
-                }
-
-                .itens-table .text-center {
-                    text-align: center;
-                }
-
-                .itens-table .text-right {
-                    text-align: right;
-                }
-
-                .total-section {
-                    margin-top: 20px;
-                    float: right;
-                    width: 250px;
-                }
-
-                .total-section div {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 5px 0;
-                }
-
-                .total-section .total-final {
-                    font-size: 18px;
-                    font-weight: bold;
-                    border-top: 2px solid #333;
-                    margin-top: 5px;
-                }
-
-                .footer {
-                    margin-top: 80px;
-                    text-align: center;
-                    font-size: 12px;
-                    color: #555;
-                    clear: both;
-                }
-            </style>
-        </head>
-
-        <body>
-            <div class="recibo-box">
-                <div class="header">
-                    <div class="empresa">
-                        <h1 data-recibo="empresa-nome">[Nome da Empresa]</h1>
-                        <p data-recibo="empresa-endereco">[Endereço da Empresa]</p>
-                    </div>
-                    <div class="detalhes">
-                        <h2>RECIBO DE VENDA</h2>
-                        <p><strong>Venda #<span data-recibo="venda-id"></span></strong></p>
-                        <p>Data: <span data-recibo="data"></span></p>
-                    </div>
-                </div>
-                <div class="cliente-info">
-                    <p><strong>Cliente:</strong> <span data-recibo="cliente-nome"></span></p>
-                </div>
-                <table class="itens-table">
-                    <thead>
-                        <tr>
-                            <th>Descrição</th>
-                            <th class="text-center">Qtd.</th>
-                            <th class="text-right">Vlr. Unit.</th>
-                            <th class="text-right">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody data-recibo="itens-tabela"></tbody>
-                </table>
-                <div class="total-section">
-                    <div>
-                        <span>Subtotal:</span>
-                        <span data-recibo="subtotal">R$ 0,00</span>
-                    </div>
-
-                    <div data-recibo="desconto-info" class="hidden">
-                        <span>Desconto:</span>
-                        <span data-recibo="desconto" style="color: #DC2626;">- R$ 0,00</span>
-                    </div>
-
-                    <div data-recibo="acrescimo-info" class="hidden">
-                        <span>Acréscimo (Juros):</span>
-                        <span data-recibo="acrescimo" style="color: #16A34A;">+ R$ 0,00</span>
-                    </div>
-
-                    <div data-recibo="pagamento-info" class="hidden"
-                        style="border-top: 1px solid #eee; padding-top: 5px; margin-top: 5px;">
-                        <span>Forma de Pagamento:</span>
-                        <span data-recibo="pagamento-forma" style="font-weight: bold;"></span>
-                    </div>
-                    <div data-recibo="parcela-info" class="hidden" style="padding-bottom: 5px;">
-                        <span>Detalhes:</span>
-                        <span data-recibo="pagamento-parcelas" style="font-weight: bold;"></span>
-                    </div>
-
-                    <div class="total-final">
-                        <span>TOTAL:</span>
-                        <span data-recibo="total">R$ 0,00</span>
-                    </div>
-                </div>
-                <div class="footer">
-                    <p>Obrigado pela sua preferência!</p>
-                </div>
-            </div>
-        </body>
-
-        </html>
-    </template>
-        <div id="produto-modal" class="modal-overlay modal-oculto">
-        <div class="modal-content">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Novo Produto (Rápido)</h2>
-            <form id="produto-form-rapido">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700">Nome do Produto</label>
-                    <input type="text" id="rapido-nome" required class="form-input mt-1 block w-full">
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Valor Custo (R$)</label>
-                        <input type="text" id="rapido-custo" required placeholder="0,00" class="form-input mt-1 block w-full">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Preço Venda (R$)</label>
-                        <input type="text" id="rapido-preco" required placeholder="0,00" class="form-input mt-1 block w-full">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Qtd. Inicial</label>
-                        <input type="number" id="rapido-estoque" required value="1" class="form-input mt-1 block w-full">
-                    </div>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700">Stock Mín.</label>
-                        <input type="number" id="rapido-minimo" value="0" class="form-input mt-1 block w-full">
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" id="btn-cancelar-rapido" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Salvar e Usar</button>
+    <div id="modal-rapido-cliente" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 flex">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Novo Cliente (Rápido)</h3>
+            <form id="form-rapido-cliente" class="space-y-4">
+                <input type="text" id="rapido-cliente-nome" placeholder="Nome Completo *" required class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 uppercase">
+                <input type="tel" id="rapido-cliente-telefone" placeholder="Telefone" class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('modal-rapido-cliente').classList.add('hidden')" class="bg-gray-200 px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <div id="modal-rapido-servico" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 flex">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Novo Serviço (Rápido)</h3>
+            <form id="form-rapido-servico" class="space-y-4">
+                <input type="text" id="rapido-servico-nome" placeholder="Nome do Serviço *" required class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 uppercase">
+                <input type="number" id="rapido-servico-preco" placeholder="Valor (R$)" step="0.01" required class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('modal-rapido-servico').classList.add('hidden')" class="bg-gray-200 px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="produto-modal" class="modal-overlay modal-oculto">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Cadastro Rápido de Produto</h2>
+            <form id="produto-form-rapido" class="space-y-4">
+                <div><label class="block text-sm font-medium text-gray-700">Nome</label><input type="text" id="rapido-nome" required class="form-input mt-1"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700">Custo (R$)</label><input type="text" id="rapido-custo" class="form-input mt-1"></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Venda (R$)</label><input type="text" id="rapido-preco" required class="form-input mt-1"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700">Estoque Inicial</label><input type="number" id="rapido-estoque" value="1" class="form-input mt-1"></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Mínimo</label><input type="number" id="rapido-minimo" value="0" class="form-input mt-1"></div>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="btn-cancelar-rapido" class="bg-gray-200 text-gray-800 px-4 py-2 rounded">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="venda-confirmacao" style="display: none;" class="max-w-4xl mx-auto mt-8 bg-white rounded-xl shadow-lg p-10 text-center animate-fade-in-down">
+        <div class="flex justify-center mb-6">
+            <div class="bg-green-100 p-4 rounded-full">
+                <svg class="w-16 h-16 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+        </div>
+        
+        <h2 class="text-3xl font-bold text-gray-800 mb-2">Venda Realizada com Sucesso!</h2>
+        <p id="confirmacao-texto" class="text-xl text-gray-600 mb-8">Venda #000 | Total: R$ 0,00</p>
+
+        <div class="flex justify-center gap-4">
+            <button id="btn-nova-venda" class="px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
+                <span>🔄</span> Nova Venda
+            </button>
+            
+            <button id="btn-imprimir-recibo" class="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg transition-transform active:scale-95 flex items-center gap-2">
+                <span>🖨️</span> Imprimir Recibo / PDF
+            </button>
+        </div>
+    </div>
+
+    <template id="recibo-template">
+        <style>
+            .recibo-container { font-family: 'Helvetica', 'Arial', sans-serif; max-width: 800px; margin: 0 auto; color: #333; padding: 20px; font-size: 14px; background: white; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+            .company-info h1 { margin: 0; font-size: 24px; font-weight: bold; color: #000; text-transform: uppercase; }
+            .company-info p { margin: 2px 0; font-size: 12px; color: #555; }
+            .receipt-info { text-align: right; }
+            .receipt-info h2 { margin: 0; font-size: 20px; font-weight: bold; }
+            .client-box { background-color: #f8f9fa; border: 1px solid #ddd; padding: 10px; border-radius: 4px; margin-bottom: 20px; }
+            .table-items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .table-items th { background-color: #eee; border-bottom: 2px solid #000; padding: 8px; text-align: left; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+            .table-items td { border-bottom: 1px solid #ddd; padding: 8px; }
+            .totals-section { display: flex; justify-content: flex-end; }
+            .totals-box { width: 300px; }
+            .row { display: flex; justify-content: space-between; padding: 4px 0; }
+            .row.final { border-top: 2px solid #000; margin-top: 5px; padding-top: 5px; font-size: 18px; font-weight: bold; color: #000; }
+            .footer { text-align: center; margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 10px; font-size: 12px; color: #666; }
+        </style>
+        
+        <div class="recibo-container" id="recibo-content">
+            <div class="header">
+                <div class="company-info">
+                    <h1 data-recibo="empresa-nome">EMPRESA</h1>
+                    <p data-recibo="empresa-endereco">Endereço</p>
+                    <p>CNPJ/CPF: <span data-recibo="empresa-cnpj"></span> | Tel: <span data-recibo="empresa-tel"></span></p>
+                </div>
+                <div class="receipt-info">
+                    <h2>RECIBO DE VENDA</h2>
+                    <p>Venda #<span data-recibo="venda-id">000</span></p>
+                    <p>Data: <span data-recibo="data">00/00/0000</span></p>
+                </div>
+            </div>
+
+            <div class="client-box">
+                <strong>Cliente:</strong> <span data-recibo="cliente-nome">Consumidor Final</span>
+            </div>
+
+            <table class="table-items">
+                <thead>
+                    <tr>
+                        <th width="50%">Descrição</th>
+                        <th width="15%" style="text-align: right;">Vlr. Unit.</th>
+                        <th width="10%" style="text-align: center;">Qtd.</th>
+                        <th width="25%" style="text-align: right;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody data-recibo="itens-tabela"></tbody>
+            </table>
+
+            <div class="totals-section">
+                <div class="totals-box">
+                    <div class="row">
+                        <span>Subtotal:</span>
+                        <span data-recibo="subtotal">R$ 0,00</span>
+                    </div>
+                    <div class="row" style="color: #dc2626;">
+                        <span>Desconto:</span>
+                        <span data-recibo="desconto">- R$ 0,00</span>
+                    </div>
+                    <div class="row" style="border-bottom: 1px solid #ddd; margin-bottom: 5px; padding-bottom: 5px;">
+                        <span>Forma Pagamento:</span>
+                        <span data-recibo="pagamento-forma" style="font-weight: bold;">-</span>
+                    </div>
+                    <div class="row" id="linha-vencimento" style="display: none; margin-bottom: 5px; color: #b91c1c;">
+                        <span>Vencimento:</span>
+                        <span data-recibo="data-vencimento" style="font-weight: bold;">00/00/0000</span>
+                    </div>
+                    <div class="row final">
+                        <span>TOTAL:</span>
+                        <span data-recibo="total">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Obrigado pela sua preferência!</p>
+                <p>Documento sem valor fiscal.</p>
+            </div>
+        </div>
+    </template>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="js/gestao_vendas.js"></script>
 </body>
-
 </html>

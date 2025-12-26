@@ -1,299 +1,170 @@
-/* public/css/style.css */
+/* public/css/style.css - VERSÃO COMPLETA E CORRIGIDA */
 
-/* Estilos gerais que se aplicam a todas as páginas */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* --- GERAL --- */
 body {
     font-family: 'Inter', sans-serif;
-    background-color: rgb(216, 216, 216);
+    background-color: #F3F4F6; /* Fundo cinza suave */
+    color: #1F2937; /* Texto cinza escuro */
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Estilo base para campos de formulário para garantir a visibilidade */
-.form-input {
-    border: 1px solid #d1d5db; /* Corresponde a border-gray-300 do Tailwind */
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.375rem; /* rounded-md */
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-}
-
-/* Alertas de feedback */
-.feedback-alert {
-    padding: 1rem;
-    border-radius: 0.5rem;
-    margin-bottom: 1rem;
-    text-align: center;
-    font-weight: 500;
-    display: none;
-}
-
-.feedback-success {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.feedback-error {
-    background-color: #fee2e2;
-    color: #991b1b;
-}
-
-/* Estilos para os cartões de navegação (usado no index.html e cadastros.html) */
-.nav-card {
+/* --- CARDS (O novo padrão visual) --- */
+.card, .nav-card {
     background-color: white;
-    border-radius: 0.75rem;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    border-radius: 0.75rem; /* 12px */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+    border: 1px solid #E5E7EB;
     padding: 1.5rem;
-    text-decoration: none;
-    color: inherit;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    margin-bottom: 1.5rem;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Links do Menu (Nav Cards) */
+.nav-card {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    min-height: 140px;
 }
+
 .nav-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
 }
-.nav-card .icon {
-    width: 48px; height: 48px;
-    margin-bottom: 1rem; color: #3b82f6;
-}
+
 .nav-card h3 {
-    font-size: 1.25rem; font-weight: 600; color: #1f2937;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
 }
+
 .nav-card p {
-    font-size: 0.875rem; color: #6b7280;
-    margin-top: 0.5rem; flex-grow: 1;
+    font-size: 0.875rem;
+    color: #6B7280;
 }
+
 .nav-card .go-arrow {
-    margin-top: 1rem; font-weight: 600;
-    color: #3b82f6; align-self: flex-end;
+    margin-top: 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #2563EB;
+    align-self: flex-end;
 }
 
-/* ================================================= */
-/* === ESTILOS PARA OS CARDS DAS PÁGINAS INTERNAS === */
-/* ================================================= */
-
-/* Define o estilo do card, similar ao .nav-card mas para conteúdo geral. */
-.card {
-    background-color: white; /* Fundo branco */
-    border-radius: 0.75rem; /* Bordas arredondadas (12px) */
-    /* Sombra para dar o efeito de "flutuação" */
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-    padding: 1.5rem; /* Espaçamento interno (24px) */
-}
-
-/* Estilos para o autocomplete, para garantir que apareça corretamente */
-.autocomplete-container {
-    position: relative;
-}
-
-.autocomplete-results {
-    position: absolute;
+/* --- FORMULÁRIOS --- */
+.form-input {
     width: 100%;
-    border: 1px solid #d1d5db;
-    border-top: none;
-    max-height: 200px;
+    border: 1px solid #D1D5DB;
+    padding: 0.6rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    font-size: 0.95rem;
+    transition: border-color 0.15s;
+    
+    /* CORREÇÃO DO CURSOR INVISÍVEL */
+    color: #1F2937;       /* Garante que o texto é cinza escuro */
+    caret-color: #1F2937; /* Garante que o cursor (traço) é da mesma cor */
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* --- TABELAS --- */
+#table-scroll-container {
+    max-height: 600px;
     overflow-y: auto;
-    background-color: white;
+    border-radius: 0.5rem;
+    border: 1px solid #E5E7EB;
+}
+
+.table-sticky-header th {
+    position: sticky;
+    top: 0;
+    background-color: #F9FAFB;
     z-index: 10;
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
-    border-radius: 0 0 0.375rem 0.375rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.autocomplete-item {
-    padding: 0.75rem 1rem;
+th[data-sort] {
     cursor: pointer;
+    user-select: none;
+}
+th[data-sort]:hover {
+    background-color: #E5E7EB;
 }
 
-.autocomplete-item:hover {
-    background-color: #f3f4f6; /* bg-gray-100 */
-}
-.autocomplete-item.active {
-    background-color: #d1d5db; /* Um cinzento claro, pode ajustar a cor */
-    cursor: pointer;
-}
-/* --- CSS PARA O MODAL FINANCEIRO --- */
-
-/* O fundo escuro que cobre a tela toda */
+/* --- MODAIS (ESSENCIAL PARA NÃO TRAVAR A TELA) --- */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6); /* Fundo escuro */
+    backdrop-filter: blur(2px);
     z-index: 99;
-}
-
-/* O popup/modal em si */
-.modal-content {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    z-index: 100;
-    width: 90%;
-    max-width: 500px;
-}
-
-/* A classe que esconde o modal */
-.modal-oculto {
-    display: none;
-}
-
-/* Para modais grandes como o de OS, que precisam de mais espaço */
-.modal-content-large {
-    position: relative; /* Posição relativa ao overlay que faz scroll */
-    background: white;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    z-index: 100;
-    width: 90%;
-    max-width: 1024px; /* 6xl do Tailwind - MUITO LARGO */
-    margin: 2rem auto; /* Permite scroll se for muito alto */
-}
-
-
-/* --- Estilização do formulário (para ficar bonito) --- */
-#modalDespesa h3 {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-}
-
-#formDespesa {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    align-items: center;
+    justify-content: center;
 }
 
-#formDespesa label {
-    font-weight: 500;
-    margin-bottom: -0.5rem;
-}
-
-#formDespesa input,
-#formDespesa select {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #D1D5DB; /* cinza-300 */
-    border-radius: 6px;
-}
-
-#formDespesa button[type="submit"] {
-    background-color: #2563EB; /* azul-600 */
-    color: white;
-    padding: 0.75rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-}
-#formDespesa button[type="submit"]:hover {
-    background-color: #1D4ED8; /* azul-700 */
-}
-
-#formDespesa button[type="button"] {
-    background-color: #E5E7EB; /* cinza-200 */
-    color: #374151; /* cinza-700 */
-    padding: 0.75rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-}
-#formDespesa button[type="button"]:hover {
-    background-color: #D1D5DB; /* cinza-300 */
-}
-
-/* ... (todo o seu CSS existente, incluindo o do modal) ... */
-
-/* --- NOVO: CSS DOS CARDS DO DASHBOARD --- */
-.dashboard-card {
-    border-width: 1px;
-    border-style: solid;
-    border-radius: 8px;
-    padding: 1.5rem;
-    box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
-}
-.dashboard-card h4 {
-    font-size: 0.875rem; /* 14px */
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-}
-.dashboard-valor {
-    font-size: 1.875rem; /* 30px */
-    font-weight: 700;
-}
-
-/* --- NOVO: CSS DA TABELA DE MOVIMENTOS --- */
-#tabela-movimentos thead th {
-    font-size: 0.875rem;
-    color: #6B7280; /* cinza-500 */
-    font-weight: 600;
-}
-#tabela-movimentos tbody tr:nth-child(even) {
-    background-color: #F9FAFB; /* cinza-50 */
-}
-#tabela-movimentos tbody td {
-    padding: 0.75rem 0.75rem;
-    vertical-align: top;
-}
-.valor-despesa {
-    color: #DC2626; /* red-600 */
-    font-weight: 500;
-}
-.valor-receita {
-    color: #16A34A; /* green-600 */
-    font-weight: 500;
-}
-
-/* NOVO: Estilo para cabeçalhos de tabela ordenáveis */
-th[data-sort] { 
-    cursor: pointer; 
-    user-select: none; 
-}
-th[data-sort]:hover { 
-    background-color: #e5e7eb; /* cinza-200 */
-}
-/* --- NOVO: Barra de Rolagem para a Tabela do Dashboard --- */
-
-#table-scroll-container {
-    /* Define uma altura máxima. O scroll só aparece se a tabela for maior que isto. */
-    max-height: 500px; 
-    
-    /* Adiciona a barra de rolagem vertical (Y) automaticamente */
+.modal-content, .modal-content-large {
+    background: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+    max-height: 90vh;
     overflow-y: auto;
-    
-    /* (Opcional) Adiciona uma pequena borda para separar da tabela */
-    border-top: 1px solid #e5e7eb; /* cinza-200 */
-    border-bottom: 1px solid #e5e7eb; /* cinza-200 */
+    width: 95%;
+    position: relative;
 }
 
-/* Faz o cabeçalho da tabela "colar" no topo ao rolar */
-.table-sticky-header th {
-    position: sticky;
-    top: 0;
-    /* (Usamos a cor de fundo do seu thead) */
-    background-color: #f9fafb; /* bg-gray-100 */
-    /* Garante que o cabeçalho fica acima do conteúdo */
-    z-index: 10; 
+.modal-content { max-width: 500px; }
+.modal-content-large { max-width: 1000px; }
+
+/* CLASSE QUE ESCONDE O MODAL - SE FALTAR ISSO, A TELA FICA TRAVADA */
+.modal-oculto, .hidden {
+    display: none !important;
 }
 
-/* Estilo para Webkit (Chrome/Electron) */
-.custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+/* --- FEEDBACK --- */
+.feedback-alert {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-weight: bold;
 }
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
+
+/* --- AUTOCOMPLETE --- */
+.autocomplete-container { position: relative; }
+.autocomplete-results {
+    position: absolute;
+    width: 100%;
+    border: 1px solid #E5E7EB;
+    background-color: white;
+    z-index: 50;
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
+.autocomplete-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #F3F4F6;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+.autocomplete-item:hover {
+    background-color: #EFF6FF;
+    color: #1D4ED8;
 }

@@ -1,7 +1,8 @@
 // backend/controllers/servicoController.js
 const Servico = require('../models/servicoModel');
+const { dbGet } = require('../database/database'); // Importante para verificar duplicidade
 
-// --- FUNÇÃO DE BUSCA ADICIONADA ---
+// --- FUNÇÃO DE BUSCA ---
 const buscarServicosPorNome = async (req, res) => {
     try {
         const termo = req.query.q;
@@ -37,18 +38,44 @@ const listarServicos = async (req, res) => {
     }
 };
 
+// --- CRIAÇÃO COM PROTEÇÃO ---
 const criarServico = async (req, res) => {
     try {
-        const result = await Servico.create(req.body);
+        const nomeLimpo = req.body.nome.trim();
+
+        // Verifica se já existe
+        const duplicado = await dbGet('SELECT id FROM Servicos WHERE UPPER(nome) = UPPER(?)', [nomeLimpo]);
+        
+        if (duplicado) {
+            return res.status(400).json({ message: `O serviço "${nomeLimpo}" já está cadastrado!` });
+        }
+
+        const dados = { ...req.body, nome: nomeLimpo };
+        const result = await Servico.create(dados);
         res.status(201).json({ id: result.id, message: 'Serviço criado com sucesso.' });
     } catch (err) {
         res.status(500).json({ message: 'Erro ao criar serviço.', error: err.message });
     }
 };
 
+// --- ATUALIZAÇÃO COM PROTEÇÃO ---
 const atualizarServico = async (req, res) => {
     try {
-        await Servico.update(req.params.id, req.body);
+        const nomeLimpo = req.body.nome.trim();
+        const id = req.params.id;
+
+        // Verifica duplicidade (exceto o próprio ID)
+        const duplicado = await dbGet(
+            'SELECT id FROM Servicos WHERE UPPER(nome) = UPPER(?) AND id != ?', 
+            [nomeLimpo, id]
+        );
+
+        if (duplicado) {
+            return res.status(400).json({ message: `Já existe outro serviço chamado "${nomeLimpo}"!` });
+        }
+
+        const dados = { ...req.body, nome: nomeLimpo };
+        await Servico.update(id, dados);
         res.json({ message: 'Serviço atualizado com sucesso.' });
     } catch (err) {
         res.status(500).json({ message: 'Erro ao atualizar serviço.', error: err.message });
@@ -73,5 +100,5 @@ module.exports = {
     atualizarServico,
     removerServico,
     buscarServicoPorId,
-    buscarServicosPorNome // <-- EXPORTAR A NOVA FUNÇÃO
+    buscarServicosPorNome
 };

@@ -1,481 +1,602 @@
-// public/js/gestao_os.js (Versão Definitiva e 100% Completa)
-
-document.addEventListener('DOMContentLoaded', async () => {
-    // --- CONFIGURAÇÃO E GLOBAIS ---
+document.addEventListener('DOMContentLoaded', () => {
     const API_URL = 'http://localhost:3002/api';
-    let todasAsOS = [];
-    let listaProdutos = [];
-    let listaServicos = [];
-    let osAtual = null;
-    let selectedItemOS = { produto: null, servico: null };
-    const statusOrder = { 'Em andamento': 1, 'Aguardando peça': 2, 'Aberta': 3, 'Finalizada': 4, 'Entregue': 5, 'Cancelada': 6 };
-    let sortState = { column: 'status', direction: 'asc' };
+    
+    // ESTADO
+    let listaOSCache = [];
+    let cacheProdutos = []; 
+    let cacheServicos = []; 
+    let ordemAtual = { coluna: 'id', direcao: 'desc' }; 
+    let osIdEdicao = null;
+    let itensParaSalvar = []; 
+    let servicosParaSalvar = [];
 
-    // --- ELEMENTOS DO DOM ---
-    const tabelaOSHead = document.getElementById('tabela-os-head');
-    const tabelaOSBody = document.getElementById('tabela-os');
+    // ELEMENTOS
+    const tabelaCorpo = document.getElementById('tabela-os');
     const inputBusca = document.getElementById('input-busca-placa');
+    const btnNovaOS = document.getElementById('btnNovaOS');
     const feedbackAlert = document.getElementById('feedback-alert');
-    const osModal = document.getElementById('os-modal');
-    const osModalTitle = document.getElementById('os-modal-title');
-    const osModalBody = document.getElementById('os-modal-body');
+    const modalOS = document.getElementById('os-modal');
+    const modalBody = document.getElementById('os-modal-body');
 
-    // --- CARREGAMENTO INICIAL DE DADOS ---
-    await (async () => {
+    // --- HELPERS ---
+    const safeNumber = (val) => parseFloat(String(val).replace(',', '.')) || 0;
+    const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(safeNumber(val));
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+
+    const showAlert = (msg, success = true) => {
+        if (!feedbackAlert) return alert(msg);
+        feedbackAlert.textContent = msg;
+        feedbackAlert.className = `p-4 mb-4 rounded text-center font-bold ${success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+        feedbackAlert.classList.remove('hidden');
+        setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
+    };
+
+    // --- CARREGAR DADOS AUXILIARES ---
+    const carregarDadosAuxiliares = async () => {
         try {
-            const [produtosRes, servicosRes] = await Promise.all([fetch(`${API_URL}/produtos`), fetch(`${API_URL}/servicos`)]);
-            listaProdutos = await produtosRes.json();
-            listaServicos = await servicosRes.json();
-        } catch (error) { console.error('Erro ao carregar produtos e serviços:', error); }
-    })();
-
-    // --- FUNÇÕES AUXILIARES ---
-    const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-    const showAlert = (message, isSuccess = true) => {
-        if (!feedbackAlert) return;
-        feedbackAlert.textContent = message;
-        feedbackAlert.className = `p-4 mb-4 text-sm rounded-lg ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-        feedbackAlert.style.display = 'block';
-        setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
-    };
-
-    // --- LÓGICA DA PÁGINA PRINCIPAL ---
-    const sortData = (data) => {
-        return [...data].sort((a, b) => {
-            const valA = a[sortState.column], valB = b[sortState.column];
-            const direction = sortState.direction === 'asc' ? 1 : -1;
-            if (sortState.column === 'status') return (statusOrder[valA] - statusOrder[valB]) * direction;
-            if (['id', 'total'].includes(sortState.column)) return (parseFloat(valA) - parseFloat(valB)) * direction;
-            if (sortState.column === 'data_entrada') return (new Date(valA) - new Date(valB)) * direction;
-            return String(valA).localeCompare(String(valB)) * direction;
-        });
-    };
-    const updateHeaderSortIcons = () => {
-        tabelaOSHead.querySelectorAll('th[data-sort]').forEach(th => {
-            th.textContent = th.textContent.replace(/ [▲▼]/, '');
-            if (th.dataset.sort === sortState.column) th.textContent += sortState.direction === 'asc' ? ' ▲' : ' ▼';
-        });
-    };
-    const desenharTabela = (osParaRenderizar) => {
-        tabelaOSBody.innerHTML = '';
-        if (osParaRenderizar.length === 0) {
-            tabelaOSBody.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">Nenhuma Ordem de Serviço encontrada.</td></tr>`;
-            return;
-        }
-        osParaRenderizar.forEach(os => {
-            const tr = document.createElement('tr');
-            const dataEntrada = new Date(os.data_entrada).toLocaleDateString('pt-BR');
-            let statusClass = 'bg-yellow-100 text-yellow-800';
-            if (['Finalizada', 'Entregue'].includes(os.status)) statusClass = 'bg-green-100 text-green-800';
-            if (os.status === 'Cancelada') statusClass = 'bg-red-100 text-red-800';
-            tr.innerHTML = `
-                <td class="px-6 py-4 font-bold">${os.id}</td>
-                <td class="px-6 py-4">${os.placa}</td>
-                <td class="px-6 py-4">${os.cliente_nome}</td>
-                <td class="px-6 py-4">${dataEntrada}</td>
-                <td class="px-6 py-4 font-semibold">${formatCurrency(os.total)}</td>
-                <td class="px-6 py-4"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${os.status}</span></td>
-                <td class="px-6 py-4 text-right text-sm font-medium"><button data-action="editar-os" data-os-id="${os.id}" class="text-indigo-600 hover:text-indigo-900">Ver / Editar</button></td>
-            `;
-            tabelaOSBody.appendChild(tr);
-        });
-    };
-    const renderizarTabelaOS = async () => {
-        try {
-            const response = await fetch(`${API_URL}/ordens-servico`);
-            todasAsOS = await response.json();
-            const osOrdenadas = sortData(todasAsOS);
-            desenharTabela(osOrdenadas);
-            updateHeaderSortIcons();
-        } catch (error) { showAlert('Não foi possível carregar as Ordens de Serviço.', false); }
-    };
-
-    // --- FUNÇÕES DO MODAL ---
-    // --- CORREÇÃO 1: Mudar de .remove('active') para .add('modal-oculto') ---
-    const fecharModal = () => {
-        osModal.classList.add('modal-oculto');
-        osModalBody.innerHTML = '';
-        osAtual = null;
-    };
-
-    const abrirModalNovaOS = () => {
-        osModalTitle.textContent = 'Nova Ordem de Serviço';
-        osModalBody.innerHTML = `
-            <form id="form-nova-os">
-                <div class="mb-4">
-                    <label for="input-placa" class="block text-sm font-medium text-gray-700">Placa do Veículo</label>
-                    <div class="flex items-center gap-2 mt-1">
-                        <input type="text" id="input-placa" required class="form-input block w-full uppercase">
-                        <button type="button" data-action="procurar-placa" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 whitespace-nowrap">Procurar</button>
-                    </div>
-                </div>
-                <div id="info-cliente-veiculo" class="hidden p-3 bg-gray-100 rounded-md mb-4 text-sm"></div>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" data-action="fechar-modal" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancelar</button>
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700" disabled>Criar OS</button>
-                </div>
-            </form>
-        `;
-        // --- CORREÇÃO 2: Mudar de .add('active') para .remove('modal-oculto') ---
-        osModal.classList.remove('modal-oculto');
-    };
-    const procurarPlaca = async () => {
-        const placaInput = osModalBody.querySelector('#input-placa');
-        const infoDiv = osModalBody.querySelector('#info-cliente-veiculo');
-        const btnCriar = osModalBody.querySelector('button[type="submit"]');
-        if (!placaInput || !infoDiv || !btnCriar) return;
-
-        const placa = placaInput.value.toUpperCase();
-        if (!placa) return;
-
-        try {
-            const response = await fetch(`${API_URL}/veiculos/placa/${placa}`);
-            if (!response.ok) {
-                infoDiv.innerHTML = `<p>Veículo não encontrado. <a href="gestao_clientes.html" class="text-blue-600 hover:underline">Cadastrar novo?</a></p>`;
-                btnCriar.disabled = true;
-            } else {
-                const veiculo = await response.json();
-                infoDiv.innerHTML = `<p><strong>Cliente:</strong> ${veiculo.cliente.nome}</p><p><strong>Veículo:</strong> ${veiculo.marca || ''} ${veiculo.modelo || ''}</p>`;
-                btnCriar.disabled = false;
-            }
-            infoDiv.classList.remove('hidden');
+            const [resProd, resServ] = await Promise.all([
+                fetch(`${API_URL}/produtos`),
+                fetch(`${API_URL}/servicos`)
+            ]);
+            if (resProd.ok) cacheProdutos = await resProd.json();
+            if (resServ.ok) cacheServicos = await resServ.json();
         } catch (error) {
-            infoDiv.innerHTML = `<p class="text-red-600">Erro ao procurar placa.</p>`;
-            btnCriar.disabled = true;
-            infoDiv.classList.remove('hidden');
-        }
-    };
-    const criarNovaOS = async () => {
-        const placa = osModalBody.querySelector('#input-placa').value.toUpperCase();
-        try {
-            const response = await fetch(`${API_URL}/ordens-servico`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ placa })
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message);
-
-            fecharModal();
-            showAlert('Nova OS criada com sucesso!');
-            await renderizarTabelaOS();
-            abrirModalEdicaoOS(result.id);
-        } catch (error) {
-            showAlert(error.message, false);
+            console.error("Erro dados aux:", error);
         }
     };
 
-    // --- LÓGICA DE EDIÇÃO COMPLETA ---
-    const setupAutocompleteOS = (inputId, items, type) => {
+    // --- AUTOCOMPLETE INTELIGENTE ---
+    const setupAutocomplete = (inputId, listId, dataArray, priceInputId, hiddenIdCallback) => {
         const input = document.getElementById(inputId);
-        if (!input) return;
-        const resultsContainer = document.createElement('div');
-        resultsContainer.className = 'autocomplete-results hidden';
-        input.parentNode.appendChild(resultsContainer);
+        const list = document.getElementById(listId);
+        const priceInput = document.getElementById(priceInputId);
+        
+        if (!input || !list) return;
 
-        input.addEventListener('input', () => {
-            const query = input.value.toLowerCase();
-            resultsContainer.innerHTML = '';
-            selectedItemOS[type] = null;
-            if (!query) { resultsContainer.classList.add('hidden'); return; }
+        let currentFocus = -1;
 
-            const filtered = items
-                .filter(i => i.nome.toLowerCase().includes(query))
-                .sort((a, b) => { // <-- LÓGICA DE ORDENAÇÃO CORRIGIDA
-                    const aStartsWith = a.nome.toLowerCase().startsWith(query);
-                    const bStartsWith = b.nome.toLowerCase().startsWith(query);
-                    if (aStartsWith && !bStartsWith) return -1;
-                    if (!aStartsWith && bStartsWith) return 1;
-                    return a.nome.localeCompare(b.nome);
+        input.addEventListener('input', function() {
+            hiddenIdCallback(null); 
+            const termo = this.value.toLowerCase();
+            list.innerHTML = '';
+            currentFocus = -1;
+            
+            if (termo.length < 1) {
+                list.classList.add('hidden');
+                return;
+            }
+
+            const matches = dataArray.filter(item => 
+                (item.nome && item.nome.toLowerCase().includes(termo)) || 
+                (item.codigo && item.codigo.toLowerCase().includes(termo))
+            );
+
+            matches.sort((a, b) => {
+                const nomeA = a.nome.toLowerCase();
+                const nomeB = b.nome.toLowerCase();
+                const aStarts = nomeA.startsWith(termo);
+                const bStarts = nomeB.startsWith(termo);
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1; 
+                return nomeA.localeCompare(nomeB); 
+            });
+
+            if (matches.length > 0) {
+                list.classList.remove('hidden');
+                matches.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = "autocomplete-item p-2 hover:bg-blue-100 cursor-pointer border-b text-sm text-gray-700";
+                    const estoqueInfo = item.quantidade_em_estoque !== undefined ? ` (Est: ${item.quantidade_em_estoque})` : '';
+                    
+                    // CORREÇÃO 1: Busca o preço correto (produtos usam preco_unitario, serviços usam preco/valor)
+                    const precoItem = item.preco_unitario || item.preco || item.valor || 0;
+
+                    div.innerHTML = `<strong>${item.nome}</strong> - ${formatCurrency(precoItem)}${estoqueInfo}`;
+                    div.innerHTML += `<input type='hidden' value='${JSON.stringify(item)}'>`;
+
+                    div.addEventListener('click', function() {
+                        selecionarItem(item);
+                    });
+                    list.appendChild(div);
                 });
-
-            resultsContainer.classList.remove('hidden');
-            filtered.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'autocomplete-item';
-                const price = item.preco_unitario || item.preco || 0;
-                div.textContent = `${item.nome} (${formatCurrency(price)})`;
-                div.addEventListener('click', () => {
-                    input.value = item.nome;
-                    selectedItemOS[type] = item.id;
-                    resultsContainer.classList.add('hidden');
-                });
-                resultsContainer.appendChild(div);
-            });
+            } else {
+                list.classList.add('hidden');
+            }
         });
-    };
 
-    const renderizarItensServicosNoModal = () => {
-        const itensLista = document.getElementById('os-itens-lista');
-        const servicosLista = document.getElementById('os-servicos-lista');
-        const totalModal = document.getElementById('os-total-valor');
-        if (!itensLista || !servicosLista || !totalModal) return;
-
-        itensLista.innerHTML = '';
-        servicosLista.innerHTML = '';
-        let total = 0;
-
-        osAtual.itens.forEach((item, index) => {
-            const subtotal = item.quantidade * item.valor_unitario;
-            const itemHTML = `<div class="flex justify-between items-center text-sm p-1 bg-gray-100 rounded"><span>${item.quantidade}x ${item.nome} - ${formatCurrency(subtotal)}</span><button type="button" data-action="remover-item" data-item-id="${item.id}" class="text-red-500 font-bold px-2">X</button></div>`;
-            itensLista.innerHTML += itemHTML;
-            total += subtotal;
+        input.addEventListener('keydown', function(e) {
+            let x = list.getElementsByTagName('div');
+            if (e.key === 'ArrowDown') { currentFocus++; addActive(x); }
+            else if (e.key === 'ArrowUp') { currentFocus--; addActive(x); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (currentFocus > -1 && x) x[currentFocus].click(); }
+            else if (e.key === 'Escape') list.classList.add('hidden');
         });
-        osAtual.servicos.forEach((servico, index) => {
-            const subtotal = servico.quantidade * servico.valor;
-            const servicoHTML = `<div class="flex justify-between items-center text-sm p-1 bg-gray-100 rounded"><span>${servico.quantidade}x ${servico.nome} - ${formatCurrency(subtotal)}</span><button type="button" data-action="remover-servico" data-servico-id="${servico.id}" class="text-red-500 font-bold px-2">X</button></div>`;
-            servicosLista.innerHTML += servicoHTML;
-            total += subtotal;
-        });
-        totalModal.textContent = formatCurrency(total);
-    };
 
-    const adicionarItemOS = async () => {
-        try {
-            const produtoId = selectedItemOS.produto;
-            const quantidade = parseInt(document.getElementById('input-os-produto-qtd').value);
-            if (!produtoId || !quantidade) return;
-
-            const response = await fetch(`${API_URL}/os/${osAtual.id}/itens`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ produto_id: produtoId, quantidade })
-            });
-            if (!response.ok) { const err = await response.json(); throw new Error(err.message); }
-
-            await abrirModalEdicaoOS(osAtual.id);
-        } catch (error) { showAlert(error.message, false); }
-    };
-
-    const removerItemOS = async (itemId) => {
-        try {
-            const response = await fetch(`${API_URL}/itens-os/${itemId}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Falha ao remover item.');
-            await abrirModalEdicaoOS(osAtual.id);
-        } catch (error) { showAlert(error.message, false); }
-    };
-
-    const adicionarServicoOS = async () => {
-        try {
-            const servicoId = selectedItemOS.servico;
-            const quantidade = parseInt(document.getElementById('input-os-servico-qtd').value);
-            if (!servicoId || !quantidade) return;
-
-            const response = await fetch(`${API_URL}/os/${osAtual.id}/servicos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ servico_id: servicoId, quantidade })
-            });
-            if (!response.ok) throw new Error('Falha ao adicionar serviço.');
-
-            await abrirModalEdicaoOS(osAtual.id);
-        } catch (error) { showAlert(error.message, false); }
-    };
-
-    const removerServicoOS = async (servicoId) => {
-        try {
-            const response = await fetch(`${API_URL}/servicos-os/${servicoId}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error('Falha ao remover serviço.');
-            await abrirModalEdicaoOS(osAtual.id);
-        } catch (error) { showAlert(error.message, false); }
-    };
-
-    const salvarAlteracoesOS = async () => {
-        const data = {
-            problema_relatado: document.getElementById('problema_relatado').value,
-            diagnostico_tecnico: document.getElementById('diagnostico_tecnico').value,
-            status: document.getElementById('status-os').value,
-            // ESTAS LINHAS ESTAVAM EM FALTA:
-            itens: osAtual.itens,
-            servicos: osAtual.servicos
-        };
-
-        try {
-            const response = await fetch(`${API_URL}/ordens-servico/${osAtual.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (!response.ok) throw new Error('Falha ao salvar alterações.');
-            showAlert('Ordem de Serviço atualizada com sucesso!');
-            fecharModal();
-            await renderizarTabelaOS();
-        } catch (error) {
-            showAlert(error.message, false);
+        function addActive(x) {
+            if (!x) return;
+            removeActive(x);
+            if (currentFocus >= x.length) currentFocus = 0;
+            if (currentFocus < 0) currentFocus = (x.length - 1);
+            x[currentFocus].classList.add('bg-blue-200', 'font-bold');
+            x[currentFocus].scrollIntoView({ block: 'nearest' });
         }
+
+        function removeActive(x) {
+            for (let i = 0; i < x.length; i++) x[i].classList.remove('bg-blue-200', 'font-bold');
+        }
+
+        function selecionarItem(item) {
+            input.value = item.nome;
+            if(priceInput) {
+                // CORREÇÃO 2: Preenche o input formatado bonitinho
+                const val = item.preco_unitario || item.preco || item.valor || 0;
+                // Se for 0, deixa vazio para mostrar o placeholder R$ 0,00, senão formata "19,90"
+                if (val === 0) {
+                    priceInput.value = "";
+                } else {
+                    priceInput.value = val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            }
+            hiddenIdCallback(item.id);
+            list.innerHTML = '';
+            list.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (e.target !== input && e.target !== list) list.classList.add('hidden');
+        });
     };
 
-    const imprimirOS = async () => { // <-- MUDANÇA 1: Tornou-se 'async'
-        if (!osAtual) return showAlert('Nenhuma OS aberta para imprimir.', false);
+    // --- MANIPULAÇÃO DE MODAL E PLACA ---
+    const solicitarPlacaVisual = () => {
+        return new Promise((resolve) => {
+            const div = document.createElement('div');
+            div.className = "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]";
+            div.innerHTML = `
+                <div class="bg-white rounded-xl shadow-2xl p-6 w-96 border border-gray-200">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Nova Ordem de Serviço</h3>
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 text-center">Digite a Placa</label>
+                        <input type="text" id="input-nova-placa-modal" class="w-full border-2 border-gray-300 rounded-lg p-3 text-3xl text-center uppercase font-bold text-gray-800 focus:border-blue-600 outline-none" placeholder="ABC1234" maxlength="8" autocomplete="off">
+                    </div>
+                    <div class="flex justify-between gap-3">
+                        <button id="btn-cancel-placa-modal" class="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">Cancelar</button>
+                        <button id="btn-confirm-placa-modal" class="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg">Criar OS &rarr;</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(div);
+            const input = document.getElementById('input-nova-placa-modal');
+            input.focus();
+            const fechar = (val) => { div.remove(); resolve(val); };
+            document.getElementById('btn-cancel-placa-modal').onclick = () => fechar(null);
+            const confirmar = () => {
+                const v = input.value.trim().toUpperCase();
+                if(v.length < 3) return input.classList.add('border-red-500');
+                fechar(v);
+            };
+            document.getElementById('btn-confirm-placa-modal').onclick = confirmar;
+            input.onkeydown = (e) => { if(e.key === 'Enter') confirmar(); };
+            div.onclick = (e) => { if(e.target === div) fechar(null); };
+        });
+    };
 
-        // --- MUDANÇA 2: Buscar os dados da Empresa (NOVO) ---
-        let dadosEmpresa = {};
+    // --- CARREGAR LISTA ---
+    const carregarOS = async () => {
         try {
-            const response = await fetch(`${API_URL}/empresa`);
-            if (!response.ok) throw new Error('Erro ao buscar dados da empresa');
-            dadosEmpresa = await response.json();
+            const res = await fetch(`${API_URL}/os`);
+            if (!res.ok) throw new Error("Erro API");
+            listaOSCache = await res.json();
+            renderizarTabela();
         } catch (err) {
             console.error(err);
-            showAlert('Erro ao carregar dados da empresa para o recibo.', false);
+            if(tabelaCorpo) tabelaCorpo.innerHTML = '<tr><td colspan="7" class="text-center text-red-500">Erro ao carregar dados.</td></tr>';
         }
-        // --- FIM DA MUDANÇA 2 ---
-
-        const template = document.getElementById('os-recibo-template');
-        if (!template) return showAlert('Molde de impressão não encontrado no HTML.', false);
-
-        const clone = template.content.cloneNode(true);
-
-        // --- MUDANÇA 3: Preencher os dados da Empresa (NOVO) ---
-        clone.querySelector('[data-recibo="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
-        clone.querySelector('[data-recibo="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
-        // --- FIM DA MUDANÇA 3 ---
-
-        clone.querySelector('[data-recibo="os-id"]').textContent = osAtual.id;
-        clone.querySelector('[data-recibo="data"]').textContent = new Date(osAtual.data_entrada).toLocaleDateString('pt-BR');
-        clone.querySelector('[data-recibo="cliente-nome"]').textContent = osAtual.cliente_nome;
-        clone.querySelector('[data-recibo="veiculo-modelo"]').textContent = `${osAtual.marca || ''} ${osAtual.modelo || ''}`;
-        clone.querySelector('[data-recibo="veiculo-placa"]').textContent = osAtual.placa;
-        clone.querySelector('[data-recibo="problema-relatado"]').textContent = osAtual.problema_relatado || 'Nenhum problema relatado.';
-        clone.querySelector('[data-recibo="diagnostico-tecnico"]').textContent = osAtual.diagnostico_tecnico || 'Nenhum diagnóstico informado.';
-        clone.querySelector('[data-recibo="total"]').textContent = formatCurrency(osAtual.total);
-
-        const tabelaItensBody = clone.querySelector('[data-recibo="itens-tabela"]');
-        let htmlItens = '';
-        osAtual.itens.forEach(item => {
-            const subtotal = item.quantidade * item.valor_unitario;
-            htmlItens += `<tr><td>${item.nome} (Peça)</td><td style="text-align: center;">${item.quantidade}</td><td style="text-align: right;">${formatCurrency(item.valor_unitario)}</td><td style="text-align: right;">${formatCurrency(subtotal)}</td></tr>`;
-        });
-        osAtual.servicos.forEach(servico => {
-            const subtotal = servico.quantidade * servico.valor;
-            htmlItens += `<tr><td>${servico.nome} (Serviço)</td><td style="text-align: center;">${servico.quantidade}</td><td style="text-align: right;">${formatCurrency(servico.valor)}</td><td style="text-align: right;">${formatCurrency(subtotal)}</td></tr>`;
-        });
-        tabelaItensBody.innerHTML = htmlItens;
-
-        const htmlContent = new XMLSerializer().serializeToString(clone);
-        const filename = `Ordem_de_Servico_${osAtual.id}.pdf`;
-        window.electronAPI.send('print-to-pdf', { html: htmlContent, name: filename });
     };
 
-    const abrirModalEdicaoOS = async (osId) => {
+    const renderizarTabela = () => {
+        if (!tabelaCorpo) return;
+        tabelaCorpo.innerHTML = '';
+        const termo = inputBusca ? inputBusca.value.toLowerCase() : '';
+        let lista = listaOSCache.filter(o => JSON.stringify(o).toLowerCase().includes(termo));
+
+        if (lista.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-gray-500">Nenhuma OS encontrada.</td></tr>';
+            return;
+        }
+
+        lista.sort((a, b) => {
+            let valA = a[ordemAtual.coluna], valB = b[ordemAtual.coluna];
+            if (['id', 'total'].includes(ordemAtual.coluna)) { valA = safeNumber(valA); valB = safeNumber(valB); }
+            else { valA = String(valA||'').toLowerCase(); valB = String(valB||'').toLowerCase(); }
+            if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        lista.forEach(os => {
+            let badge = 'bg-gray-100 text-gray-800';
+            const st = (os.status || 'Orçamento').toUpperCase();
+            if (st.includes('FINALIZADA') || st.includes('CONCLU')) badge = 'bg-green-100 text-green-800 border border-green-200';
+            else if (st.includes('ANDAMENTO')) badge = 'bg-blue-100 text-blue-800 border border-blue-200';
+            else if (st.includes('ENTREGUE')) badge = 'bg-teal-100 text-teal-800 border border-teal-200';
+            else badge = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+
+            tabelaCorpo.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b transition-colors cursor-pointer" onclick="abrirModalEdicao(${os.id})">
+                    <td class="px-6 py-4 font-bold text-gray-700">#${os.id}</td>
+                    <td class="px-6 py-4 font-bold uppercase">${os.placa || '-'}</td>
+                    <td class="px-6 py-4 text-gray-600">${os.cliente_nome || 'Consumidor'}</td>
+                    <td class="px-6 py-4 text-sm">${formatDate(os.data_entrada)}</td>
+                    <td class="px-6 py-4 font-bold text-gray-800">${formatCurrency(os.total)}</td>
+                    <td class="px-6 py-4 text-center"><span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${badge}">${os.status}</span></td>
+                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                        <button class="text-blue-600 font-bold hover:text-blue-800 bg-blue-50 px-3 py-1 rounded hover:bg-blue-100">Ver / Editar</button>
+                    </td>
+                </tr>`;
+        });
+    };
+
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            ordemAtual.direcao = (ordemAtual.coluna === col && ordemAtual.direcao === 'asc') ? 'desc' : 'asc';
+            ordemAtual.coluna = col;
+            renderizarTabela();
+        });
+    });
+
+    // --- MODAL DE EDIÇÃO ---
+    window.abrirModalEdicao = async (id = null) => {
+        osIdEdicao = id;
+        itensParaSalvar = [];
+        servicosParaSalvar = [];
+        
+        modalOS.classList.remove('hidden', 'modal-oculto');
+        modalBody.innerHTML = '<div class="text-center p-10"><p>Carregando...</p></div>';
+
+        if (cacheProdutos.length === 0) await carregarDadosAuxiliares();
+
         try {
-            const response = await fetch(`${API_URL}/ordens-servico/${osId}`);
-            if (!response.ok) throw new Error('Não foi possível carregar os dados da OS.');
-            osAtual = await response.json();
+            let dados = { status: 'Orçamento', placa: '', itens: [], servicos: [] };
+            if (id) {
+                const res = await fetch(`${API_URL}/os/${id}`);
+                if (res.ok) dados = await res.json();
+                
+                itensParaSalvar = (dados.itens || []).map(i => ({ produto_id: i.produto_id, nome: i.nome || i.nome_produto || i.descricao, quantidade: i.quantidade, valor_unitario: i.valor_unitario }));
+                servicosParaSalvar = (dados.servicos || []).map(s => ({ servico_id: s.servico_id, nome: s.nome || s.descricao, quantidade: s.quantidade || 1, valor: s.valor }));
+            }
+            renderizarModalHTML(dados);
+            
+            window.tempProdutoId = null;
+            window.tempServicoId = null;
 
-            osModalTitle.textContent = `Editando Ordem de Serviço #${osAtual.id}`;
-            osModalBody.innerHTML = `
-                <div class="text-sm mb-4 p-4 bg-gray-50 rounded-lg border">
-                    <p><strong>Cliente:</strong> ${osAtual.cliente_nome} | <strong>Telefone:</strong> ${osAtual.cliente_telefone || 'N/A'}</p>
-                    <p><strong>Veículo:</strong> ${osAtual.marca || ''} ${osAtual.modelo || ''} | <strong>Placa:</strong> ${osAtual.placa}</p>
-                </div>
-                <form id="form-edit-os">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label for="problema_relatado" class="block text-sm font-medium text-gray-700">Problema Relatado</label>
-                            <textarea id="problema_relatado" rows="4" class="form-input mt-1 w-full">${osAtual.problema_relatado || ''}</textarea>
-                        </div>
-                        <div>
-                            <label for="diagnostico_tecnico" class="block text-sm font-medium text-gray-700">Diagnóstico Técnico</label>
-                            <textarea id="diagnostico_tecnico" rows="4" class="form-input mt-1 w-full">${osAtual.diagnostico_tecnico || ''}</textarea>
-                        </div>
-                    </div>
-                    <hr class="my-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <h4 class="font-semibold mb-2">Itens / Peças</h4>
-                            <div id="os-itens-lista" class="mb-4 space-y-2 min-h-[60px]"></div>
-                            <div class="flex items-end gap-2">
-                                <div class="flex-grow autocomplete-container relative"><label class="text-xs">Adicionar Item</label><input type="text" id="input-os-produto" placeholder="Buscar item..." class="form-input w-full text-sm"></div>
-                                <div class="w-20"><label class="block text-xs text-center">Qtd.</label><input type="number" id="input-os-produto-qtd" value="1" min="1" class="form-input w-full mt-1 text-center text-sm"></div>
-                                <button type="button" data-action="adicionar-item" class="bg-gray-600 text-white px-3 py-2 text-xs rounded-md hover:bg-gray-700 h-10">Add</button>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold mb-2">Serviços Executados</h4>
-                            <div id="os-servicos-lista" class="mb-4 space-y-2 min-h-[60px]"></div>
-                            <div class="flex items-end gap-2">
-                                <div class="flex-grow autocomplete-container relative"><label class="text-xs">Adicionar Serviço</label><input type="text" id="input-os-servico" placeholder="Buscar serviço..." class="form-input w-full text-sm"></div>
-                                <div class="w-20"><label class="block text-xs text-center">Qtd.</label><input type="number" id="input-os-servico-qtd" value="1" min="1" class="form-input w-full mt-1 text-center text-sm"></div>
-                                <button type="button" data-action="adicionar-servico" class="bg-gray-600 text-white px-3 py-2 text-xs rounded-md hover:bg-gray-700 h-10">Add</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center mt-6 pt-4 border-t">
-                        <div>
-                            <label for="status-os" class="block text-sm font-medium text-gray-700">Status</label>
-                            <select id="status-os" class="form-input mt-1"><option>Aberta</option><option>Em andamento</option><option>Aguardando peça</option><option>Finalizada</option><option>Entregue</option><option>Cancelada</option></select>
-                        </div>
-                        <div class="text-xl font-bold">TOTAL: <span id="os-total-valor">${formatCurrency(osAtual.total)}</span></div>
-                    </div>
-                    <div class="mt-8 flex justify-between">
-                        <button type="button" data-action="fechar-modal" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Fechar</button>
-                        <div><button type="button" data-action="imprimir-os" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg mr-2">Imprimir</button><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button></div>
-                    </div>
-                </form>
-            `;
-            document.getElementById('status-os').value = osAtual.status;
-            renderizarItensServicosNoModal();
-            setupAutocompleteOS('input-os-produto', listaProdutos, 'produto');
-            setupAutocompleteOS('input-os-servico', listaServicos, 'servico');
-            osModal.classList.add('active');
-        } catch (error) { showAlert(error.message, false); fecharModal(); }
-        osModal.classList.remove('modal-oculto');
+            setupAutocomplete('add-item-nome', 'list-item-autocomplete', cacheProdutos, 'add-item-valor', (id) => { window.tempProdutoId = id; });
+            setupAutocomplete('add-servico-nome', 'list-servico-autocomplete', cacheServicos, 'add-servico-valor', (id) => { window.tempServicoId = id; });
+
+            atualizarListasVisuais();
+        } catch (err) {
+            console.error(err);
+            modalBody.innerHTML = `<p class="text-red-500 p-4">Erro: ${err.message}</p>`;
+        }
     };
 
-    // --- EVENT LISTENERS ---
-    inputBusca.addEventListener('input', () => {
-        const termo = inputBusca.value.toLowerCase();
+    const renderizarModalHTML = (dados) => {
+        const isLocked = dados.status === 'Finalizada' || dados.status === 'Faturada' || dados.status === 'Entregue';
+        const disabledAttr = isLocked ? 'disabled' : '';
+        const bgInput = isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white';
 
-        const osFiltradas = todasAsOS
-            .filter(os =>
-                os.placa.toLowerCase().includes(termo) ||
-                os.cliente_nome.toLowerCase().includes(termo)
-            )
-            .sort((a, b) => { // <-- LÓGICA DE ORDENAÇÃO CORRIGIDA
-                const aClientStartsWith = a.cliente_nome.toLowerCase().startsWith(termo);
-                const bClientStartsWith = b.cliente_nome.toLowerCase().startsWith(termo);
-                const aPlacaStartsWith = a.placa.toLowerCase().startsWith(termo);
-                const bPlacaStartsWith = b.placa.toLowerCase().startsWith(termo);
+        let opcoesStatus = `
+            <option value="Orçamento" ${dados.status === 'Orçamento' ? 'selected' : ''}>Orçamento</option>
+            <option value="Em andamento" ${dados.status === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+            <option value="Aguardando peças" ${dados.status === 'Aguardando peças' ? 'selected' : ''}>Aguardando peças</option>
+        `;
+        if (isLocked) opcoesStatus += `<option value="${dados.status}" selected>${dados.status}</option>`;
 
-                if ((aClientStartsWith || aPlacaStartsWith) && !(bClientStartsWith || bPlacaStartsWith)) return -1;
-                if (!(aClientStartsWith || aPlacaStartsWith) && (bClientStartsWith || bPlacaStartsWith)) return 1;
+        modalBody.innerHTML = `
+            <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-gray-800 text-lg">Cliente: ${dados.cliente_nome || 'NÃO IDENTIFICADO'}</h3>
+                    <p class="text-gray-600 text-sm">Veículo: <span class="font-bold uppercase">${dados.modelo || ''} - ${dados.placa || ''}</span></p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-gray-400 font-bold">OS #${dados.id || 'NOVA'}</p>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${isLocked ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${dados.status || 'Nova'}</span>
+                </div>
+            </div>
 
-                return a.cliente_nome.localeCompare(b.cliente_nome);
-            });
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Problema Relatado</label>
+                    <textarea id="modal-problema" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.problema_relatado || dados.problema || ''}</textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Diagnóstico Técnico</label>
+                    <textarea id="modal-diagnostico" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.diagnostico_tecnico || dados.diagnostico || ''}</textarea>
+                </div>
+            </div>
 
-        desenharTabela(osFiltradas);
-    });
-    tabelaOSHead.addEventListener('click', (e) => {
-        const header = e.target.closest('th[data-sort]');
-        if (!header) return;
-        const column = header.dataset.sort;
-        if (sortState.column === column) sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-        else { sortState.column = column; sortState.direction = 'asc'; }
-        renderizarTabelaOS();
-    });
-    document.getElementById('btnNovaOS').addEventListener('click', abrirModalNovaOS);
-    tabelaOSBody.addEventListener('click', (e) => {
-        const button = e.target.closest('[data-action="editar-os"]');
-        if (button) abrirModalEdicaoOS(button.dataset.osId);
-    });
-    osModal.addEventListener('click', async (e) => {
-        const target = e.target.closest('[data-action]');
-        if (!target) { if (e.target === osModal) fecharModal(); return; }
-        const action = target.dataset.action;
-        if (action === 'fechar-modal') fecharModal();
-        if (action === 'procurar-placa') await procurarPlaca();
-        if (action === 'adicionar-item') await adicionarItemOS();
-        if (action === 'remover-item') await removerItemOS(target.dataset.itemId);
-        if (action === 'adicionar-servico') await adicionarServicoOS();
-        if (action === 'remover-servico') await removerServicoOS(target.dataset.servicoId);
-        if (action === 'imprimir-os') imprimirOS();
-    });
-    osModal.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (e.target.id === 'form-nova-os') await criarNovaOS();
-        if (e.target.id === 'form-edit-os') await salvarAlteracoesOS();
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="border rounded-lg p-4 bg-gray-50 flex flex-col h-full">
+                    <h4 class="font-bold text-gray-700 mb-3 border-b pb-2 flex justify-between">Itens <span class="text-xs text-gray-500 font-normal">Estoque</span></h4>
+                    <ul id="lista-itens-visual" class="space-y-2 mb-4 text-sm flex-grow ${isLocked ? 'opacity-75' : ''}"></ul>
+                    ${!isLocked ? `
+                    <div class="flex gap-2 items-end relative">
+                        <div class="flex-grow relative">
+                            <input id="add-item-nome" placeholder="Buscar item..." class="form-input text-sm w-full mb-1" autocomplete="off">
+                            <div id="list-item-autocomplete" class="autocomplete-results hidden absolute w-full max-h-40 overflow-y-auto bg-white border border-gray-300 z-50 rounded shadow-lg top-full left-0"></div>
+                            <div class="flex gap-2">
+                                <input id="add-item-qtd" type="number" value="1" class="form-input text-sm w-16 text-center">
+                                <input id="add-item-valor" type="text" placeholder="R$ 0,00" class="form-input text-sm w-24 text-right">
+                            </div>
+                        </div>
+                        <button onclick="adicionarItemLista()" class="bg-gray-700 text-white px-3 rounded font-bold h-10 hover:bg-gray-800 mb-0.5">+</button>
+                    </div>` : ''}
+                </div>
+
+                <div class="border rounded-lg p-4 bg-gray-50 flex flex-col h-full">
+                    <h4 class="font-bold text-gray-700 mb-3 border-b pb-2">Mão de Obra</h4>
+                    <ul id="lista-servicos-visual" class="space-y-2 mb-4 text-sm flex-grow ${isLocked ? 'opacity-75' : ''}"></ul>
+                    ${!isLocked ? `
+                    <div class="flex gap-2 items-end relative">
+                        <div class="flex-grow relative">
+                            <input id="add-servico-nome" placeholder="Buscar serviço..." class="form-input text-sm w-full mb-1" autocomplete="off">
+                            <div id="list-servico-autocomplete" class="autocomplete-results hidden absolute w-full max-h-40 overflow-y-auto bg-white border border-gray-300 z-50 rounded shadow-lg top-full left-0"></div>
+                            <div class="flex gap-2">
+                                <input id="add-servico-qtd" type="number" value="1" class="form-input text-sm w-16 text-center" placeholder="Qtd">
+                                <input id="add-servico-valor" type="text" placeholder="R$ 0,00" class="form-input text-sm w-full text-right">
+                            </div>
+                        </div>
+                        <button onclick="adicionarServicoLista()" class="bg-gray-700 text-white px-3 rounded font-bold h-10 hover:bg-gray-800 mb-0.5">+</button>
+                    </div>` : ''}
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row justify-between items-center pt-4 border-t gap-4">
+                <div class="w-full md:w-1/3">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Situação</label>
+                    <select id="modal-status" class="form-input w-full ${bgInput}" ${disabledAttr}>${opcoesStatus}</select>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500 uppercase font-bold">Total</p>
+                    <p class="text-3xl font-bold text-gray-800" id="modal-total-display">R$ 0,00</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-8">
+                <button onclick="fecharModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-bold hover:bg-gray-300">Fechar</button>
+                <button onclick="imprimirOS(${dados.id})" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 shadow">🖨️ Imprimir</button>
+                ${!isLocked ? `
+                    <button id="btn-salvar-os" onclick="salvarAlteracoes()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow">💾 Salvar</button>
+                    <button onclick="gerarVenda(${dados.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-2"><span>💰</span> Gerar Venda</button>
+                ` : `<span class="px-4 py-2 bg-green-100 text-green-800 rounded font-bold border border-green-300 shadow-sm cursor-default">✅ Venda Gerada</span>`}
+            </div>
+        `;
+    };
+
+    window.adicionarItemLista = () => {
+        const nome = document.getElementById('add-item-nome').value;
+        const qtd = safeNumber(document.getElementById('add-item-qtd').value);
+        const val = safeNumber(document.getElementById('add-item-valor').value);
+        if(!nome) return alert("Preencha o nome do item.");
+        
+        const prodId = window.tempProdutoId || null;
+        itensParaSalvar.push({ produto_id: prodId, nome, quantidade: qtd, valor_unitario: val });
+        
+        document.getElementById('add-item-nome').value = '';
+        document.getElementById('add-item-valor').value = '';
+        document.getElementById('add-item-qtd').value = '1';
+        window.tempProdutoId = null;
+        atualizarListasVisuais();
+    };
+
+    window.adicionarServicoLista = () => {
+        const nome = document.getElementById('add-servico-nome').value;
+        const qtd = safeNumber(document.getElementById('add-servico-qtd').value);
+        const val = safeNumber(document.getElementById('add-servico-valor').value);
+        if(!nome) return alert("Preencha o nome do serviço.");
+
+        const servId = window.tempServicoId || null;
+        servicosParaSalvar.push({ servico_id: servId, nome, quantidade: qtd, valor: val });
+        
+        document.getElementById('add-servico-nome').value = '';
+        document.getElementById('add-servico-valor').value = '';
+        document.getElementById('add-servico-qtd').value = '1';
+        window.tempServicoId = null;
+        atualizarListasVisuais();
+    };
+
+    window.removerItemLista = (idx) => { itensParaSalvar.splice(idx, 1); atualizarListasVisuais(); };
+    window.removerServicoLista = (idx) => { servicosParaSalvar.splice(idx, 1); atualizarListasVisuais(); };
+
+    const atualizarListasVisuais = () => {
+        const ulItens = document.getElementById('lista-itens-visual');
+        const ulServicos = document.getElementById('lista-servicos-visual');
+        const isLocked = document.getElementById('btn-salvar-os') === null;
+        let total = 0;
+        
+        ulItens.innerHTML = '';
+        itensParaSalvar.forEach((item, idx) => {
+            const sub = item.quantidade * item.valor_unitario;
+            total += sub;
+            const btnDelete = isLocked ? '' : `<button onclick="removerItemLista(${idx})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded ml-2">&times;</button>`;
+            ulItens.innerHTML += `<li class="flex justify-between items-center bg-white border p-2 rounded mb-1 text-sm">
+                <span class="truncate pr-2">${item.quantidade}x ${item.nome}</span>
+                <div class="whitespace-nowrap"><span class="font-bold mr-1">${formatCurrency(sub)}</span>${btnDelete}</div>
+            </li>`;
+        });
+
+        ulServicos.innerHTML = '';
+        servicosParaSalvar.forEach((serv, idx) => {
+            const qtd = serv.quantidade || 1;
+            const sub = serv.valor * qtd;
+            total += sub;
+            const btnDelete = isLocked ? '' : `<button onclick="removerServicoLista(${idx})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded ml-2">&times;</button>`;
+            ulServicos.innerHTML += `<li class="flex justify-between items-center bg-white border p-2 rounded mb-1 text-sm">
+                <span class="truncate pr-2">${qtd > 1 ? qtd + 'x ' : ''}${serv.nome}</span>
+                <div class="whitespace-nowrap"><span class="font-bold mr-1">${formatCurrency(sub)}</span>${btnDelete}</div>
+            </li>`;
+        });
+
+        document.getElementById('modal-total-display').textContent = formatCurrency(total);
+    };
+
+    window.salvarAlteracoes = async () => {
+        const payload = {
+            problema_relatado: document.getElementById('modal-problema').value,
+            diagnostico_tecnico: document.getElementById('modal-diagnostico').value,
+            status: document.getElementById('modal-status').value,
+            itens: itensParaSalvar,
+            servicos: servicosParaSalvar
+        };
+        try {
+            const res = await fetch(`${API_URL}/os/${osIdEdicao}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if (res.ok) { showAlert("OS Salva!"); fecharModal(); carregarOS(); }
+            else { const err = await res.json(); alert("Erro: " + err.message); }
+        } catch (err) { console.error(err); alert("Erro de conexão."); }
+    };
+
+    window.gerarVenda = async (id) => {
+        if(!confirm("Deseja enviar esta OS para o Caixa e finalizar lá?")) return;
+
+        try {
+            await window.salvarAlteracoes();
+            
+            window.location.href = `gestao_vendas.html?carregar_os=${id}`;
+            
+        } catch(err) {
+            console.error(err);
+            alert("Erro ao salvar OS antes de redirecionar.");
+        }
+    };
+
+    window.fecharModal = () => modalOS.classList.add('hidden', 'modal-oculto');
+
+    // --- NOVA IMPRESSÃO (MODELO ORDEM_DE_SERVICO_2) ---
+    window.imprimirOS = async (id) => {
+        try {
+            const res = await fetch(`${API_URL}/os/${id}`);
+            const os = await res.json();
+            
+            // Dados para o PDF
+            const empresaNome = "OFICINA MECÂNICA"; 
+            const empresaEnd = "Rua da Oficina, 123 - Centro";
+            
+            let itensHtml = '';
+            
+            const lista = [...(os.itens || []), ...(os.servicos || [])];
+            if (lista.length === 0) itensHtml = '<tr><td colspan="4" style="text-align:center; padding:10px;">Nenhum item.</td></tr>';
+            else {
+                lista.forEach(i => {
+                    const tipo = i.produto_id ? "(Peça)" : "(Serviço)";
+                    const val = i.valor_unitario || i.valor || 0;
+                    const qtd = i.quantidade || 1;
+                    const total = val * qtd;
+                    itensHtml += `
+                    <tr>
+                        <td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome || i.descricao} ${tipo}</td>
+                        <td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${qtd}</td>
+                        <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(val)}</td>
+                        <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(total)}</td>
+                    </tr>`;
+                });
+            }
+
+            const nomeArquivo = `OS_${os.id}_${(os.cliente_nome||'CLIENTE').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;
+
+            const htmlContent = `
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>OS #${os.id}</title>
+                <style>
+                    body { font-family: 'Helvetica', sans-serif; padding: 30px; font-size: 14px; color: #333; }
+                    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                    .header h1 { margin: 0; font-size: 22px; color: #000; }
+                    .header p { margin: 2px 0; font-size: 12px; color: #555; }
+                    .os-title { text-align: right; }
+                    .os-title h2 { margin: 0; font-size: 24px; color: #000; }
+                    
+                    .section-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #f9f9f9; }
+                    .section-title { font-weight: bold; margin-bottom: 5px; font-size: 13px; text-transform: uppercase; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
+                    
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th { text-align: left; border-bottom: 2px solid #000; padding: 8px; background: #eee; font-size: 12px; }
+                    td { font-size: 13px; }
+                    
+                    .total-box { text-align: right; margin-top: 20px; font-size: 18px; font-weight: bold; }
+                    .assinatura { margin-top: 60px; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; text-align: center; padding-top: 5px; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <h1>${empresaNome}</h1>
+                        <p>${empresaEnd}</p>
+                        <p>Data: ${formatDate(os.data_entrada)}</p>
+                    </div>
+                    <div class="os-title">
+                        <h2>ORDEM DE SERVIÇO</h2>
+                        <p style="font-size: 18px; font-weight: bold;">#${os.id}</p>
+                    </div>
+                </div>
+
+                <div class="section-box">
+                    <div class="section-title">Dados do Cliente e Veículo</div>
+                    <p><strong>Cliente:</strong> ${os.cliente_nome || 'Consumidor'} | <strong>Telefone:</strong> ${os.cliente_telefone || '-'}</p>
+                    <p><strong>Veículo:</strong> ${os.placa || '-'} | ${os.modelo || ''} ${os.marca || ''}</p>
+                </div>
+
+                <div class="section-box">
+                    <div class="section-title">Problema Relatado / Diagnóstico</div>
+                    <p><strong>Problema:</strong> ${os.problema_relatado || 'Não informado.'}</p>
+                    <p style="margin-top:5px;"><strong>Diagnóstico:</strong> ${os.diagnostico_tecnico || 'Não informado.'}</p>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="50%">Descrição</th>
+                            <th width="10%" style="text-align:center">Qtd.</th>
+                            <th width="20%" style="text-align:right">Vlr. Unit.</th>
+                            <th width="20%" style="text-align:right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itensHtml}
+                    </tbody>
+                </table>
+
+                <div class="total-box">
+                    TOTAL: ${formatCurrency(os.total)}
+                </div>
+
+                <div class="assinatura">
+                    Assinatura do Cliente<br>
+                    (Autorizo a execução dos serviços acima descritos)
+                </div>
+            </body>
+            </html>`;
+
+            if (window.electronAPI) window.electronAPI.send('print-to-pdf', { html: htmlContent, name: nomeArquivo });
+            else { const win = window.open('', '', 'width=800,height=600'); win.document.write(htmlContent); win.document.close(); win.print(); }
+        } catch(e) { console.error(e); alert("Erro ao gerar PDF: " + e.message); }
+    };
+
+    if (btnNovaOS) btnNovaOS.addEventListener('click', async () => {
+        const placa = await solicitarPlacaVisual();
+        if (!placa) return;
+        try {
+            const res = await fetch(`${API_URL}/os`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ placa: placa }) });
+            const data = await res.json();
+            if (res.ok) { showAlert(`OS #${data.id} criada!`); await carregarOS(); abrirModalEdicao(data.id); } 
+            else { 
+                if (data.message && data.message.includes('não foi encontrado')) { if(confirm(`Veículo não encontrado!\nDeseja cadastrar agora?`)) window.location.href = 'gestao_clientes.html'; }
+                else alert("Erro: " + data.message); 
+            }
+        } catch (err) { console.error(err); alert("Erro ao criar OS."); }
     });
 
-    // --- INICIALIZAÇÃO ---
-    renderizarTabelaOS();
+    if (inputBusca) inputBusca.addEventListener('input', carregarOS);
+    carregarDadosAuxiliares();
+    carregarOS();
 });

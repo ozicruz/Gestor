@@ -1,129 +1,124 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contas a Receber - Gestão de Oficina</title>
+    <title>Contas a Receber</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
     <style>
-        th[data-sort] {
-            cursor: pointer;
-            user-select: none;
-        }
-
-        th[data-sort]:hover {
-            background-color: #e5e7eb;
-        }
+        /* Estilo para cursor de ordenação */
+        th[data-sort] { cursor: pointer; user-select: none; }
+        th[data-sort]:hover { background-color: #f3f4f6; }
     </style>
 </head>
-
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 bg-gray-50">
 
     <div class="max-w-7xl mx-auto">
-        <header class="mb-10">
-            <a href="index.html" class="text-blue-600 hover:text-blue-800">&larr; Voltar para o Início</a>
-            <h1 class="text-4xl font-bold text-gray-800 mt-2">Contas a Receber (Fiado)</h1>
+        <header class="mb-8">
+            <a href="index.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar</a>
+            <h1 class="text-4xl font-bold text-gray-800 mt-2">Contas a Receber  📒</h1>
         </header>
 
-        <section id="contas-resumo" class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="dashboard-card bg-blue-100 border-blue-300">
-                <h4 class="text-blue-800">Total a Receber (Pendente)</h4>
-                <p id="card-total-receber" class="dashboard-valor text-blue-900">R$ 0,00</p>
+        <section class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Total a Receber (Pendente)</h4>
+                <p id="card-total-receber" class="text-2xl font-bold text-blue-900 mt-1">R$ 0,00</p>
             </div>
-            <div class="dashboard-card bg-red-100 border-red-300">
-                <h4 class="text-red-800">Total Vencido (Atrasado)</h4>
-                <p id="card-total-vencido" class="dashboard-valor text-red-900">R$ 0,00</p>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Total Vencido (Atrasado)</h4>
+                <p id="card-total-vencido" class="text-2xl font-bold text-red-600 mt-1">R$ 0,00</p>
             </div>
-            <div class="dashboard-card bg-yellow-100 border-yellow-300">
-                <h4 class="text-yellow-800">A Receber Hoje</h4>
-                <p id="card-receber-hoje" class="dashboard-valor text-yellow-900">R$ 0,00</p>
-            </div>
-        </section>
-
-        <section id="contas-lista" class="mt-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Lançamentos Pendentes</h2>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <div id="table-scroll-container">
-                    <table class="w-full" id="tabela-pendencias">
-                        <thead class="bg-gray-100 table-sticky-header" id="tabela-pendencias-header">
-                            <tr class="border-b">
-                                <th data-sort="ClienteNome"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Cliente <span class="sort-arrow"></span>
-                                </th>
-                                <th data-sort="Descricao"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Descrição (Venda #) <span class="sort-arrow"></span>
-                                </th>
-                                <th data-sort="DataVencimento"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Vencimento <span class="sort-arrow"> ▼</span>
-                                </th>
-                                <th data-sort="Valor"
-                                    class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Valor Pendente (R$) <span class="sort-arrow"></span>
-                                </th>
-                                <th
-                                    class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-pendencias-corpo" class="divide-y divide-gray-200">
-                            <tr>
-                                <td colspan="5" class="text-center p-4 text-gray-500">A carregar pendências...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">A Receber Hoje</h4>
+                <p id="card-receber-hoje" class="text-2xl font-bold text-yellow-600 mt-1">R$ 0,00</p>
             </div>
         </section>
 
+        <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <h2 class="font-bold text-gray-700">Lançamentos Pendentes</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full" id="tabela-pendencias">
+                    <thead class="bg-gray-100 border-b">
+                        <tr>
+                            <th data-sort="ClienteNome" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Cliente <span class="sort-arrow"></span>
+                            </th>
+                            <th data-sort="Descricao" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Descrição <span class="sort-arrow"></span>
+                            </th>
+                            <th data-sort="DataVencimento" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Vencimento <span class="sort-arrow">▼</span>
+                            </th>
+                            <th data-sort="Valor" class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Valor <span class="sort-arrow"></span>
+                            </th>
+                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                Ação
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-pendencias-corpo" class="divide-y divide-gray-200 bg-white">
+                        <tr><td colspan="5" class="text-center p-6 text-gray-500">Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div id="modalBaixa" class="modal-overlay modal-oculto">
-        <div class="modal-content">
-            <h3 id="modalBaixaTitulo">Receber Pagamento</h3>
+    <div id="modalBaixa" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all scale-100">
+            
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalBaixaTitulo" class="text-xl font-bold text-gray-800">Receber Pagamento</h3>
+                <button type="button" id="btnFecharX" class="text-gray-400 hover:text-gray-600 text-xl">✖</button>
+            </div>
 
-            <form id="formBaixa">
+            <form id="formBaixa" class="space-y-4">
                 <input type="hidden" id="baixaLancamentoId">
-
-                <div class="mb-4">
-                    <p class="text-sm text-gray-600">Dívida Original:</p>
-                    <p id="baixaValorOriginal" class="text-2xl font-bold">R$ 0,00</p>
+                
+                <div class="bg-blue-50 p-4 rounded-lg text-center border border-blue-100">
+                    <p class="text-xs text-blue-600 font-bold uppercase tracking-wide">Valor Total da Dívida</p>
+                    <p id="baixaValorOriginal" class="text-3xl font-bold text-blue-900 mt-1">R$ 0,00</p>
                 </div>
 
-                <label for="baixaValorRecebido">Valor Recebido (R$):</label>
-                <input type="number" id="baixaValorRecebido" step="0.01" class="form-input w-full" required>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Valor a Receber (R$)</label>
+                    <input type="number" id="baixaValorRecebido" step="0.01" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" required>
+                </div>
 
-                <label class="mt-4 block">Data do Recebimento:</label>
-                <input type="date" id="baixaDataPagamento" class="form-input w-full" required>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Data Recebimento</label>
+                        <input type="date" id="baixaDataPagamento" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all" required>
+                    </div>
+                    <div>
+                         <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Conta (Destino)</label>
+                        <select id="baixaContaCaixa" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" required>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                </div>
 
-                <label class="mt-4 block">Forma de Pagamento:</label>
-                <select id="baixaFormaPagamento" class="form-input w-full" required>
-                    <option value="">A carregar formas...</option>
-                </select>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Forma de Pagamento</label>
+                    <select id="baixaFormaPagamento" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
 
-                <label class="mt-4 block">Receber em (Conta/Caixa):</label>
-                <select id="baixaContaCaixa" class="form-input w-full" required>
-                    <option value="">A carregar contas...</option>
-                </select>
-
-                <div class="mt-6">
-                    <button type="submit"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg">Confirmar
-                        Recebimento</button>
-                    <button type="button" id="btnFecharModalBaixa"
-                        class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg mt-2">Cancelar</button>
+                <div class="flex justify-end gap-3 pt-4 border-t mt-4">
+                    <button type="button" id="btnFecharModalBaixa" class="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg flex items-center gap-2 transition-transform active:scale-95">
+                        <span>💰</span> Confirmar Recebimento
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="js/gestao_contas_receber.js" defer></script>
+    <script src="js/gestao_contas_receber.js"></script>
 </body>
-
 </html>

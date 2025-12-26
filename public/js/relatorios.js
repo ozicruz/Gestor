@@ -3,94 +3,86 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';
 
-    // --- VARIÁVEIS GLOBAIS (CACHE DE VENDAS) ---
+    // --- VARIÁVEIS GLOBAIS ---
     let vendasCache = [];
     let ordemAtual = { coluna: 'data', direcao: 'desc' };
+    let produtosCache = [];
+    let ordemProdutos = { coluna: 'lucroBruto', direcao: 'desc' };
 
     // --- ELEMENTOS DO DOM ---
     const formDRE = document.getElementById('form-relatorio-dre');
     const btnGerarDRE = document.getElementById('btn-gerar-dre');
     const btnGerarProdutos = document.getElementById('btn-gerar-produtos');
     const btnGerarStock = document.getElementById('btn-gerar-stock');
+    const btnGerarVendas = document.getElementById('btn-gerar-vendas');
+    const btnGerarServicos = document.getElementById('btn-gerar-servicos');
+    const btnGerarClientes = document.getElementById('btn-gerar-clientes');
+    
     const inputDataInicio = document.getElementById('data-inicio');
     const inputDataFim = document.getElementById('data-fim');
     const areaRelatorio = document.getElementById('area-relatorio');
     const feedbackAlert = document.getElementById('feedback-alert');
-    const btnGerarVendas = document.getElementById('btn-gerar-vendas');
     const modalDetalhes = document.getElementById('modal-detalhes-venda');
     const btnFecharDetalhes = document.getElementById('btn-fechar-detalhes');
 
     // --- FUNÇÕES AUXILIARES ---
     
-    // 1. Formata Moeda (R$)
+    const setCarregando = (btn, estado) => {
+        if (estado) {
+            btn.dataset.originalContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="animate-pulse">⏳</span> A gerar...`;
+        } else {
+            btn.disabled = false;
+            if (btn.dataset.originalContent) {
+                btn.innerHTML = btn.dataset.originalContent;
+            }
+        }
+    };
+
     const formatCurrency = (value) => {
         const valor = parseFloat(value) || 0;
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(valor);
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     };
 
-    // 2. Formata Data (Corrige UTC para Hora Local) - A FUNÇÃO QUE FALTAVA
     const formatarDataLocal = (dataString) => {
         if (!dataString) return '-';
-        // Troca espaço por T e garante o Z no final para o JS saber que é UTC
         let dataIso = dataString.replace(' ', 'T');
-        if (!dataIso.endsWith('Z')) dataIso += 'Z';
-        
+        if (!dataIso.endsWith('Z') && !dataIso.includes('+')) dataIso; // Assume local se não tiver timezone
         const dataObj = new Date(dataIso);
         return dataObj.toLocaleDateString('pt-BR') + ' ' + dataObj.toLocaleTimeString('pt-BR');
-    };
-
-    // 3. Converte Imagem para Base64 (Para o Logo no PDF)
-    const converterImagemParaBase64 = async (url) => {
-        try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        } catch (error) {
-            console.warn("Não foi possível carregar o logo:", error);
-            return null;
-        }
     };
 
     const showAlert = (message, isSuccess = true) => {
         if(feedbackAlert) {
             feedbackAlert.textContent = message;
             feedbackAlert.style.display = 'block';
-            feedbackAlert.className = isSuccess ? 'feedback-alert feedback-success' : 'feedback-alert feedback-error';
+            feedbackAlert.className = isSuccess ? 'p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg' : 'p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg';
             setTimeout(() => feedbackAlert.style.display = 'none', 5000);
-        } else {
-            alert(message);
-        }
+        } else { alert(message); }
     };
 
+    // --- IMPRESSÃO DE RELATÓRIOS GERAIS (TABELAS) ---
     const adicionarBotaoImprimir = (tituloRelatorio, conteudoHTML, usarPeriodo = true) => {
         const btnImprimir = document.createElement('button');
         btnImprimir.innerHTML = '&#128424; Imprimir / Salvar PDF'; 
-        btnImprimir.className = 'bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow mt-6';
+        btnImprimir.className = 'bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded-lg shadow-lg mt-6 transition-transform active:scale-95';
 
         btnImprimir.addEventListener('click', async () => {
-            let dadosEmpresa = {};
-            try {
-                const response = await fetch(`${API_URL}/empresa`);
-                if (response.ok) dadosEmpresa = await response.json();
-            } catch (err) { console.error(err); }
+            let dadosEmpresa = { nome_fantasia: 'Minha Oficina', endereco: '' };
+            try { const r = await fetch(`${API_URL}/empresa`); if(r.ok) dadosEmpresa = await r.json(); } catch(e){}
 
             const template = document.getElementById('relatorio-template');
             const clone = template.content.cloneNode(true);
 
-            clone.querySelector('[data-relatorio="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia || 'Nome da Empresa';
-            clone.querySelector('[data-relatorio="empresa-endereco"]').textContent = dadosEmpresa.endereco || 'Endereço não configurado';
+            clone.querySelector('[data-relatorio="empresa-nome"]').textContent = dadosEmpresa.nome_fantasia;
+            clone.querySelector('[data-relatorio="empresa-endereco"]').textContent = dadosEmpresa.endereco || '';
 
             let periodo = "Período Completo";
-            if (usarPeriodo && inputDataInicio.valueAsDate && inputDataFim.valueAsDate) {
-                periodo = `${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
+            if (usarPeriodo && inputDataInicio.value && inputDataFim.value) {
+                const dInicio = new Date(inputDataInicio.value).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+                const dFim = new Date(inputDataFim.value).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+                periodo = `${dInicio} a ${dFim}`;
             }
 
             clone.querySelector('[data-relatorio="titulo"]').textContent = tituloRelatorio;
@@ -103,36 +95,104 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.electronAPI) {
                 window.electronAPI.send('print-to-pdf', { html: htmlContent, name: filename });
             } else {
-                alert('Funcionalidade disponível apenas no App Desktop.');
+                const win = window.open('', '', 'width=900,height=600');
+                win.document.write(htmlContent);
+                win.document.close();
+                win.print();
             }
         });
 
         areaRelatorio.appendChild(btnImprimir);
     };
 
-    // --- RELATÓRIO DRE ---
+// --- IMPRESSÃO INDIVIDUAL (COM CORREÇÃO DE NOME) ---
+    const imprimirReciboIndividual = async (venda) => {
+        let emp = { nome_fantasia: 'Minha Oficina', endereco: '', cnpj_cpf: '', telefone: '' };
+        try { const res = await fetch(`${API_URL}/empresa`); if(res.ok) emp = await res.json(); } catch(e){}
+
+        const nomeArquivo = `Recibo_Venda_${venda.id}.pdf`;
+        let itensHtml = '';
+        const todosItens = [...(venda.itens || []), ...(venda.servicos || [])];
+
+        todosItens.forEach(i => {
+            const nome = i.nome || i.descricao;
+            const qtd = i.quantidade || 1;
+            const valUnit = i.valor_unitario || i.valor_unitario_venda || i.valor || 0;
+            const subtotal = i.subtotal || (qtd * valUnit);
+
+            itensHtml += `<tr><td style="border-bottom:1px solid #ccc; padding:5px;">${nome}</td><td style="border-bottom:1px solid #ccc; padding:5px; text-align:center;">${qtd}</td><td style="border-bottom:1px solid #ccc; padding:5px; text-align:right;">${formatCurrency(valUnit)}</td><td style="border-bottom:1px solid #ccc; padding:5px; text-align:right;">${formatCurrency(subtotal)}</td></tr>`;
+        });
+
+        // Formatação do Pagamento (Igual ao gestao_vendas.js)
+        let nomeForma = venda.forma_pagamento || 'Dinheiro';
+        nomeForma = nomeForma.replace('Cartão de ', '').replace('Cartão ', ''); // Abrevia
+
+        if (nomeForma.includes('Crédito')) {
+            if (venda.num_parcelas && venda.num_parcelas > 1) nomeForma += ` (${venda.num_parcelas}x)`;
+            else nomeForma += ' (À Vista)';
+        } else if (nomeForma.includes('Fiado')) {
+            nomeForma = 'A Prazo';
+            if (venda.num_parcelas > 1) nomeForma += ` (${venda.num_parcelas}x)`;
+        }
+
+        const htmlContent = `
+        <html><head><meta charset="UTF-8"><title>Venda #${venda.id}</title><style>
+            body{font-family:'Helvetica',sans-serif;padding:20px;font-size:14px;color:#000}
+            .header{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:15px}
+            .header h1{margin:0;font-size:20px;text-transform:uppercase}
+            .header p{margin:2px 0;font-size:12px}
+            table{width:100%;border-collapse:collapse;margin-top:10px}
+            th{text-align:left;border-bottom:2px solid #000;padding:5px}
+            .totals{margin-top:20px;text-align:right}
+            .row{margin-bottom:5px}
+            .total-final{font-size:18px;font-weight:bold;border-top:2px solid #000;padding-top:5px;margin-top:5px}
+            .footer{text-align:center;margin-top:30px;font-size:11px;border-top:1px dashed #ccc;padding-top:5px}
+        </style></head><body>
+            <div class="header"><div><h1>${emp.nome_fantasia}</h1><p>${emp.endereco}</p><p>${emp.telefone}</p></div><div style="text-align:right;"><h2>VENDA #${venda.id}</h2><p>${new Date(venda.data).toLocaleDateString('pt-BR')}</p></div></div>
+            <p><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor Final'}</p>
+            <table><thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table>
+            <div class="totals">
+                <div class="row">Desconto: - ${formatCurrency(venda.desconto_valor || 0)}</div>
+                <div class="row">Forma: <strong>${nomeForma}</strong></div>
+                <div class="total-final">TOTAL: ${formatCurrency(venda.total)}</div>
+            </div>
+            <div class="footer"><p>Obrigado pela preferência!</p><p>Documento sem valor fiscal.</p></div>
+        </body></html>`;
+
+        if (window.electronAPI) window.electronAPI.send('print-to-pdf', { html: htmlContent, name: nomeArquivo });
+        else { const w = window.open('', '', 'width=800,height=600'); w.document.write(htmlContent); w.document.close(); w.print(); }
+    };
+
+    // --- RELATÓRIOS DE LISTAGEM ---
+    
+    // DRE
     const desenharDRE = (dreData) => {
         const { TotalReceitas, TotalCMV, LucroBruto, TotalDespesas, LucroLiquido, Receitas, Despesas } = dreData;
-
         areaRelatorio.innerHTML = '';
         areaRelatorio.style.textAlign = 'left';
 
         const header = document.createElement('h2');
-        header.className = "text-2xl font-bold text-gray-800 mb-4";
-        header.textContent = `DRE de ${inputDataInicio.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} a ${inputDataFim.valueAsDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}`;
+        header.className = "text-2xl font-bold text-gray-800 mb-6 border-b pb-2";
+        header.textContent = "Demonstração do Resultado do Exercício (DRE)";
         areaRelatorio.appendChild(header);
 
-        let htmlDRE = '<div class="space-y-4 dre-container">';
-        htmlDRE += `<div><h3 class="text-xl font-semibold text-gray-700">(+) Receita Bruta Total</h3><div class="pl-4 border-l-2 border-gray-200 mt-1">`;
-        Receitas.forEach(r => htmlDRE += `<p class="text-sm text-gray-600">${r.categoria}: ${formatCurrency(r.total)}</p>`);
-        htmlDRE += `<p class="font-bold text-gray-800 mt-1">Total Receitas: ${formatCurrency(TotalReceitas)}</p></div></div>`;
-        htmlDRE += `<div><h3 class="text-xl font-semibold text-gray-700">(-) Custo da Mercadoria Vendida (CMV)</h3><div class="pl-4 border-l-2 border-gray-200 mt-1"><p class="font-bold text-gray-800">Total CMV: ${formatCurrency(TotalCMV)}</p></div></div>`;
-        htmlDRE += `<div class="border-t pt-2"><h3 class="text-2xl font-bold text-blue-600">(=) Lucro Bruto: ${formatCurrency(LucroBruto)}</h3></div>`;
-        htmlDRE += `<div><h3 class="text-xl font-semibold text-gray-700 mt-4">(-) Despesas Operacionais</h3><div class="pl-4 border-l-2 border-gray-200 mt-1">`;
-        Despesas.forEach(d => htmlDRE += `<p class="text-sm text-gray-600">${d.categoria}: ${formatCurrency(d.total)}</p>`);
-        htmlDRE += `<p class="font-bold text-red-600 mt-1">Total Despesas: ${formatCurrency(TotalDespesas)}</p></div></div>`;
-        const lucroClasse = LucroLiquido >= 0 ? 'text-green-600' : 'text-red-600';
-        htmlDRE += `<div class="border-t-2 border-gray-800 pt-4 mt-6"><h3 class="text-3xl font-bold ${lucroClasse}">(=) Lucro Líquido: ${formatCurrency(LucroLiquido)}</h3></div></div>`;
+        let htmlDRE = '<div class="space-y-6 max-w-4xl mx-auto">';
+        
+        htmlDRE += `<div class="bg-blue-50 p-4 rounded-lg border border-blue-100"><h3 class="text-lg font-bold text-blue-800 mb-2">(+) Receita Bruta</h3>`;
+        Receitas.forEach(r => htmlDRE += `<div class="flex justify-between text-sm text-blue-700 mb-1"><span>${r.categoria}</span><span>${formatCurrency(r.total)}</span></div>`);
+        htmlDRE += `<div class="border-t border-blue-200 mt-2 pt-2 flex justify-between font-bold text-blue-900"><span>Total Receitas</span><span>${formatCurrency(TotalReceitas)}</span></div></div>`;
+
+        htmlDRE += `<div class="bg-red-50 p-4 rounded-lg border border-red-100"><h3 class="text-lg font-bold text-red-800 mb-2">(-) Custos (CMV)</h3>`;
+        htmlDRE += `<div class="flex justify-between font-bold text-red-900"><span>Custo Mercadoria Vendida</span><span>${formatCurrency(TotalCMV)}</span></div></div>`;
+
+        htmlDRE += `<div class="flex justify-between items-center p-4 bg-gray-100 rounded-lg border-l-4 border-gray-500"><span class="text-xl font-bold text-gray-700">(=) Lucro Bruto</span><span class="text-xl font-bold text-gray-800">${formatCurrency(LucroBruto)}</span></div>`;
+
+        htmlDRE += `<div class="bg-orange-50 p-4 rounded-lg border border-orange-100"><h3 class="text-lg font-bold text-orange-800 mb-2">(-) Despesas Operacionais</h3>`;
+        Despesas.forEach(d => htmlDRE += `<div class="flex justify-between text-sm text-orange-700 mb-1"><span>${d.categoria}</span><span>${formatCurrency(d.total)}</span></div>`);
+        htmlDRE += `<div class="border-t border-orange-200 mt-2 pt-2 flex justify-between font-bold text-orange-900"><span>Total Despesas</span><span>${formatCurrency(TotalDespesas)}</span></div></div>`;
+
+        const corLucro = LucroLiquido >= 0 ? 'bg-green-100 text-green-800 border-green-500' : 'bg-red-100 text-red-800 border-red-500';
+        htmlDRE += `<div class="flex justify-between items-center p-6 rounded-lg border-l-4 ${corLucro} shadow-md mt-4"><span class="text-2xl font-bold">(=) Resultado Líquido</span><span class="text-3xl font-bold">${formatCurrency(LucroLiquido)}</span></div></div>`;
         
         areaRelatorio.innerHTML += htmlDRE;
         adicionarBotaoImprimir("Relatório DRE", htmlDRE);
@@ -142,439 +202,338 @@ document.addEventListener('DOMContentLoaded', () => {
         const dataInicio = inputDataInicio.value;
         const dataFim = inputDataFim.value;
         if (!dataInicio || !dataFim) return showAlert("Selecione as datas.", false);
-        
-        btnGerarDRE.disabled = true;
-        btnGerarDRE.textContent = "A gerar...";
+        setCarregando(btnGerarDRE, true);
         try {
             const response = await fetch(`${API_URL}/financeiro/relatorios/dre?data_inicio=${dataInicio}&data_fim=${dataFim}`);
             const dreData = await response.json();
             if (!response.ok) throw new Error(dreData.message);
             desenharDRE(dreData);
-        } catch (err) {
-            console.error(err);
-            showAlert(err.message, false);
-        } finally {
-            btnGerarDRE.disabled = false;
-            btnGerarDRE.textContent = "Gerar Relatório DRE";
-        }
+        } catch (err) { showAlert(err.message, false); } 
+        finally { setCarregando(btnGerarDRE, false); }
     };
 
-    // --- RELATÓRIO PRODUTOS ---
-    const desenharTabelaProdutos = (produtos) => {
+    // --- RENDERIZAR TABELA DE PRODUTOS (COM ORDENAÇÃO) ---
+    const renderizarTabelaProdutos = () => {
         areaRelatorio.innerHTML = '';
-        const header = document.createElement('h2');
-        header.className = "text-2xl font-bold text-gray-800 mb-4";
-        header.textContent = `Produtos Mais Lucrativos`;
-        areaRelatorio.appendChild(header);
+        areaRelatorio.innerHTML += `<h2 class="text-2xl font-bold mb-4 text-gray-800">Produtos Mais Lucrativos</h2>`;
 
-        if (produtos.length === 0) {
-            areaRelatorio.innerHTML += '<p class="text-gray-500">Nenhum produto vendido.</p>';
+        if (produtosCache.length === 0) {
+            areaRelatorio.innerHTML += '<p class="text-gray-500">Nenhum dado encontrado.</p>';
             return;
         }
 
-        let tabelaHTML = `<div class="bg-white rounded-lg shadow overflow-hidden"><table class="w-full report-table"><thead class="bg-gray-100"><tr><th class="px-6 py-3 text-left">Produto</th><th class="px-6 py-3 text-center">Qtd.</th><th class="px-6 py-3 text-right">Faturamento</th><th class="px-6 py-3 text-right">CMV</th><th class="px-6 py-3 text-right">Lucro</th></tr></thead><tbody class="divide-y divide-gray-200">`;
-        produtos.forEach(p => {
-            tabelaHTML += `<tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">${p.nome}</td><td class="px-6 py-4 text-center">${p.totalVendido}</td><td class="px-6 py-4 text-right">${formatCurrency(p.faturamentoBruto)}</td><td class="px-6 py-4 text-right text-red-600">(${formatCurrency(p.custoTotal)})</td><td class="px-6 py-4 text-right font-bold text-green-600">${formatCurrency(p.lucroBruto)}</td></tr>`;
+        // Ordenação
+        produtosCache.sort((a, b) => {
+            let valA = a[ordemProdutos.coluna];
+            let valB = b[ordemProdutos.coluna];
+
+            if (typeof valA === 'string') {
+                valA = valA.toLowerCase();
+                valB = valB.toLowerCase();
+            } else {
+                valA = parseFloat(valA) || 0;
+                valB = parseFloat(valB) || 0;
+            }
+
+            if (valA < valB) return ordemProdutos.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return ordemProdutos.direcao === 'asc' ? 1 : -1;
+            return 0;
         });
-        tabelaHTML += `</tbody></table></div>`;
-        areaRelatorio.innerHTML += tabelaHTML;
-        adicionarBotaoImprimir("Relatório de Produtos", tabelaHTML);
+
+        // Seta Indicadora
+        const getArrow = (col) => ordemProdutos.coluna === col ? (ordemProdutos.direcao === 'asc' ? ' ▲' : ' ▼') : '';
+
+        // Tabela HTML
+        let html = `
+        <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <table class="w-full report-table">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-3 text-left cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarProdutos('nome')">Produto${getArrow('nome')}</th>
+                        <th class="p-3 text-center cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarProdutos('totalVendido')">Qtd.${getArrow('totalVendido')}</th>
+                        <th class="p-3 text-right cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarProdutos('faturamentoBruto')">Faturamento${getArrow('faturamentoBruto')}</th>
+                        <th class="p-3 text-right cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarProdutos('lucroBruto')">Lucro${getArrow('lucroBruto')}</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        produtosCache.forEach(p => {
+            html += `<tr class="hover:bg-gray-50 border-b border-gray-100">
+                <td class="p-3 text-gray-800 font-medium">${p.nome}</td>
+                <td class="p-3 text-center text-gray-600">${p.totalVendido}</td>
+                <td class="p-3 text-right text-gray-600">${formatCurrency(p.faturamentoBruto)}</td>
+                <td class="p-3 text-right font-bold text-green-600 bg-green-50">${formatCurrency(p.lucroBruto)}</td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+        
+        areaRelatorio.innerHTML += html;
+        adicionarBotaoImprimir("Top Produtos", html);
     };
 
+    // Função Global de Ordenar
+    window.ordenarProdutos = (coluna) => {
+        if (ordemProdutos.coluna === coluna) {
+            ordemProdutos.direcao = ordemProdutos.direcao === 'asc' ? 'desc' : 'asc';
+        } else {
+            ordemProdutos.coluna = coluna;
+            ordemProdutos.direcao = 'desc'; // Padrão descrescente para valores
+        }
+        renderizarTabelaProdutos();
+    };
+
+    // PRODUTOS
     const executarRelatorioProdutos = async () => {
-        const dataInicio = inputDataInicio.value;
-        const dataFim = inputDataFim.value;
-        if (!dataInicio || !dataFim) return showAlert("Selecione as datas.", false);
-
-        btnGerarProdutos.disabled = true;
-        btnGerarProdutos.textContent = "A gerar...";
+        const dI = inputDataInicio.value; 
+        const dF = inputDataFim.value;
+        
+        if (!dI || !dF) return showAlert("Selecione as datas.", false);
+        
+        setCarregando(btnGerarProdutos, true);
         try {
-            const response = await fetch(`${API_URL}/relatorios/produtos-mais-vendidos?data_inicio=${dataInicio}&data_fim=${dataFim}`);
-            const produtos = await response.json();
-            if (!response.ok) throw new Error(produtos.message);
-            desenharTabelaProdutos(produtos);
-        } catch (err) {
-            console.error(err);
-            showAlert(err.message, false);
-        } finally {
-            btnGerarProdutos.disabled = false;
-            btnGerarProdutos.textContent = "Gerar Relatório de Produtos";
+            const res = await fetch(`${API_URL}/relatorios/produtos-mais-vendidos?data_inicio=${dI}&data_fim=${dF}`);
+            produtosCache = await res.json(); // Salva no cache
+            
+            // Reseta para ordenar por Lucro (o mais lógico)
+            ordemProdutos = { coluna: 'lucroBruto', direcao: 'desc' };
+            renderizarTabelaProdutos();
+
+        } catch(e) { 
+            console.error(e);
+            showAlert(e.message, false); 
+        } finally { 
+            setCarregando(btnGerarProdutos, false); 
         }
     };
 
-    // --- RELATÓRIO STOCK BAIXO ---
-    const desenharTabelaStockBaixo = (produtos) => {
-        areaRelatorio.innerHTML = '';
-        const header = document.createElement('h2');
-        header.className = "text-2xl font-bold text-gray-800 mb-4";
-        header.textContent = `Relatório de Stock Baixo`;
-        areaRelatorio.appendChild(header);
-
-        if (produtos.length === 0) {
-            areaRelatorio.innerHTML += '<p class="text-gray-500">Tudo em ordem!</p>';
-            return;
-        }
-
-        let tabelaHTML = `<div class="bg-white rounded-lg shadow overflow-hidden"><table class="w-full report-table"><thead class="bg-gray-100"><tr><th class="px-6 py-3 text-left">Produto</th><th class="px-6 py-3 text-center">Atual</th><th class="px-6 py-3 text-center">Mínimo</th><th class="px-6 py-3 text-center">Comprar</th></tr></thead><tbody class="divide-y divide-gray-200">`;
-        produtos.forEach(p => {
-            tabelaHTML += `<tr class="hover:bg-gray-50"><td class="px-6 py-4 font-medium">${p.nome}</td><td class="px-6 py-4 text-center font-bold text-red-600">${p.quantidade_em_estoque}</td><td class="px-6 py-4 text-center text-blue-600">${p.stock_minimo}</td><td class="px-6 py-4 text-center font-bold text-green-600">${p.stock_minimo - p.quantidade_em_estoque}</td></tr>`;
-        });
-        tabelaHTML += `</tbody></table></div>`;
-        areaRelatorio.innerHTML += tabelaHTML;
-        adicionarBotaoImprimir("Relatório Stock Baixo", tabelaHTML);
-    };
-
+    // STOCK BAIXO
     const executarRelatorioStockBaixo = async () => {
-        btnGerarStock.disabled = true;
-        btnGerarStock.textContent = "A gerar...";
+        setCarregando(btnGerarStock, true);
         try {
             const response = await fetch(`${API_URL}/relatorios/stock-baixo`);
             const produtos = await response.json();
-            if (!response.ok) throw new Error(produtos.message);
-            desenharTabelaStockBaixo(produtos);
-        } catch (err) {
-            console.error(err);
-            showAlert(err.message, false);
-        } finally {
-            btnGerarStock.disabled = false;
-            btnGerarStock.textContent = "Ver Relatório de Stock Baixo";
+            areaRelatorio.innerHTML = '';
+            areaRelatorio.innerHTML += `<h2 class="text-2xl font-bold mb-4">Stock Baixo</h2>`;
+            
+            if (produtos.length === 0) areaRelatorio.innerHTML += '<div class="p-4 bg-green-100 text-green-800 rounded">✅ Todo o stock está OK!</div>';
+            else {
+                let html = `<div class="bg-white rounded shadow overflow-hidden"><table class="w-full report-table"><thead class="bg-red-50"><tr><th>Produto</th><th class="text-center">Atual</th><th class="text-center">Mínimo</th><th class="text-center">Faltam</th></tr></thead><tbody>`;
+                produtos.forEach(p => {
+                    html += `<tr><td class="p-3">${p.nome}</td><td class="p-3 text-center text-red-600 font-bold">${p.quantidade_em_estoque}</td><td class="p-3 text-center">${p.stock_minimo}</td><td class="p-3 text-center font-bold">${p.stock_minimo - p.quantidade_em_estoque}</td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+                areaRelatorio.innerHTML += html;
+                adicionarBotaoImprimir("Relatório Stock Baixo", html, false);
+            }
+        } catch (err) { showAlert(err.message, false); } 
+        finally { setCarregando(btnGerarStock, false); }
+    };
+
+    // --- FUNÇÃO PONTUAL: RENDERIZAR TABELA DE VENDAS (COM ORDENAÇÃO) ---
+    const renderizarTabelaVendas = () => {
+        areaRelatorio.innerHTML = '';
+        areaRelatorio.innerHTML += `<h2 class="text-2xl font-bold mb-4 text-gray-800">Relatório de Vendas Realizadas</h2>`;
+
+        if (vendasCache.length === 0) {
+            areaRelatorio.innerHTML += '<p class="text-gray-500">Nenhuma venda encontrada.</p>';
+            return;
         }
+
+        // 1. ORDENAÇÃO
+        vendasCache.sort((a, b) => {
+            let valA = a[ordemAtual.coluna];
+            let valB = b[ordemAtual.coluna];
+
+            if (ordemAtual.coluna === 'total' || ordemAtual.coluna === 'id') {
+                valA = parseFloat(valA); valB = parseFloat(valB);
+            } else {
+                valA = String(valA || '').toLowerCase(); valB = String(valB || '').toLowerCase();
+            }
+
+            if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Ícone da seta
+        const getArrow = (col) => ordemAtual.coluna === col ? (ordemAtual.direcao === 'asc' ? ' ▲' : ' ▼') : '';
+
+        // 2. TABELA HTML
+        let html = `
+        <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+            <div class="overflow-auto h-[calc(100vh-480px)] min-h-[400px]">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-100 sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarVendas('id')">#${getArrow('id')}</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarVendas('data')">Data${getArrow('data')}</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarVendas('cliente_nome')">Cliente${getArrow('cliente_nome')}</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarVendas('forma_pagamento')">Pagamento${getArrow('forma_pagamento')}</th>
+                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase cursor-pointer hover:bg-gray-200 select-none" onclick="window.ordenarVendas('total')">Total${getArrow('total')}</th>
+                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">`;
+
+        vendasCache.forEach(v => {
+            const dataF = formatarDataLocal(v.data).split(' ')[0];
+            
+            // 3. FORMATAÇÃO (ABREVIAÇÃO + PARCELAS)
+            let pagto = v.forma_pagamento || '-';
+            pagto = pagto.replace('Cartão de ', '').replace('Cartão ', ''); // Vira "Crédito" ou "Débito"
+
+            if (pagto.includes('Crédito')) {
+                if (v.num_parcelas > 1) pagto += ` (${v.num_parcelas}x)`;
+                else pagto += ' (À Vista)';
+            } else if (pagto.includes('Fiado') || pagto.includes('Prazo')) {
+                pagto = 'A Prazo';
+                if (v.num_parcelas > 1) pagto += ` (${v.num_parcelas}x)`;
+            }
+
+            html += `
+                <tr class="hover:bg-blue-50 transition-colors">
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">${v.id}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">${dataF}</td>
+                    <td class="px-6 py-4 text-sm text-gray-700">${v.cliente_nome || 'Consumidor'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${pagto}</td>
+                    <td class="px-6 py-4 text-sm font-bold text-right text-gray-900">${formatCurrency(v.total)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button class="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded font-bold text-xs btn-detalhes" data-id="${v.id}">Detalhes</button>
+                    </td>
+                </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
+        const totalGeral = vendasCache.reduce((acc, curr) => acc + curr.total, 0);
+        html += `<div class="mt-4 text-right text-xl font-bold text-gray-800 border-t pt-4">Total: ${formatCurrency(totalGeral)}</div>`;
+
+        areaRelatorio.innerHTML += html;
+
+        // Reativa os botões de detalhes
+        document.querySelectorAll('.btn-detalhes').forEach(btn => {
+            btn.addEventListener('click', (e) => verDetalhesVenda(e.target.dataset.id));
+        });
+
+        adicionarBotaoImprimir("Relatório de Vendas", html);
     };
 
-    // --- NOVA FUNÇÃO: GERAR HTML DO RECIBO ---
-    const gerarHtmlRecibo = async (venda) => {
-        // 1. Busca dados da empresa
-        let empresa = { nome: 'Minha Oficina', endereco: 'Endereço não configurado' };
-        try {
-            const res = await fetch(`${API_URL}/empresa`);
-            if (res.ok) empresa = await res.json();
-        } catch (e) { console.error("Erro ao buscar empresa", e); }
+    // EXPOR FUNÇÃO DE ORDENAR PARA O HTML (Global)
+    window.ordenarVendas = (coluna) => {
+        if (ordemAtual.coluna === coluna) {
+            ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
+        } else {
+            ordemAtual.coluna = coluna;
+            ordemAtual.direcao = 'desc';
+        }
+        renderizarTabelaVendas();
+    };
 
-        // 2. LOGO (Tenta carregar assets/logo.png e converte para Base64)
-        const caminhoLogo = 'assets/logo.png'; 
-        const logoBase64 = await converterImagemParaBase64(caminhoLogo);
-
-        // 3. Formata dados (USANDO A FUNÇÃO DE FUSO HORÁRIO)
-        const dataFormatada = formatarDataLocal(venda.data);
+    // VENDAS E DETALHES
+    const executarRelatorioVendas = async () => {
+        const dI = inputDataInicio.value; 
+        const dF = inputDataFim.value;
         
-        let itensHtml = '';
-        venda.itens.forEach(item => {
-            itensHtml += `
-                <tr>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.nome}</td>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${item.quantidade}</td>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(item.valor_unitario)}</td>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(item.subtotal)}</td>
-                </tr>`;
-        });
-        venda.servicos.forEach(serv => {
-            itensHtml += `
-                <tr>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee;">${serv.nome} (Serviço)</td>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: center;">${serv.quantidade}</td>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(serv.valor_unitario)}</td>
-                    <td style="padding: 5px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(serv.subtotal)}</td>
-                </tr>`;
-        });
+        if(!dI || !dF) return showAlert("Selecione as datas.", false);
+        
+        setCarregando(btnGerarVendas, true);
+        try {
+            const res = await fetch(`${API_URL}/relatorios/vendas?data_inicio=${dI}&data_fim=${dF}`);
+            vendasCache = await res.json(); // Salva no cache
+            
+            ordemAtual = { coluna: 'data', direcao: 'desc' }; // Reseta ordenação
+            renderizarTabelaVendas(); // Chama a renderização
 
-        // 4. HTML Recibo
-        return `
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                body { font-family: 'Courier New', monospace; font-size: 14px; color: #000; padding: 20px; max-width: 80mm; margin: 0 auto; }
-                h1 { font-size: 16px; text-align: center; margin: 5px 0; font-weight: bold; text-transform: uppercase; }
-                p { margin: 2px 0; }
-                .center { text-align: center; }
-                .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-                table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                .totals { margin-top: 10px; text-align: right; }
-                .total-final { font-size: 16px; font-weight: bold; margin-top: 5px; }
-                .logo-img { max-width: 80%; max-height: 80px; margin: 0 auto 10px auto; display: block; }
-            </style>
-        </head>
-        <body>
-            <div class="center">
-                ${logoBase64 ? `<img src="${logoBase64}" class="logo-img" alt="Logo">` : ''}
-                <h1>${empresa.nome_fantasia || 'OFICINA MECÂNICA'}</h1>
-                <p>${empresa.endereco || ''}</p>
-                <p>${empresa.telefone || ''}</p>
-                <p>${empresa.email || ''}</p>
-            </div>
-            <div class="line"></div>
-            <p class="center"><strong>RECIBO #${venda.id}</strong></p>
-            <p>Data: ${dataFormatada}</p>
-            <p>Cliente: ${venda.cliente_nome || 'Consumidor Final'}</p>
-            <div class="line"></div>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="text-align: left;">Item</th>
-                        <th>Qtd</th>
-                        <th>Vl.Unit</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itensHtml}
-                </tbody>
-            </table>
-            <div class="line"></div>
-            <div class="totals">
-                <p>Subtotal: ${formatCurrency(venda.total - (venda.acrescimo_valor || 0) + (venda.desconto_valor || 0))}</p>
-                ${venda.desconto_valor > 0 ? `<p>Desconto: - ${formatCurrency(venda.desconto_valor)}</p>` : ''}
-                ${venda.acrescimo_valor > 0 ? `<p>Acréscimo: + ${formatCurrency(venda.acrescimo_valor)}</p>` : ''}
-                <p class="total-final">TOTAL: ${formatCurrency(venda.total)}</p>
-            </div>
-            <div class="line"></div>
-            <p>Forma de Pagamento: ${venda.forma_pagamento}</p>
-            <br>
-            <div class="center">
-                <p>Obrigado pela preferência!</p>
-            </div>
-        </body>
-        </html>
-        `;
+        } catch (err) { showAlert(err.message, false); } 
+        finally { setCarregando(btnGerarVendas, false); }
     };
 
-    // --- RELATÓRIO DE VENDAS (COM ORDENAÇÃO E SCROLL) ---
-
-    // 1. Função de abrir detalhes (Modal)
     const verDetalhesVenda = async (id) => {
         try {
             const response = await fetch(`${API_URL}/relatorios/vendas/${id}`);
             const venda = await response.json();
 
             document.getElementById('detalhe-id').textContent = venda.id;
-            
-            // CORREÇÃO: Usando a função auxiliar para data e hora
             document.getElementById('detalhe-data').textContent = formatarDataLocal(venda.data);
-            
             document.getElementById('detalhe-cliente').textContent = venda.cliente_nome || 'Consumidor Final';
-            document.getElementById('detalhe-pagamento').textContent = venda.forma_pagamento;
+            document.getElementById('detalhe-pagamento').textContent = venda.forma_pagamento || '-';
 
             const lista = document.getElementById('detalhe-lista-itens');
             lista.innerHTML = '';
             
-            let subtotalCalc = 0;
-            venda.itens.forEach(item => {
-                lista.innerHTML += `<li>${item.quantidade}x ${item.nome} (${formatCurrency(item.subtotal)})</li>`;
-                subtotalCalc += item.subtotal;
-            });
-            venda.servicos.forEach(serv => {
-                lista.innerHTML += `<li>${serv.quantidade}x ${serv.nome} (Serviço) (${formatCurrency(serv.subtotal)})</li>`;
-                subtotalCalc += serv.subtotal;
-            });
+            venda.itens.forEach(i => lista.innerHTML += `<li>${i.quantidade}x ${i.nome} - ${formatCurrency(i.subtotal)}</li>`);
+            venda.servicos.forEach(s => lista.innerHTML += `<li>${s.quantidade}x ${s.nome} (Serviço) - ${formatCurrency(s.subtotal)}</li>`);
 
-            document.getElementById('detalhe-subtotal').textContent = `Subtotal: ${formatCurrency(subtotalCalc)}`;
-            
-            const desc = venda.desconto_valor || 0;
-            const acresc = venda.acrescimo_valor || 0;
-            const descEl = document.getElementById('detalhe-desconto');
-            const acrescEl = document.getElementById('detalhe-acrescimo');
-
-            descEl.textContent = `Desconto: - ${formatCurrency(desc)}`;
-            descEl.style.display = desc > 0 ? 'block' : 'none';
-
-            acrescEl.textContent = `Acréscimo: + ${formatCurrency(acresc)}`;
-            acrescEl.style.display = acresc > 0 ? 'block' : 'none';
-
+            document.getElementById('detalhe-subtotal').textContent = `Subtotal: ${formatCurrency(venda.subtotal || venda.total)}`; // Fallback se subtotal nulo
+            document.getElementById('detalhe-desconto').textContent = venda.desconto_valor ? `Desconto: - ${formatCurrency(venda.desconto_valor)}` : '';
             document.getElementById('detalhe-total').textContent = formatCurrency(venda.total);
-
-            // --- LÓGICA DO BOTÃO REIMPRIMIR ---
-            const btnImprimir = document.getElementById('btn-imprimir-recibo-modal');
-            const novoBtn = btnImprimir.cloneNode(true);
-            btnImprimir.parentNode.replaceChild(novoBtn, btnImprimir);
-
-            novoBtn.addEventListener('click', async () => {
-                novoBtn.textContent = "Gerando PDF...";
-                novoBtn.disabled = true;
-                
-                try {
-                    const htmlRecibo = await gerarHtmlRecibo(venda);
-                    const nomeArquivo = `Recibo_Venda_${venda.id}.pdf`;
-                    
-                    if (window.electronAPI) {
-                        window.electronAPI.send('print-to-pdf', { html: htmlRecibo, name: nomeArquivo });
-                    } else {
-                        alert("Impressão disponível apenas no App Desktop.");
-                    }
-                } catch (err) {
-                    alert("Erro ao gerar recibo: " + err.message);
-                } finally {
-                    novoBtn.textContent = "Imprimir Recibo";
-                    novoBtn.innerHTML = '<span class="mr-2">&#128424;</span> Imprimir Recibo';
-                    novoBtn.disabled = false;
-                }
-            });
-
-            modalDetalhes.classList.remove('modal-oculto');
-
-        } catch (error) {
-            console.error(error);
-            alert(`Erro ao carregar detalhes: ${error.message}`);
-        }
-    };
-
-    // 2. Função de Ordenação (Lógica)
-    const ordenarDados = (coluna) => {
-        if (ordemAtual.coluna === coluna) {
-            ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
-        } else {
-            ordemAtual.coluna = coluna;
-            ordemAtual.direcao = 'asc';
-        }
-
-        vendasCache.sort((a, b) => {
-            let valorA = a[coluna];
-            let valorB = b[coluna];
-
-            if (coluna === 'total' || coluna === 'id') {
-                valorA = Number(valorA);
-                valorB = Number(valorB);
-            }
-            if (typeof valorA === 'string') valorA = valorA.toLowerCase();
-            if (typeof valorB === 'string') valorB = valorB.toLowerCase();
-
-            if (valorA < valorB) return ordemAtual.direcao === 'asc' ? -1 : 1;
-            if (valorA > valorB) return ordemAtual.direcao === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        renderizarHTMLVendas();
-    };
-
-    // 3. Renderizar Tabela de Vendas (Visual Padronizado)
-    const renderizarHTMLVendas = () => {
-        areaRelatorio.innerHTML = '';
-        
-        const headerTitulo = document.createElement('h2');
-        headerTitulo.className = "text-2xl font-bold text-gray-800 mb-4";
-        headerTitulo.textContent = "Relatório de Vendas Realizadas";
-        areaRelatorio.appendChild(headerTitulo);
-
-        if (vendasCache.length === 0) {
-            areaRelatorio.innerHTML += '<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">Nenhuma venda encontrada neste período.</div>';
-            return;
-        }
-
-        const getIcon = (col) => {
-            if (ordemAtual.coluna !== col) return '<span class="text-gray-300 ml-1 text-[10px]">⇅</span>';
-            return ordemAtual.direcao === 'asc' ? '<span class="text-blue-600 ml-1 text-[10px]">▲</span>' : '<span class="text-blue-600 ml-1 text-[10px]">▼</span>';
-        };
-
-        let html = `
-        <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-            <div class="overflow-y-auto max-h-[500px] custom-scrollbar"> 
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors th-ordenavel" data-ordenar="id">
-                                # ${getIcon('id')}
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors th-ordenavel" data-ordenar="data">
-                                Data ${getIcon('data')}
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors th-ordenavel" data-ordenar="cliente_nome">
-                                Cliente ${getIcon('cliente_nome')}
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors th-ordenavel" data-ordenar="forma_pagamento">
-                                Pagamento ${getIcon('forma_pagamento')}
-                            </th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors th-ordenavel" data-ordenar="total">
-                                Total ${getIcon('total')}
-                            </th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Ações
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-        `;
-
-        vendasCache.forEach(v => {
-            // CORREÇÃO: Usando a função auxiliar para data e hora
-            const dataFormatada = formatarDataLocal(v.data).split(' ')[0]; // Pega só a data para a tabela
-
-            html += `
-                <tr class="hover:bg-blue-50 transition-colors duration-150 border-b border-gray-100 last:border-none">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${v.id}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${dataFormatada}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${v.cliente_nome || '<span class="text-gray-400 italic">Consumidor Final</span>'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${v.forma_pagamento}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-bold">${formatCurrency(v.total)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        <button class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md transition-colors btn-ver-detalhe" data-id="${v.id}">
-                            Detalhes
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        html += `</tbody></table></div></div>`;
-        
-        const totalGeral = vendasCache.reduce((acc, curr) => acc + curr.total, 0);
-        html += `<div class="mt-4 text-right text-gray-600 font-medium">Total: <span class="text-xl text-gray-800 font-bold">${formatCurrency(totalGeral)}</span></div>`;
-
-        areaRelatorio.innerHTML += html;
-
-        // --- REBIND DOS EVENTOS ---
-        document.querySelectorAll('.th-ordenavel').forEach(th => {
-            th.addEventListener('click', () => {
-                const coluna = th.getAttribute('data-ordenar');
-                ordenarDados(coluna);
-            });
-        });
-
-        document.querySelectorAll('.btn-ver-detalhe').forEach(btn => {
-            btn.addEventListener('click', (e) => verDetalhesVenda(e.target.dataset.id));
-        });
-
-        // Adiciona o botão de imprimir passando o HTML gerado
-        adicionarBotaoImprimir("Relatório de Vendas", html);
-    };
-
-    // 4. Execução da Busca
-    const executarRelatorioVendas = async () => {
-        const dataInicio = inputDataInicio.value;
-        const dataFim = inputDataFim.value;
-        
-        btnGerarVendas.disabled = true;
-        btnGerarVendas.textContent = "A gerar...";
-        areaRelatorio.innerHTML = '<p class="text-center text-gray-500">A carregar vendas...</p>';
-        
-        try {
-            const res = await fetch(`${API_URL}/relatorios/vendas?data_inicio=${dataInicio}&data_fim=${dataFim}`);
-            const dados = await res.json();
-            if(!res.ok) throw new Error(dados.message);
             
-            // Inicializa Cache e Renderiza
-            vendasCache = dados;
-            ordemAtual = { coluna: 'data', direcao: 'desc' };
-            renderizarHTMLVendas();
+            // CONFIGURA O BOTÃO DE IMPRESSÃO DO MODAL
+            const btnImp = document.getElementById('btn-imprimir-recibo-modal');
+            const novoBtn = btnImp.cloneNode(true); // Remove listeners antigos
+            btnImp.parentNode.replaceChild(novoBtn, btnImp);
+            
+            novoBtn.addEventListener('click', () => {
+                imprimirReciboIndividual(venda); // Chama a nova função de impressão
+            });
 
-        } catch (err) {
-            console.error(err);
-            alert('Erro ao gerar relatório de vendas.');
-            areaRelatorio.innerHTML = `<p class="text-center text-red-500">Erro: ${err.message}</p>`;
-        } finally {
-            btnGerarVendas.disabled = false;
-            btnGerarVendas.textContent = "Relatório de Vendas";
-        }
+            modalDetalhes.classList.remove('hidden');
+            modalDetalhes.style.display = 'flex';
+
+        } catch (err) { console.error(err); }
     };
 
-    // --- EVENT LISTENERS GERAIS ---
-    formDRE.addEventListener('submit', async (e) => { e.preventDefault(); executarRelatorioDRE(); });
-    btnGerarProdutos.addEventListener('click', executarRelatorioProdutos);
-    btnGerarStock.addEventListener('click', executarRelatorioStockBaixo);
-    if(btnGerarVendas) btnGerarVendas.addEventListener('click', executarRelatorioVendas);
-    if(btnFecharDetalhes) btnFecharDetalhes.addEventListener('click', () => modalDetalhes.classList.add('modal-oculto'));
+    if(btnFecharDetalhes) {
+        btnFecharDetalhes.addEventListener('click', () => {
+            modalDetalhes.classList.add('hidden');
+            modalDetalhes.style.display = 'none';
+        });
+    }
 
-    // --- INICIALIZAÇÃO DATA ---
+    // RANKINGS
+    const executarRelatorioServicos = async () => {
+        const dI = inputDataInicio.value; const dF = inputDataFim.value;
+        if(!dI || !dF) return showAlert("Selecione datas.", false);
+        setCarregando(btnGerarServicos, true);
+        try {
+            const res = await fetch(`${API_URL}/relatorios/servicos-ranking?data_inicio=${dI}&data_fim=${dF}`);
+            const dados = await res.json();
+            let html = `<div class="bg-white rounded shadow overflow-hidden"><table class="w-full report-table"><thead class="bg-gray-100"><tr><th>Serviço</th><th class="text-center">Qtd</th><th class="text-right">Total</th></tr></thead><tbody>`;
+            dados.forEach(s => html += `<tr><td class="p-3">${s.nome}</td><td class="p-3 text-center">${s.quantidade}</td><td class="p-3 text-right font-bold text-blue-600">${formatCurrency(s.total)}</td></tr>`);
+            html += `</tbody></table></div>`;
+            areaRelatorio.innerHTML = '';
+            areaRelatorio.innerHTML += `<h2 class="text-2xl font-bold mb-4">Ranking de Serviços</h2>` + html;
+            adicionarBotaoImprimir("Ranking Serviços", html);
+        } catch(e) { showAlert("Erro", false); } 
+        finally { setCarregando(btnGerarServicos, false); }
+    };
+
+    const executarRelatorioClientes = async () => {
+        const dI = inputDataInicio.value; const dF = inputDataFim.value;
+        if(!dI || !dF) return showAlert("Selecione datas.", false);
+        setCarregando(btnGerarClientes, true);
+        try {
+            const res = await fetch(`${API_URL}/relatorios/clientes-ranking?data_inicio=${dI}&data_fim=${dF}`);
+            const dados = await res.json();
+            let html = `<div class="bg-white rounded shadow overflow-hidden"><table class="w-full report-table"><thead class="bg-gray-100"><tr><th>Cliente</th><th class="text-center">Compras</th><th class="text-right">Gasto Total</th></tr></thead><tbody>`;
+            dados.forEach(c => html += `<tr><td class="p-3">${c.nome}</td><td class="p-3 text-center">${c.numero_vendas}</td><td class="p-3 text-right font-bold text-green-600">${formatCurrency(c.total_gasto)}</td></tr>`);
+            html += `</tbody></table></div>`;
+            areaRelatorio.innerHTML = '';
+            areaRelatorio.innerHTML += `<h2 class="text-2xl font-bold mb-4">Top Clientes</h2>` + html;
+            adicionarBotaoImprimir("Top Clientes", html);
+        } catch(e) { showAlert("Erro", false); } 
+        finally { setCarregando(btnGerarClientes, false); }
+    };
+
+    // INICIALIZAÇÃO
     const hoje = new Date();
-    const inicioDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    inputDataInicio.value = inicioDoMes.toISOString().split('T')[0];
+    inputDataInicio.value = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
     inputDataFim.value = hoje.toISOString().split('T')[0];
+
+    if(formDRE) formDRE.addEventListener('submit', (e) => { e.preventDefault(); executarRelatorioDRE(); });
+    if(btnGerarProdutos) btnGerarProdutos.addEventListener('click', executarRelatorioProdutos);
+    if(btnGerarStock) btnGerarStock.addEventListener('click', executarRelatorioStockBaixo);
+    if(btnGerarVendas) btnGerarVendas.addEventListener('click', executarRelatorioVendas);
+    if(btnGerarServicos) btnGerarServicos.addEventListener('click', executarRelatorioServicos);
+    if(btnGerarClientes) btnGerarClientes.addEventListener('click', executarRelatorioClientes);
+
 });

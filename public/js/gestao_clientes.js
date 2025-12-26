@@ -1,188 +1,175 @@
-// public/js/gestao_clientes.js (Versão Refatorada)
-
 document.addEventListener('DOMContentLoaded', () => {
+
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';
+    let listaClientes = []; // Cache local para busca/ordenação
+    let ordemAtual = { coluna: 'nome', direcao: 'asc' };
 
-    // --- ELEMENTOS DO DOM ---
-    const tabelaClientesBody = document.getElementById('tabela-clientes-corpo'); // Mudei o ID para ser mais específico
-    const clienteModal = document.getElementById('cliente-modal');
-    const feedbackAlert = document.getElementById('feedback-alert');
+    // --- ELEMENTOS ---
+    const tabelaCorpo = document.getElementById('tabela-clientes-corpo');
     const inputBusca = document.getElementById('input-busca-cliente');
-    const headersTabela = document.querySelectorAll('#tabela-clientes-header th[data-sort]'); // Para ordenação
-
-    let todosOsClientes = [];
-    let sortColumn = 'nome'; // Coluna padrão para ordenar
-    let sortDirection = 'asc'; // Direção padrão
+    const feedbackAlert = document.getElementById('feedback-alert');
+    
+    // Modal
+    const modal = document.getElementById('cliente-modal');
+    const form = document.getElementById('cliente-form');
+    const btnNovo = document.getElementById('btnNovoCliente');
+    const btnCancelar = document.getElementById('btn-cancelar-cliente');
 
     // --- FUNÇÕES AUXILIARES ---
     const showAlert = (message, isSuccess = true) => {
         feedbackAlert.textContent = message;
-        feedbackAlert.className = `feedback-alert p-4 mb-4 text-sm rounded-lg ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-        feedbackAlert.style.display = 'block';
-        setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
+        feedbackAlert.className = `p-4 mb-6 rounded-lg font-bold text-center shadow-sm ${
+            isSuccess ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+        }`;
+        feedbackAlert.classList.remove('hidden');
+        setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
     };
 
-    // --- FUNÇÕES DE CLIENTE ---
-
-    // Função principal para buscar os dados da API
+    // --- 1. CARREGAR E RENDERIZAR ---
     const carregarClientes = async () => {
         try {
             const response = await fetch(`${API_URL}/clientes`);
-            if (!response.ok) throw new Error('Erro ao carregar clientes.');
-
-            todosOsClientes = await response.json();
-            renderizarTabela(); // Desenha a tabela com todos os clientes
+            listaClientes = await response.json();
+            renderizarTabela();
         } catch (error) {
-            showAlert(error.message, false);
+            console.error(error);
+            tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-6 text-red-500">Erro ao carregar clientes.</td></tr>';
         }
     };
 
-    // Função para ORDENAR, FILTRAR e DESENHAR a tabela
     const renderizarTabela = () => {
-        tabelaClientesBody.innerHTML = '';
+        tabelaCorpo.innerHTML = '';
+        
+        // 1. Filtrar
         const termo = inputBusca.value.toLowerCase();
-
-        // 1. Filtra os clientes
-        const clientesFiltrados = todosOsClientes.filter(cliente =>
-            cliente.nome.toLowerCase().includes(termo) ||
-            (cliente.telefone && cliente.telefone.includes(termo))
+        let filtrados = listaClientes.filter(c => 
+            c.nome.toLowerCase().includes(termo) || 
+            (c.telefone && c.telefone.includes(termo))
         );
 
-        // 2. Ordena os clientes (A sua ordenação por 'statusFinanceiro' vai funcionar aqui!)
-        clientesFiltrados.sort((a, b) => {
-            let valA = a[sortColumn] || '';
-            let valB = b[sortColumn] || '';
-
-            if (typeof valA === 'string') valA = valA.toLowerCase();
-            if (typeof valB === 'string') valB = valB.toLowerCase();
-
-            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        if (clientesFiltrados.length === 0) {
-            tabelaClientesBody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-500 py-4">Nenhum cliente encontrado.</td></tr>`;
+        if (filtrados.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-6 text-gray-400 italic">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
-        // 3. Desenha as linhas da tabela
-        clientesFiltrados.forEach(cliente => {
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50";
-
-            // --- LÓGICA DO NOVO STATUS ---
-            let iconeStatus = '';
-            switch (cliente.statusFinanceiro) {
-                case 'vermelho':
-                    iconeStatus = `<span title="Cliente com débito vencido" class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Vencido</span>`;
-                    break;
-                case 'laranja':
-                    iconeStatus = `<span title="Cliente com débito pendente" class="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Pendente</span>`;
-                    break;
-                case 'verde':
-                    iconeStatus = `<span title="Cliente sem débitos" class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Em dia</span>`;
-                    break;
+        // 2. Ordenar
+        filtrados.sort((a, b) => {
+            let valA = a[ordemAtual.coluna] || '';
+            let valB = b[ordemAtual.coluna] || '';
+            
+            // Ordem personalizada para status (Vermelho > Laranja > Verde)
+            if (ordemAtual.coluna === 'statusFinanceiro') {
+                const pesos = { 'vermelho': 3, 'laranja': 2, 'verde': 1 };
+                valA = pesos[valA] || 0;
+                valB = pesos[valB] || 0;
+            } else {
+                valA = valA.toString().toLowerCase();
+                valB = valB.toString().toLowerCase();
             }
 
-            // Removemos o ícone da coluna "Nome" e adicionámos a nova coluna "Status" no início
-            tr.innerHTML = `
-                    <td class="px-4 py-4 text-center">
-                        ${iconeStatus}
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">${cliente.nome}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm text-gray-900">${cliente.telefone || ''}</div>
-                        <div class="text-sm text-gray-500">${cliente.email || ''}</div>
-                    </td>
-                    <td class="px-6 py-4 text-right text-sm font-medium">
-                        <a href="detalhe_cliente.html?id=${cliente.id}" class="bg-blue-600 text-white px-3 py-1 rounded-md text-xs hover:bg-blue-700">
+            if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // 3. Desenhar
+        filtrados.forEach(c => {
+            // Define o visual do Status
+            let statusHtml = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-500">?</span>';
+            if (c.statusFinanceiro === 'verde') statusHtml = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200">Em dia</span>';
+            if (c.statusFinanceiro === 'laranja') statusHtml = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200">Pendente</span>';
+            if (c.statusFinanceiro === 'vermelho') statusHtml = '<span class="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">Vencido</span>';
+
+            tabelaCorpo.innerHTML += `
+                <tr class="hover:bg-teal-50 transition-colors border-b border-gray-50 last:border-none">
+                    <td class="px-6 py-4 whitespace-nowrap">${statusHtml}</td>
+                    <td class="px-6 py-4 font-bold text-gray-700 uppercase">${c.nome}</td>
+                    <td class="px-6 py-4 text-gray-600 font-mono text-sm">${c.telefone || '-'}</td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="detalhe_cliente.html?id=${c.id}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1.5 px-4 rounded shadow transition-all hover:shadow-md">
                             Ver Detalhes
                         </a>
                     </td>
-                `;
-            tabelaClientesBody.appendChild(tr);
-        });
-    };
-
-    // --- O modal de NOVO cliente (o de editar vai para a outra página) ---
-    const abrirModalCliente = () => {
-        const form = document.getElementById('cliente-form');
-        form.reset();
-        document.getElementById('cliente-id').value = '';
-        document.getElementById('cliente-modal-title').textContent = 'Novo Cliente';
-        clienteModal.classList.remove('modal-oculto');
-    };
-
-    // Salva o NOVO cliente
-    document.getElementById('cliente-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = document.getElementById('cliente-id').value;
-
-        // Este formulário agora só cria NOVOS clientes
-        if (id) {
-            clienteModal.classList.add('modal-oculto');
-            return; // Formulário de edição estará noutra página
-        }
-
-        const data = {
-            nome: document.getElementById('cliente-nome').value,
-            telefone: document.getElementById('cliente-telefone').value,
-            email: document.getElementById('cliente-email').value,
-            endereco: document.getElementById('cliente-endereco').value,
-        };
-
-        const response = await fetch(`${API_URL}/clientes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+                </tr>
+            `;
         });
 
-        const result = await response.json();
-        showAlert(result.message, response.ok);
-        if (response.ok) {
-            clienteModal.classList.add('modal-oculto');
-            await carregarClientes(); // Recarrega a lista
-        }
-    });
+        atualizarIconesOrdenacao();
+    };
 
-    // --- EVENT LISTENERS ---
-
-    // Listener para o campo de busca
-    inputBusca.addEventListener('input', renderizarTabela);
-
-    // Listeners para ORDENAÇÃO (SUGESTÃO 1)
-    headersTabela.forEach(header => {
-        header.addEventListener('click', () => {
-            const newSortColumn = header.dataset.sort;
-            if (sortColumn === newSortColumn) {
-                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
+    // --- 2. LÓGICA DE ORDENAÇÃO (CLIQUE) ---
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const coluna = th.dataset.sort;
+            if (ordemAtual.coluna === coluna) {
+                ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
             } else {
-                sortColumn = newSortColumn;
-                sortDirection = 'asc';
+                ordemAtual.coluna = coluna;
+                ordemAtual.direcao = 'asc';
             }
-
-            // Remove setas de outros headers
-            headersTabela.forEach(h => h.querySelector('.sort-arrow').innerHTML = '');
-            // Adiciona seta no header atual
-            header.querySelector('.sort-arrow').innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
-
             renderizarTabela();
         });
     });
 
-    document.getElementById('btnNovoCliente').addEventListener('click', () => abrirModalCliente());
-    document.getElementById('btn-cancelar-cliente').addEventListener('click', () => {
-        // clienteModal.classList.remove('active'); // Linha antiga
-        clienteModal.classList.add('modal-oculto'); // Linha nova
+    const atualizarIconesOrdenacao = () => {
+        ['statusFinanceiro', 'nome', 'telefone'].forEach(col => {
+            const el = document.getElementById(`sort-icon-${col}`);
+            if(el) el.textContent = '';
+        });
+        const icone = ordemAtual.direcao === 'asc' ? '▲' : '▼';
+        const el = document.getElementById(`sort-icon-${ordemAtual.coluna}`);
+        if(el) el.textContent = ` ${icone}`;
+    };
+
+    // --- 3. NOVO CLIENTE ---
+    btnNovo.addEventListener('click', () => {
+        form.reset();
+        document.getElementById('cliente-id').value = '';
+        modal.classList.remove('modal-oculto');
     });
 
-    // O modal de VEÍCULOS e os botões de EDITAR/REMOVER foram movidos para a 'detalhe_cliente.js'
-    // Por isso, removemos os 'event listeners' antigos daqui.
+    btnCancelar.addEventListener('click', () => modal.classList.add('modal-oculto'));
 
-    // --- INICIALIZAÇÃO ---
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Salvando...";
+
+        const novoCliente = {
+            nome: document.getElementById('cliente-nome').value.trim().toUpperCase(),
+            telefone: document.getElementById('cliente-telefone').value.trim(),
+            email: document.getElementById('cliente-email').value.trim(),
+            endereco: document.getElementById('cliente-endereco').value.trim()
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/clientes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(novoCliente)
+            });
+
+            if (response.ok) {
+                showAlert('Cliente cadastrado com sucesso!', true);
+                modal.classList.add('modal-oculto');
+                carregarClientes();
+            } else {
+                throw new Error('Erro ao salvar cliente.');
+            }
+        } catch (error) {
+            showAlert(error.message, false);
+        } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Salvar";
+        }
+    });
+
+    // --- EVENTOS FINAIS ---
+    inputBusca.addEventListener('input', renderizarTabela);
+
+    // Iniciar
     carregarClientes();
 });

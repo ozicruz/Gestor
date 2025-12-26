@@ -1,222 +1,228 @@
-// public/js/gestao_servicos.js (Versão CORRIGIDA com Ordenação e Filtro)
-
 document.addEventListener('DOMContentLoaded', () => {
-    // --- CONFIGURAÇÃO ---
-    const API_URL = 'http://localhost:3002/api';
 
-    // --- ELEMENTOS DO DOM ---
-    const tabelaServicosBody = document.getElementById('tabela-servicos');
-    const modal = document.getElementById('servico-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const servicoForm = document.getElementById('servico-form');
-    const btnNovoServico = document.getElementById('btnNovoServico');
-    const btnCancelar = document.getElementById('btn-cancelar');
+    const API_URL = 'http://localhost:3002/api';
+    let servicoIdEdicao = null;
+    let listaServicosCache = []; // Cache para busca rápida
+    
+    // --- NOVO: ESTADO DE ORDENAÇÃO ---
+    let ordemAtual = { coluna: 'nome', direcao: 'asc' };
+
+    // ELEMENTOS
+    const tabelaCorpo = document.getElementById('tabela-servicos');
+    const inputBusca = document.getElementById('input-busca-servico');
     const feedbackAlert = document.getElementById('feedback-alert');
-    const inputId = document.getElementById('servico-id');
+    const modal = document.getElementById('modal-servico');
+    const form = document.getElementById('form-servico');
+    const btnNovo = document.getElementById('btnNovoServico');
+    const btnCancelar = document.getElementById('btn-cancelar');
+    
+    // Inputs
     const inputNome = document.getElementById('servico-nome');
     const inputDescricao = document.getElementById('servico-descricao');
     const inputPreco = document.getElementById('servico-preco');
-    const inputBusca = document.getElementById('input-busca-servico');
 
-    // --- NOVO: Seletores e Variáveis de Ordenação ---
-    const headersTabela = document.querySelectorAll('#tabela-servicos-header th[data-sort]');
-    let todosOsServicos = [];
-    let sortColumn = 'nome'; // Coluna padrão
-    let sortDirection = 'asc'; // Direção padrão
-
-    // --- FUNÇÕES AUXILIARES ---
-    const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    const parseCurrency = (value) => parseFloat(String(value).replace(/\./g, '').replace(',', '.'));
-    const showAlert = (message, isSuccess = true) => {
-        feedbackAlert.textContent = message;
-        feedbackAlert.className = `feedback-alert p-4 mb-4 text-sm rounded-lg ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-        feedbackAlert.style.display = 'block';
-        setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
+    // --- HELPER ---
+    const safeNumber = (val) => {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(',', '.')) || 0;
     };
 
-    // --- FUNÇÕES PRINCIPAIS (CRUD) ---
+    const formatCurrency = (val) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(safeNumber(val));
+    };
 
-    // 1. Busca os dados da API
+    const formatarParaInput = (valor) => {
+        return (parseFloat(valor) || 0).toLocaleString('pt-BR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        });
+    };
+
+    const showAlert = (message, isSuccess = true) => {
+        if(!feedbackAlert) return alert(message);
+        feedbackAlert.textContent = message;
+        feedbackAlert.className = `p-4 mb-4 rounded-lg font-bold text-center shadow-sm ${
+            isSuccess ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'
+        }`;
+        feedbackAlert.classList.remove('hidden');
+        setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
+    };
+
+    // --- 1. CARREGAR (DA API) ---
     const carregarServicos = async () => {
         try {
             const response = await fetch(`${API_URL}/servicos`);
-            if (!response.ok) throw new Error('Erro ao carregar serviços.');
-
-            todosOsServicos = await response.json();
-            aplicarFiltroEOrdem(); // Chama a nova função central
+            listaServicosCache = await response.json();
+            renderizarTabela();
         } catch (error) {
-            showAlert(error.message, false);
+            console.error(error);
+            if(tabelaCorpo) tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center text-red-500 p-4">Erro ao carregar dados.</td></tr>';
         }
     };
 
-    // 2. ATUALIZADO: Função central que filtra, ordena e desenha
-    const aplicarFiltroEOrdem = () => {
-        const termo = inputBusca.value.toLowerCase();
+    // --- 2. RENDERIZAR (LOCAL COM ORDENAÇÃO) ---
+    const renderizarTabela = () => {
+        if(!tabelaCorpo) return;
+        tabelaCorpo.innerHTML = '';
 
-        // 2a. Filtra
-        const servicosFiltrados = todosOsServicos.filter(servico =>
-            servico.nome.toLowerCase().includes(termo)
-        );
+        const termo = inputBusca ? inputBusca.value.toLowerCase() : '';
+        let filtrados = listaServicosCache.filter(s => s.nome.toLowerCase().includes(termo));
 
-        // 2b. Ordena (Lógica de ordenação dinâmica)
-        servicosFiltrados.sort((a, b) => {
-            let valA = a[sortColumn];
-            let valB = b[sortColumn];
+        // --- LÓGICA DE ORDENAÇÃO ADICIONADA ---
+        filtrados.sort((a, b) => {
+            let valA = a[ordemAtual.coluna];
+            let valB = b[ordemAtual.coluna];
 
-            if (sortColumn === 'preco') {
-                valA = parseFloat(valA) || 0;
-                valB = parseFloat(valB) || 0;
-            } else { // Trata strings (nome)
-                valA = (valA || '').toLowerCase();
-                valB = (valB || '').toLowerCase();
+            // Tratamento especial para preço (que pode vir como 'preco' ou 'valor' dependendo da API/Banco)
+            if (ordemAtual.coluna === 'preco') {
+                valA = a.preco || a.valor || 0;
+                valB = b.preco || b.valor || 0;
             }
 
-            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            if (typeof valA === 'number') {
+                return ordemAtual.direcao === 'asc' ? valA - valB : valB - valA;
+            }
+
+            valA = (valA || '').toString().toLowerCase();
+            valB = (valB || '').toString().toLowerCase();
+            
+            if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
             return 0;
         });
+        // ---------------------------------------
 
-        // 2c. Desenha
-        desenharTabela(servicosFiltrados);
-    };
-
-    // 3. A função de desenhar a tabela (sem alterações)
-    const desenharTabela = (servicosParaRenderizar) => {
-        tabelaServicosBody.innerHTML = '';
-        if (servicosParaRenderizar.length === 0) {
-            tabelaServicosBody.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">Nenhum serviço encontrado.</td></tr>`;
+        if (filtrados.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-6 text-gray-500 italic">Nenhum serviço encontrado.</td></tr>';
             return;
         }
-        servicosParaRenderizar.forEach(servico => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${servico.nome}</div><div class="text-sm text-gray-500">${(servico.descricao || '').substring(0, 40)}...</div></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(servico.preco)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button data-action="editar-servico" data-servico-id="${servico.id}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
-                    <button data-action="remover-servico" data-servico-id="${servico.id}" class="text-red-600 hover:text-red-900">Remover</button>
-                </td>
+
+        filtrados.forEach(s => {
+            tabelaCorpo.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                    <td class="px-6 py-4 font-mono text-xs text-gray-500">#${s.id}</td>
+                    <td class="px-6 py-4">
+                        <p class="font-bold text-gray-800 uppercase">${s.nome}</p>
+                        <p class="text-xs text-gray-500 truncate max-w-xs">${s.descricao || '-'}</p>
+                    </td>
+                    <td class="px-6 py-4 text-right font-medium text-gray-800">${formatCurrency(s.preco || s.valor)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="editarServico(${s.id})" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-2 rounded transition-colors" title="Editar">
+                                ✏️
+                            </button>
+                            <button onclick="excluirServico(${s.id})" class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-2 rounded transition-colors" title="Excluir">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
             `;
-            tabelaServicosBody.appendChild(tr);
         });
     };
 
-    // --- Funções do Modal (abrir, fechar, remover) ---
-    const abrirModal = async (isEdit = false, servicoId = null) => {
-        servicoForm.reset();
-        inputId.value = '';
-        if (isEdit && servicoId) {
-            modalTitle.textContent = 'Editar Serviço';
-            // ATUALIZADO: Busca na lista local em vez de nova API
-            const servico = todosOsServicos.find(s => s.id === servicoId);
-            if (servico) {
-                inputId.value = servico.id;
-                inputNome.value = servico.nome;
-                inputDescricao.value = servico.descricao;
-                inputPreco.value = parseFloat(servico.preco).toFixed(2).replace('.', ',');
-            }
-        } else {
-            modalTitle.textContent = 'Novo Serviço';
-        }
-        modal.classList.remove('modal-oculto');
-        setTimeout(() => { document.getElementById('servico-nome').focus(); }, 100);
-    };
-
-    const fecharModal = () => modal.classList.add('modal-oculto');
-
-    const removerServico = async (id) => {
-        if (confirm('Tem a certeza que deseja remover este serviço?')) {
-            try {
-                const response = await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE' });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.message);
-                showAlert(result.message);
-                carregarServicos(); // Recarrega a lista
-            } catch (error) {
-                showAlert(error.message, false);
-            }
-        }
-    };
-
-    // --- EVENT LISTENERS ---
-    btnNovoServico.addEventListener('click', () => abrirModal(false));
-    btnCancelar.addEventListener('click', fecharModal);
-
-    // Listener do Formulário
-    servicoForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const id = inputId.value;
-        const servicoData = {
-            nome: inputNome.value,
-            descricao: inputDescricao.value,
-            preco: parseCurrency(inputPreco.value)
-        };
-
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_URL}/servicos/${id}` : `${API_URL}/servicos`;
-
-        try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(servicoData)
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message);
-
-            showAlert(result.message);
-            fecharModal();
-            carregarServicos(); // Recarrega a lista
-        } catch (error) {
-            showAlert(error.message, false);
-        }
-    });
-
-    // Listener da Tabela (para Editar/Remover)
-    tabelaServicosBody.addEventListener('click', (e) => {
-        const button = e.target.closest('[data-action]');
-        if (!button) return;
-
-        const action = button.dataset.action;
-        const servicoId = parseInt(button.dataset.servicoId);
-
-        if (action === 'editar-servico') {
-            abrirModal(true, servicoId);
-        }
-        if (action === 'remover-servico') {
-            removerServico(servicoId);
-        }
-    });
-
-    // ATUALIZADO: Listener da Busca (agora só chama a função central)
-    inputBusca.addEventListener('input', aplicarFiltroEOrdem);
-
-    // --- NOVO: Listener para ORDENAÇÃO ---
-    headersTabela.forEach(header => {
-        header.addEventListener('click', () => {
-            const newSortColumn = header.dataset.sort;
-
-            if (sortColumn === newSortColumn) {
-                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
+    // --- 3. EVENTOS DE ORDENAÇÃO ---
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const coluna = th.dataset.sort;
+            if (ordemAtual.coluna === coluna) {
+                ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
             } else {
-                sortColumn = newSortColumn;
-                sortDirection = 'asc';
+                ordemAtual.coluna = coluna;
+                ordemAtual.direcao = 'asc';
             }
-
-            // Atualiza as setas
-            headersTabela.forEach(h => {
-                const arrow = h.querySelector('.sort-arrow');
-                if (h.dataset.sort === sortColumn) {
-                    arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
-                } else {
-                    arrow.innerHTML = '';
-                }
-            });
-
-            aplicarFiltroEOrdem();
+            renderizarTabela();
         });
     });
 
-    // --- INICIALIZAÇÃO ---
+    // --- 4. SALVAR ---
+    if(form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = form.querySelector('button[type="submit"]');
+            const txtOriginal = btn.innerText;
+            btn.innerText = "Salvando...";
+            btn.disabled = true;
+
+            const dados = {
+                nome: inputNome.value.trim().toUpperCase(),
+                descricao: inputDescricao.value.trim(),
+                preco: safeNumber(inputPreco.value)
+            };
+
+            try {
+                let url = `${API_URL}/servicos`;
+                let method = 'POST';
+                if (servicoIdEdicao) { url += `/${servicoIdEdicao}`; method = 'PUT'; }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                const resJson = await response.json();
+
+                if (!response.ok) throw new Error(resJson.message || "Erro ao salvar.");
+                
+                showAlert("Serviço salvo com sucesso!", true);
+                modal.classList.add('hidden');
+                form.reset();
+                carregarServicos(); 
+            } catch (err) {
+                showAlert(err.message, false);
+            } finally {
+                btn.innerText = txtOriginal;
+                btn.disabled = false;
+            }
+        });
+    }
+
+    // --- 5. FUNÇÕES GLOBAIS ---
+    window.editarServico = async (id) => {
+        const s = listaServicosCache.find(item => item.id === id);
+        if (s) {
+            servicoIdEdicao = s.id;
+            inputNome.value = s.nome;
+            inputDescricao.value = s.descricao || '';
+            inputPreco.value = formatarParaInput(s.preco || s.valor);
+            
+            document.querySelector('#modal-servico h2').textContent = "Editar Serviço";
+            modal.classList.remove('hidden');
+            setTimeout(() => inputNome.focus(), 100); 
+        }
+    };
+
+    window.excluirServico = async (id) => {
+        if(confirm("Remover este serviço?")) {
+            try {
+                const res = await fetch(`${API_URL}/servicos/${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    carregarServicos();
+                    showAlert("Serviço removido.", true);
+                } else {
+                    const err = await res.json();
+                    alert("Erro: " + err.message);
+                }
+            } catch (e) { console.error(e); }
+        }
+    };
+
+    // --- EVENTOS GERAIS ---
+    if(btnNovo) btnNovo.addEventListener('click', () => {
+        servicoIdEdicao = null;
+        form.reset();
+        document.querySelector('#modal-servico h2').textContent = "Novo Serviço";
+        modal.classList.remove('hidden');
+        setTimeout(() => inputNome.focus(), 100); 
+    });
+
+    if(btnCancelar) btnCancelar.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    if(inputBusca) inputBusca.addEventListener('input', renderizarTabela);
+
     carregarServicos();
 });

@@ -1,157 +1,95 @@
-// backend/controllers/financeiroController.js
 const FinanceiroModel = require('../models/financeiroModel');
-const { dbRun } = require('../database/database'); // Importamos dbRun para transações
+const { dbAll, dbRun } = require('../database/database');
 
-// --- NOVO: CONTROLLER PARA FORMAS DE PAGAMENTO ---
-const listarFormasPagamento = async (req, res) => {
+// --- 1. CONTAS E CAIXAS (Lógica SQL Direta - A que funciona) ---
+
+const listarContas = async (req, res) => {
     try {
-        const formas = await FinanceiroModel.getFormasPagamento();
-        res.status(200).json(formas);
+        // Busca direta no banco, sem depender do Model antigo
+        const contas = await dbAll('SELECT * FROM ContasCaixa');
+        res.json(contas);
     } catch (error) {
-        console.error("Erro ao buscar formas de pagamento:", error);
-        res.status(500).json({ message: "Erro interno ao buscar formas de pagamento." });
+        res.status(500).json({ message: 'Erro ao buscar contas.', error: error.message });
     }
 };
 
-// --- Controladores de Listas ---
+const criarConta = async (req, res) => {
+    const { nome, saldoInicial } = req.body;
+    try {
+        const sql = 'INSERT INTO ContasCaixa (Nome, SaldoInicial, Saldo) VALUES (?, ?, ?)';
+        await dbRun(sql, [nome, saldoInicial || 0, saldoInicial || 0]);
+        res.status(201).json({ message: 'Conta criada com sucesso!' });
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao criar conta.', error: error.message });
+    }
+};
+
+const removerConta = async (req, res) => {
+    const { id } = req.params;
+    try {
+        if (id == 1) { 
+            return res.status(400).json({ message: 'Não é possível remover o Caixa Principal.' });
+        }
+        await dbRun('DELETE FROM ContasCaixa WHERE id = ?', [id]);
+        res.json({ message: 'Conta removida.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao remover conta.', error: error.message });
+    }
+};
+
+// --- 2. OUTRAS LISTAGENS ---
+
+const listarFormasPagamento = async (req, res) => {
+    try { res.json(await FinanceiroModel.getFormasPagamento()); } 
+    catch (e) { res.status(500).json({ message: "Erro ao buscar formas." }); }
+};
 
 const listarCategorias = async (req, res) => {
-    try {
-        const tipo = req.query.tipo;
-        const categorias = await FinanceiroModel.getCategorias(tipo);
-        res.status(200).json(categorias);
-    } catch (error) {
-        console.error("Erro ao buscar categorias:", error);
-        res.status(500).json({ message: "Erro interno ao buscar categorias." });
-    }
+    try { res.json(await FinanceiroModel.getCategorias(req.query.tipo)); } 
+    catch (e) { res.status(500).json({ message: "Erro ao buscar categorias." }); }
 };
 
-const listarContasCaixa = async (req, res) => {
+// --- 3. LANÇAMENTOS E BAIXAS ---
+
+const criarLancamento = async (req, res) => {
     try {
-        const contas = await FinanceiroModel.getContasCaixa();
-        res.status(200).json(contas);
-    } catch (error) {
-        console.error("Erro ao buscar contas/caixa:", error);
-        res.status(500).json({ message: "Erro interno ao buscar contas." });
-    }
-};
+        const { Descricao, Valor, Tipo, Status, ContaCaixaID, CategoriaID } = req.body;
 
-// --- Controladores do Dashboard ---
-
-const getDashboardResumo = async (req, res) => {
-    try {
-        const hoje = new Date().toISOString().split('T')[0];
-        const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-        const fimMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
-
-        // Executa todas as consultas em paralelo
-        const [
-            saldoResult,
-            entradasResult,
-            saidasResult,
-            vencidoResult,
-            pagarHojeResult
-        ] = await Promise.all([
-            FinanceiroModel.getSaldoAtual(),
-            FinanceiroModel.getEntradasMes(inicioMes, fimMes),
-            FinanceiroModel.getSaidasMes(inicioMes, fimMes),
-            FinanceiroModel.getReceberVencido(hoje),
-            FinanceiroModel.getPagarHoje(hoje)
-        ]);
-
-        const resumo = {
-            SaldoAtualTotal: saldoResult.SaldoAtualTotal,
-            EntradasMes: entradasResult.EntradasMes,
-            SaidasMes: saidasResult.SaidasMes,
-            ContasReceberVencido: vencidoResult.ContasReceberVencido,
-            ContasPagarHoje: pagarHojeResult.ContasPagarHoje
-        };
-        res.status(200).json(resumo);
-    } catch (error) {
-        console.error("Erro ao buscar resumo do dashboard:", error);
-        res.status(500).json({ message: "Erro interno ao buscar resumo." });
-    }
-};
-
-const getMovimentoCaixa = async (req, res) => {
-    try {
-        const { data_inicio, data_fim, conta_id } = req.query;
-        const movimentos = await FinanceiroModel.getMovimentoCaixa(data_inicio, data_fim, conta_id);
-        res.status(200).json(movimentos);
-    } catch (error) {
-        console.error("Erro ao buscar movimento de caixa:", error);
-        res.status(500).json({ message: "Erro interno ao buscar movimentos." });
-    }
-};
-
-// --- Controlador de Lançamento Manual ---
-
-const criarLancamentoManual = async (req, res) => {
-    try {
-        const { Descricao, Valor, Tipo, DataPagamento, CategoriaID, ContaCaixaID } = req.body;
-        if (!Descricao || !Valor || !Tipo || !DataPagamento || !CategoriaID || !ContaCaixaID) {
-            return res.status(400).json({ message: "Todos os campos são obrigatórios." });
+        if (!Descricao || !Valor || !Tipo) {
+            return res.status(400).json({ message: 'Campos obrigatórios: Descrição, Valor e Tipo.' });
         }
 
-        const novoLancamento = {
-            Descricao, Valor, Tipo, DataPagamento, CategoriaID, ContaCaixaID,
-            Status: 'PAGO', // Lançamentos manuais já entram como pagos
-            DataVencimento: DataPagamento, // DataVenc = DataPagamento
-            ClienteID: null,
-            VendaID: null
+        // Sanitização: Garante que IDs vazios virem NULL e números sejam números
+        const dadosLimpos = {
+            ...req.body,
+            ContaCaixaID: ContaCaixaID ? Number(ContaCaixaID) : null,
+            CategoriaID: CategoriaID ? Number(CategoriaID) : null,
+            Valor: parseFloat(Valor)
         };
 
-        const result = await FinanceiroModel.createLancamento(novoLancamento);
-        res.status(201).json({ id: result.id, ...novoLancamento });
-    } catch (error) {
-        console.error("Erro ao criar lançamento:", error);
-        res.status(500).json({ message: "Erro interno ao criar lançamento." });
+        const result = await FinanceiroModel.createLancamento(dadosLimpos);
+
+        // Lógica de Atualização de Saldo
+        // Se for PAGO (ou status não informado, assume-se pago na criação rápida) e tiver conta vinculada
+        if ((Status === 'PAGO' || !Status) && dadosLimpos.ContaCaixaID) {
+            let valorEffect = dadosLimpos.Valor;
+            if (Tipo === 'DESPESA') valorEffect = valorEffect * -1;
+            await dbRun('UPDATE ContasCaixa SET Saldo = Saldo + ? WHERE id = ?', [valorEffect, dadosLimpos.ContaCaixaID]);
+        }
+
+        res.status(201).json({ id: result.id, message: 'Lançamento criado com sucesso.' });
+
+    } catch (err) {
+        console.error('Erro ao criar lançamento:', err);
+        res.status(500).json({ message: 'Erro ao salvar lançamento.', error: err.message });
     }
 };
-
-// --- Controladores de Contas a Receber ---
-
-const getContasAReceberResumo = async (req, res) => {
-    try {
-        const hoje = new Date().toISOString().split('T')[0];
-
-        const [totalResult, vencidoResult, hojeResult] = await Promise.all([
-            FinanceiroModel.getTotalAReceber(),
-            FinanceiroModel.getTotalVencido(hoje),
-            FinanceiroModel.getReceberHoje(hoje)
-        ]);
-
-        res.status(200).json({
-            TotalAReceber: totalResult.TotalAReceber,
-            TotalVencido: vencidoResult.TotalVencido,
-            ReceberHoje: hojeResult.ReceberHoje
-        });
-    } catch (error) {
-        console.error("Erro ao buscar resumo de contas a receber:", error);
-        res.status(500).json({ message: "Erro interno ao buscar resumo." });
-    }
-};
-
-const listarContasAReceber = async (req, res) => {
-    try {
-        const filtros = { ...req.query, hoje: new Date().toISOString().split('T')[0] };
-        const pendencias = await FinanceiroModel.getContasAReceber(filtros);
-        res.status(200).json(pendencias);
-    } catch (error) {
-        console.error("Erro ao buscar contas a receber:", error);
-        res.status(500).json({ message: "Erro interno ao buscar pendências." });
-    }
-};
-
-// --- O Controlador de Baixa (com Transação) ---
 
 const baixarLancamento = async (req, res) => {
     const { id } = req.params;
-    // --- ALTERAÇÃO 1: Ler o FormaPagamentoID ---
     const { ValorRecebido, DataPagamento, ContaCaixaID, FormaPagamentoID } = req.body;
 
     try {
-        // 1. Inicia a Transação
         await dbRun('BEGIN TRANSACTION');
 
         const dividaOriginal = await FinanceiroModel.findLancamentoPendenteById(id);
@@ -160,136 +98,217 @@ const baixarLancamento = async (req, res) => {
             return res.status(404).json({ message: "Dívida não encontrada ou já paga." });
         }
 
+        // --- PROTEÇÃO NOVA: Valor Padrão e Validação ---
+        // Se não vier valor, assume que é o valor total da dívida
+        let valorRecebidoFloat = ValorRecebido ? parseFloat(ValorRecebido) : parseFloat(dividaOriginal.Valor);
+
+        if (isNaN(valorRecebidoFloat) || valorRecebidoFloat <= 0) {
+            await dbRun('ROLLBACK');
+            return res.status(400).json({ message: "O valor do pagamento deve ser maior que zero." });
+        }
+        
+        if (!FormaPagamentoID || !ContaCaixaID) {
+            await dbRun('ROLLBACK');
+            return res.status(400).json({ message: "Selecione a Conta (Caixa) e a Forma de Pagamento." });
+        }
+        // ------------------------------------------------
+
         const valorOriginal = parseFloat(dividaOriginal.Valor);
-        const valorRecebidoFloat = parseFloat(ValorRecebido);
 
-        // --- ALTERAÇÃO 2: Novas Validações ---
-        if (!FormaPagamentoID) {
-            await dbRun('ROLLBACK');
-            return res.status(400).json({ message: "A Forma de Pagamento é obrigatória." });
-        }
-        if (!ContaCaixaID) {
-            // Esta validação já existia no frontend, mas é bom tê-la no backend
-            await dbRun('ROLLBACK');
-            return res.status(400).json({ message: "A Conta/Caixa de destino é obrigatória." });
-        }
-        if (valorRecebidoFloat > valorOriginal) {
-            await dbRun('ROLLBACK');
-            return res.status(400).json({ message: "O valor recebido não pode ser maior que o valor da dívida." });
-        }
+        // Arredondamento para evitar problemas com dizimas (ex: 99.99999)
+        const diff = Math.abs(valorOriginal - valorRecebidoFloat);
 
-        // Cenário 1: Pagamento TOTAL
-        if (valorRecebidoFloat === valorOriginal) {
-
-            // --- ALTERAÇÃO 3: Passar o FormaPagamentoID ---
+        if (diff < 0.01) { 
+            // Pagamento TOTAL (se a diferença for menor que 1 centavo)
             await FinanceiroModel.updateLancamentoParaPago(id, DataPagamento, ContaCaixaID, FormaPagamentoID);
-
-        }
-        // Cenário 2: Pagamento PARCIAL (Amortização)
-        else {
-
-            // A. Atualiza a dívida original (sem alterações)
+        } else if (valorRecebidoFloat < valorOriginal) {
+            // Pagamento PARCIAL
             const novoValorPendente = valorOriginal - valorRecebidoFloat;
             await FinanceiroModel.updateLancamentoValorPendente(id, novoValorPendente);
-
-            // B. Cria um novo lançamento PAGO com o valor recebido
+            
             const lancamentoPago = {
-                Descricao: `Pagto parcial ref. Lançamento #${id}`,
+                Descricao: `Pagto parcial ref. #${id} - ${dividaOriginal.Descricao}`,
                 Valor: valorRecebidoFloat,
-                Tipo: 'RECEITA',
+                Tipo: dividaOriginal.Tipo, 
                 Status: 'PAGO',
                 DataPagamento: DataPagamento,
-                DataVencimento: DataPagamento,
+                DataVencimento: DataPagamento, // Vencimento vira a data do pagamento
                 CategoriaID: dividaOriginal.CategoriaID,
                 ContaCaixaID: ContaCaixaID,
                 ClienteID: dividaOriginal.ClienteID,
                 VendaID: dividaOriginal.VendaID,
-                FormaPagamentoID: FormaPagamentoID // --- ALTERAÇÃO 4: Adicionar o FormaPagamentoID ---
+                FormaPagamentoID: FormaPagamentoID
             };
             await FinanceiroModel.createLancamento(lancamentoPago);
+        } else {
+            await dbRun('ROLLBACK');
+            return res.status(400).json({ message: "O valor pago não pode ser maior que a dívida." });
         }
 
-        // 2. Confirma a Transação
+        // Atualiza o Saldo da Conta Caixa
+        let valorEffect = valorRecebidoFloat;
+        if (dividaOriginal.Tipo === 'DESPESA') valorEffect = valorEffect * -1;
+        await dbRun('UPDATE ContasCaixa SET Saldo = Saldo + ? WHERE id = ?', [valorEffect, ContaCaixaID]);
+
         await dbRun('COMMIT');
-        res.status(200).json({ message: "Pagamento registrado com sucesso!" });
+        res.json({ message: "Baixa realizada com sucesso!" });
 
     } catch (error) {
-        // 3. Desfaz a Transação em caso de erro
         await dbRun('ROLLBACK');
-        console.error("Erro ao dar baixa em pagamento:", error);
-        res.status(500).json({ message: "Erro interno ao processar pagamento." });
+        console.error("Erro ao baixar:", error);
+        res.status(500).json({ message: "Erro ao processar baixa.", error: error.message });
     }
 };
 
-// --- Controlador de Relatórios ---
+const excluirLancamento = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await FinanceiroModel.deleteLancamento(id);
+        res.json({ message: 'Lançamento excluído com sucesso.' });
+    } catch (err) {
+        console.error("Erro ao excluir:", err);
+        res.status(500).json({ message: 'Erro ao excluir lançamento.' });
+    }
+};
+
+// --- 4. RELATÓRIOS E DASHBOARD ---
+
+const getDashboardResumo = async (req, res) => {
+    try {
+        const hoje = new Date().toISOString().split('T')[0];
+        const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+        const fimMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+
+        const [saldoResult, entradasResult, saidasResult, vencidoResult, pagarHojeResult] = await Promise.all([
+            FinanceiroModel.getSaldoAtual(),
+            FinanceiroModel.getEntradasMes(inicioMes, fimMes),
+            FinanceiroModel.getSaidasMes(inicioMes, fimMes),
+            FinanceiroModel.getReceberVencido(hoje),
+            FinanceiroModel.getPagarHoje(hoje)
+        ]);
+
+        const resumo = {
+            SaldoAtualTotal: Number(saldoResult?.SaldoAtualTotal) || 0,
+            EntradasMes: Number(entradasResult?.EntradasMes) || 0,
+            SaidasMes: Number(saidasResult?.SaidasMes) || 0,
+            ContasReceberVencido: Number(vencidoResult?.ContasReceberVencido) || 0,
+            ContasPagarHoje: Number(pagarHojeResult?.ContasPagarHoje) || 0
+        };
+        res.status(200).json(resumo);
+    } catch (error) {
+        res.status(500).json({ message: "Erro interno ao buscar resumo." });
+    }
+};
+
+const getMovimentoCaixa = async (req, res) => {
+    try {
+        const { data_inicio, data_fim, conta_id } = req.query;
+        res.json(await FinanceiroModel.getMovimentoCaixa(data_inicio, data_fim, conta_id));
+    } catch (error) { res.status(500).json({ message: "Erro ao buscar movimentos." }); }
+};
+
+const getContasAReceberResumo = async (req, res) => {
+    try {
+        const hoje = new Date().toISOString().split('T')[0];
+        const [total, vencido, hojeVal] = await Promise.all([
+            FinanceiroModel.getTotalAReceber(),
+            FinanceiroModel.getTotalVencido(hoje),
+            FinanceiroModel.getReceberHoje(hoje)
+        ]);
+        res.json({ TotalAReceber: total.TotalAReceber, TotalVencido: vencido.TotalVencido, ReceberHoje: hojeVal.ReceberHoje });
+    } catch (error) { res.status(500).json({ message: "Erro no resumo receber." }); }
+};
+
+const listarContasAReceber = async (req, res) => {
+    try {
+        const filtros = { ...req.query, hoje: new Date().toISOString().split('T')[0] };
+        res.json(await FinanceiroModel.getContasAReceber(filtros));
+    } catch (error) { res.status(500).json({ message: "Erro ao buscar pendências." }); }
+};
+
+const listarContasAPagar = async (req, res) => {
+    try { res.json(await FinanceiroModel.getContasAPagar()); } 
+    catch (err) { res.status(500).json({ message: 'Erro ao buscar contas a pagar.' }); }
+};
+
+const obterResumoContasPagar = async (req, res) => {
+    try {
+        const hoje = new Date().toISOString().split('T')[0];
+        res.json(await FinanceiroModel.getResumoContasPagar(hoje));
+    } catch (err) { res.status(500).json({ message: 'Erro ao buscar resumo.' }); }
+};
 
 const getRelatorioDRE = async (req, res) => {
     try {
         const { data_inicio, data_fim } = req.query;
-        if (!data_inicio || !data_fim) {
-            return res.status(400).json({ message: "As datas de início e fim são obrigatórias." });
-        }
+        if (!data_inicio || !data_fim) return res.status(400).json({ message: "Datas obrigatórias." });
 
-        // 1. Chama o novo Model
         const { grupos, totalCMV } = await FinanceiroModel.getDRE(data_inicio, data_fim);
+        
+        // Variáveis inicializadas
+        let RecProdutos = 0;
+        let RecServicos = 0;
+        let RecOutras = 0;
+        let DespTotal = 0;
+        
+        const RecDet = [], DespDet = [];
 
-        // 2. Processa os resultados
-        let TotalReceitasProdutos = 0;
-        let TotalOutrasReceitas = 0;
-        let TotalDespesas = 0;
-
-        const ReceitasDetalhadas = [];
-        const DespesasDetalhadas = [];
-
-        for (const grupo of grupos) {
-            const total = parseFloat(grupo.TotalPorCategoria);
-
-            if (grupo.Tipo === 'RECEITA') {
-                // Separa Receita de Produto das outras
-                if (grupo.CategoriaNome === 'Venda de Produtos') {
-                    TotalReceitasProdutos += total;
+        // Loop corrigido para separar Serviços de Outras Receitas
+        for (const g of grupos) {
+            const val = parseFloat(g.TotalPorCategoria);
+            if (g.Tipo === 'RECEITA') {
+                if (g.CategoriaNome === 'Venda de Produtos') {
+                    RecProdutos += val;
+                } else if (g.CategoriaNome === 'Venda de Serviços') {
+                    RecServicos += val; // Agora somamos serviços separadamente
                 } else {
-                    TotalOutrasReceitas += total;
+                    RecOutras += val;
                 }
-                ReceitasDetalhadas.push({ categoria: grupo.CategoriaNome, total: total });
-            } else { // DESPESA
-                DespesasDetalhadas.push({ categoria: grupo.CategoriaNome, total: total });
-                TotalDespesas += total;
+                RecDet.push({ categoria: g.CategoriaNome, total: val });
+            } else {
+                DespDet.push({ categoria: g.CategoriaNome, total: val });
+                DespTotal += val;
             }
         }
 
-        // 3. Monta o DRE Financeiro
-        const TotalReceitas = TotalReceitasProdutos + TotalOutrasReceitas;
-        const LucroBruto = TotalReceitasProdutos - totalCMV; // LUCRO BRUTO = Vendas - Custo
-        const LucroLiquido = (LucroBruto + TotalOutrasReceitas) - TotalDespesas;
+        const TotalRec = RecProdutos + RecServicos + RecOutras;
 
-        // 4. Monta o JSON de resposta
-        const dre = {
-            TotalReceitas: TotalReceitas,
-            TotalDespesas: TotalDespesas,
-            TotalCMV: totalCMV, // O Custo
-            LucroBruto: LucroBruto, // O Lucro dos Produtos
-            LucroLiquido: LucroLiquido, // O Lucro Final
-            Receitas: ReceitasDetalhadas,
-            Despesas: DespesasDetalhadas
-        };
-        res.status(200).json(dre);
+        // CÁLCULO CORRETO: Lucro Bruto é a operação principal (Peças + Mão de Obra) menos o custo das peças
+        const LucroBruto = (RecProdutos + RecServicos) - totalCMV;
 
-    } catch (error) {
-        console.error("Erro ao gerar DRE:", error);
-        res.status(500).json({ message: "Erro interno ao gerar relatório." });
+        // Resultado Líquido: Lucro Bruto + Outras Receitas (ex: Rendimentos) - Despesas
+        const LucroLiquido = (LucroBruto + RecOutras) - DespTotal;
+
+        res.json({ 
+            TotalReceitas: TotalRec, 
+            TotalDespesas: DespTotal, 
+            TotalCMV: totalCMV, 
+            LucroBruto, 
+            LucroLiquido, 
+            Receitas: RecDet, 
+            Despesas: DespDet 
+        });
+
+    } catch (error) { 
+        console.error("Erro DRE:", error);
+        res.status(500).json({ message: "Erro ao gerar DRE." }); 
     }
 };
 
 module.exports = {
+    listarContas, // Esta é a função correta
+    criarConta,
+    removerConta,
     listarFormasPagamento,
     listarCategorias,
-    listarContasCaixa,
+    criarLancamento,
+    baixarLancamento,
+    excluirLancamento,
     getDashboardResumo,
     getMovimentoCaixa,
-    criarLancamentoManual,
     getContasAReceberResumo,
     listarContasAReceber,
-    baixarLancamento,
+    listarContasAPagar,
+    obterResumoContasPagar,
     getRelatorioDRE
 };

@@ -1,100 +1,166 @@
-// public/js/gestao_financeiro.js (Versão ATUALIZADA com Ordenação)
-
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. REFERÊNCIAS AOS ELEMENTOS ---
     const btnAbrir = document.getElementById('btnAbrirModalDespesa');
     const btnFechar = document.getElementById('btnFecharModal');
+    const btnFecharX = document.getElementById('btnFecharModalX');
     const modal = document.getElementById('modalDespesa');
     const formDespesa = document.getElementById('formDespesa');
+    
     const selectCategorias = document.getElementById('despesaCategoria');
     const selectContas = document.getElementById('despesaConta');
+    
+    // Cards Topo (Mês)
     const cardSaldo = document.getElementById('card-saldo');
     const cardEntradas = document.getElementById('card-entradas');
     const cardSaidas = document.getElementById('card-saidas');
     const cardVencido = document.getElementById('card-vencido');
+    
+    // Tabela e Filtro (Dia)
     const tabelaCorpo = document.getElementById('tabela-movimentos-corpo');
+    const filtroDataMovimento = document.getElementById('filtroDataMovimento');
 
-    // --- NOVO: Seletores e Variáveis de Ordenação ---
+    // Totais do Rodapé (Dia) - NOVOS
+    const lblTotalDiaEntradas = document.getElementById('totalDiaEntradas');
+    const lblTotalDiaSaidas = document.getElementById('totalDiaSaidas');
+    const lblTotalDiaSaldo = document.getElementById('totalDiaSaldo');
+
+    // Ordenação
     const headersTabela = document.querySelectorAll('#tabela-movimentos-header th[data-sort]');
-    let todosOsMovimentos = []; // Guarda a lista completa
-    let sortColumn = 'DataPagamento'; // Coluna padrão
-    let sortDirection = 'desc'; // Direção padrão (mais recentes primeiro)
+    let todosOsMovimentos = []; 
+    let sortColumn = 'DataPagamento'; 
+    let sortDirection = 'desc'; 
 
-    // --- 2. FUNÇÕES DE FORMATAÇÃO ---
+    // --- 2. CONFIGURAÇÃO INICIAL DE DATA ---
+    const hojeISO = new Date().toISOString().split('T')[0];
+    if (filtroDataMovimento) {
+        filtroDataMovimento.value = hojeISO; // Define o filtro como HOJE
+        
+        // Se mudar a data, recarrega a tabela
+        filtroDataMovimento.addEventListener('change', () => {
+            carregarMovimentosDaAPI();
+        });
+    }
+
+    // --- 3. FUNÇÕES DE FORMATAÇÃO ---
     function formatarMoeda(valor) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
 
     function formatarData(dataISO) {
-        return new Date(dataISO).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        if(!dataISO) return '-';
+        const [ano, mes, dia] = dataISO.split('T')[0].split('-');
+        return `${dia}/${mes}/${ano}`;
     }
 
-    // --- 3. FUNÇÕES DE ATUALIZAÇÃO DO DASHBOARD ---
+    // --- 4. FUNÇÕES DO MODAL ---
+    const abrirModal = () => {
+        modal.classList.remove('hidden');
+        carregarCategorias();
+        carregarContas();
+        const dataInput = document.getElementById('despesaData');
+        if (dataInput) dataInput.value = new Date().toISOString().split('T')[0];
+    };
 
-    // Função ÚNICA para atualizar TUDO
+    const fecharModal = () => modal.classList.add('hidden');
+
+    if (btnAbrir) btnAbrir.addEventListener('click', abrirModal);
+    if (btnFechar) btnFechar.addEventListener('click', fecharModal);
+    if (btnFecharX) btnFecharX.addEventListener('click', fecharModal);
+
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) fecharModal();
+        });
+    }
+
+    // --- 5. BUSCA DE DADOS (API) ---
     async function atualizarDashboard() {
-        console.log("A atualizar dashboard...");
-        // Carrega os dois em paralelo
         await Promise.all([
             atualizarCardsResumo(),
-            carregarMovimentosDaAPI() // Carrega os dados da tabela
+            carregarMovimentosDaAPI()
         ]);
     }
 
-    // Função para os CARDS (sem alteração)
     async function atualizarCardsResumo() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/dashboard/resumo');
             const resumo = await response.json();
-            cardSaldo.textContent = formatarMoeda(resumo.SaldoAtualTotal);
-            cardEntradas.textContent = formatarMoeda(resumo.EntradasMes);
-            cardSaidas.textContent = formatarMoeda(resumo.SaidasMes);
-            cardVencido.textContent = formatarMoeda(resumo.ContasReceberVencido);
-            cardSaldo.classList.toggle('text-red-900', resumo.SaldoAtualTotal < 0);
-            cardSaldo.classList.toggle('text-blue-900', resumo.SaldoAtualTotal >= 0);
+            
+            if(cardSaldo) {
+                cardSaldo.textContent = formatarMoeda(resumo.SaldoAtualTotal);
+                cardSaldo.classList.remove('text-red-900', 'text-blue-900');
+                cardSaldo.classList.add(resumo.SaldoAtualTotal < 0 ? 'text-red-900' : 'text-blue-900');
+            }
+            if(cardEntradas) cardEntradas.textContent = formatarMoeda(resumo.EntradasMes);
+            if(cardSaidas) cardSaidas.textContent = formatarMoeda(resumo.SaidasMes);
+            if(cardVencido) cardVencido.textContent = formatarMoeda(resumo.ContasReceberVencido);
+
         } catch (err) {
-            console.error("Erro ao buscar resumo:", err);
-            if (cardSaldo) cardSaldo.textContent = "Erro";
+            console.error("Erro resumo:", err);
         }
     }
 
-    // --- NOVO: Funções refatoradas para a Tabela (com ordenação) ---
-
-    // 1. Busca os dados da API
+    // Carrega Tabela e Calcula Totais do Dia
     async function carregarMovimentosDaAPI() {
         try {
-            const response = await fetch('http://localhost:3002/api/financeiro/movimentocaixa');
+            const dataSelecionada = filtroDataMovimento.value;
+            // Busca dados apenas da data selecionada
+            const url = `http://localhost:3002/api/financeiro/movimentocaixa?data_inicio=${dataSelecionada}&data_fim=${dataSelecionada}`;
+
+            const response = await fetch(url);
             todosOsMovimentos = await response.json();
-            aplicarFiltroEOrdem(); // Chama a função para ordenar e desenhar
+            
+            aplicarFiltroEOrdem(); 
+            calcularTotaisDoDia(todosOsMovimentos); // <--- Aqui chamamos o cálculo do rodapé
+
         } catch (err) {
-            console.error("Erro ao buscar movimentos:", err);
-            tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-red-500">Erro ao carregar movimentos.</td></tr>';
+            console.error("Erro movimentos:", err);
+            if(tabelaCorpo) tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-red-500">Erro ao carregar movimentos.</td></tr>';
         }
     }
 
-    // 2. Função central que ordena e chama o "desenho"
+    // --- NOVA FUNÇÃO: CALCULA OS TOTAIS DO DIA ---
+    function calcularTotaisDoDia(movimentos) {
+        let ent = 0;
+        let sai = 0;
+
+        movimentos.forEach(m => {
+            const valor = parseFloat(m.Valor);
+            if(m.Tipo === 'RECEITA') ent += valor;
+            else if(m.Tipo === 'DESPESA') sai += valor;
+        });
+
+        const saldoDia = ent - sai;
+
+        if(lblTotalDiaEntradas) lblTotalDiaEntradas.textContent = formatarMoeda(ent);
+        if(lblTotalDiaSaidas) lblTotalDiaSaidas.textContent = formatarMoeda(sai);
+        
+        if(lblTotalDiaSaldo) {
+            lblTotalDiaSaldo.textContent = formatarMoeda(saldoDia);
+            
+            // Ajusta cor do saldo do dia
+            lblTotalDiaSaldo.classList.remove('text-red-600', 'text-blue-900', 'text-gray-500');
+            if (saldoDia < 0) lblTotalDiaSaldo.classList.add('text-red-600');
+            else if (saldoDia > 0) lblTotalDiaSaldo.classList.add('text-blue-900');
+            else lblTotalDiaSaldo.classList.add('text-gray-500');
+        }
+    }
+
     const aplicarFiltroEOrdem = () => {
-        // (Sem filtro por enquanto, mas podemos adicionar um inputBusca aqui no futuro)
         const movimentosFiltrados = [...todosOsMovimentos];
 
-        // Ordena
         movimentosFiltrados.sort((a, b) => {
             let valA = a[sortColumn];
             let valB = b[sortColumn];
 
-            // Trata números (Valor)
             if (sortColumn === 'Valor') {
                 valA = parseFloat(valA) || 0;
                 valB = parseFloat(valB) || 0;
-            }
-            // Trata datas
-            else if (sortColumn === 'DataPagamento') {
+            } else if (sortColumn === 'DataPagamento') {
                 valA = new Date(valA);
                 valB = new Date(valB);
-            }
-            // Trata strings (Descricao, CategoriaNome)
-            else {
+            } else {
                 valA = (valA || '').toLowerCase();
                 valB = (valB || '').toLowerCase();
             }
@@ -104,121 +170,107 @@ document.addEventListener('DOMContentLoaded', () => {
             return 0;
         });
 
-        // 3. Desenha
         desenharTabela(movimentosFiltrados);
     };
 
-    // 4. Função que desenha a tabela
-    const desenharTabela = (movimentosParaRenderizar) => {
-        tabelaCorpo.innerHTML = ''; // Limpa a tabela
-        if (movimentosParaRenderizar.length === 0) {
-            tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">Nenhum movimento encontrado.</td></tr>';
+    const desenharTabela = (movimentos) => {
+        if (!tabelaCorpo) return;
+        tabelaCorpo.innerHTML = ''; 
+        
+        if (movimentos.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="4" class="text-center p-8 text-gray-400 font-light">Nenhum movimento registrado nesta data.</td></tr>';
             return;
         }
 
-        movimentosParaRenderizar.forEach(mov => {
-            const valorClasse = mov.Tipo === 'DESPESA' ? 'valor-despesa' : 'valor-receita';
-            const valorFormatado = formatarMoeda(mov.Valor);
-            const dataFormatada = formatarData(mov.DataPagamento);
+        movimentos.forEach(mov => {
+            const isDespesa = mov.Tipo === 'DESPESA';
+            const valorClasse = isDespesa ? 'text-red-600 font-bold' : 'text-green-600 font-bold';
+            const icone = isDespesa ? '🔻' : '🔹';
 
             const linha = `
-                <tr>
-                    <td class="p-3">${dataFormatada}</td>
-                    <td class="p-3">${mov.Descricao}</td>
-                    <td class="p-3">${mov.CategoriaNome || 'Sem Categoria'}</td>
-                    <td class="p-3 text-right ${valorClasse}">${valorFormatado}</td>
+                <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                    <td class="px-6 py-4 text-sm text-gray-600">${formatarData(mov.DataPagamento)}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-800">${mov.Descricao}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500"><span class="bg-gray-100 px-2 py-1 rounded text-xs text-gray-600 border border-gray-200">${mov.CategoriaNome || '-'}</span></td>
+                    <td class="px-6 py-4 text-right text-sm ${valorClasse}">${icone} ${formatarMoeda(mov.Valor)}</td>
                 </tr>
             `;
             tabelaCorpo.innerHTML += linha;
         });
     };
 
-    // --- 4. LÓGICA DO MODAL (sem alteração) ---
-    // (O seu código de btnAbrir, btnFechar, carregarCategorias, carregarContas, e formDespesa.submit)
-    // (Copie e cole o seu código original destas funções aqui)
-
-    // (Vou colar por si, para garantir)
-    if (btnAbrir && btnFechar && modal) {
-        btnAbrir.addEventListener('click', () => {
-            modal.classList.remove('modal-oculto');
-            carregarCategorias();
-            carregarContas();
-            const dataInput = document.getElementById('despesaData');
-            if (dataInput) dataInput.value = new Date().toISOString().split('T')[0];
-        });
-        btnFechar.addEventListener('click', () => {
-            modal.classList.add('modal-oculto');
-        });
-    }
-
+    // --- CARREGAR SELECTS (Modais) ---
     async function carregarCategorias() {
+        if(!selectCategorias) return;
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/categorias?tipo=DESPESA');
             const categorias = await response.json();
             selectCategorias.innerHTML = '<option value="">Selecione...</option>';
             categorias.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.id;
-                option.textContent = cat.Nome;
-                selectCategorias.appendChild(option);
+                selectCategorias.innerHTML += `<option value="${cat.id}">${cat.Nome}</option>`;
             });
-        } catch (err) {
-            console.error('Erro ao carregar categorias:', err);
-            selectCategorias.innerHTML = '<option value="">Erro ao carregar</option>';
-        }
+        } catch (err) { console.error(err); }
     }
 
     async function carregarContas() {
+        if(!selectContas) return;
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contascaixa');
             const contas = await response.json();
             selectContas.innerHTML = '<option value="">Selecione...</option>';
             contas.forEach(conta => {
-                const option = document.createElement('option');
-                option.value = conta.id;
-                option.textContent = conta.Nome;
-                selectContas.appendChild(option);
+                selectContas.innerHTML += `<option value="${conta.id}">${conta.Nome}</option>`;
             });
-        } catch (err) {
-            console.error('Erro ao carregar contas:', err);
-            selectContas.innerHTML = '<option value="">Erro ao carregar</option>';
-        }
+        } catch (err) { console.error(err); }
     }
 
+    // --- SALVAR DESPESA ---
     if (formDespesa) {
         formDespesa.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const btnSubmit = formDespesa.querySelector('button[type="submit"]');
+            const textoOriginal = btnSubmit.innerText;
+            btnSubmit.innerText = "Salvando...";
+            btnSubmit.disabled = true;
+
             const dadosDespesa = {
                 Descricao: document.getElementById('despesaDescricao').value,
                 Valor: parseFloat(document.getElementById('despesaValor').value),
                 Tipo: 'DESPESA',
+                Status: 'PAGO',
                 DataPagamento: document.getElementById('despesaData').value,
-                CategoriaID: parseInt(document.getElementById('despesaCategoria').value),
-                ContaCaixaID: parseInt(document.getElementById('despesaConta').value)
+                CategoriaID: document.getElementById('despesaCategoria').value || null,
+                ContaCaixaID: document.getElementById('despesaConta').value || null
             };
+
             try {
                 const response = await fetch('http://localhost:3002/api/financeiro/lancamento', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dadosDespesa)
                 });
+
                 if (response.status === 201) {
-                    alert('Despesa lançada com sucesso!');
+                    alert('Saída registrada com sucesso!');
                     formDespesa.reset();
-                    modal.classList.add('modal-oculto');
-                    await atualizarDashboard(); // ATUALIZADO: Agora recarrega tudo
+                    fecharModal();
+                    await atualizarDashboard(); // Recarrega tudo
                 } else {
                     const erro = await response.json();
                     alert(`Erro ao salvar: ${erro.message}`);
                 }
             } catch (err) {
-                console.error('Erro de rede ao salvar despesa:', err);
-                alert('Erro de conexão. Verifique o console.');
+                console.error(err);
+                alert('Erro de conexão.');
+            } finally {
+                btnSubmit.innerText = textoOriginal;
+                btnSubmit.disabled = false;
             }
         });
     }
 
-    // --- NOVO: Listener para ORDENAÇÃO ---
+    // --- ORDENAÇÃO ---
     headersTabela.forEach(header => {
         header.addEventListener('click', () => {
             const newSortColumn = header.dataset.sort;
@@ -237,12 +289,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     arrow.innerHTML = '';
                 }
             });
-
-            // Re-renderiza a tabela com a nova ordem (sem chamar a API de novo)
             aplicarFiltroEOrdem();
         });
     });
 
-    // --- 5. CARREGAMENTO INICIAL ---
+    // INICIALIZAÇÃO
     atualizarDashboard();
 });

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações Financeiras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8 bg-gray-50">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="mb-6 flex justify-between items-center">
+            <div>
+                <a href="index.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar ao Menu</a>
+                <h1 class="text-3xl font-bold text-gray-800 mt-2">Configurações Financeiras ⚙️</h1>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div class="bg-white rounded-lg shadow p-6 border-t-4 border-blue-500 h-fit">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Nova Conta / Banco</h2>
+                <form id="form-nova-conta" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nome da Conta</label>
+                        <input type="text" id="conta-nome" placeholder="Ex: Banco Nubank, Cofre..." required class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                        <p class="text-xs text-gray-500 mt-1">Dica: Use "Banco" ou "Conta" no nome para seleção automática no Pix.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Saldo Inicial (R$)</label>
+                        <input type="number" id="conta-saldo" placeholder="0.00" step="0.01" class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-colors">
+                        + Cadastrar Conta
+                    </button>
+                </form>
+            </div>
+
+            <div class="bg-white rounded-lg shadow p-6 border-t-4 border-gray-500">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Contas Cadastradas</h2>
+                <div class="overflow-y-auto max-h-[400px]">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-100 text-gray-600 uppercase text-xs">
+                            <tr>
+                                <th class="p-3">Nome</th>
+                                <th class="p-3 text-right">Saldo Atual</th>
+                                <th class="p-3 text-center">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-contas-corpo" class="divide-y divide-gray-100">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="js/config_financeiro.js"></script>
+</body>
+</html>

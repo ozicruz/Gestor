@@ -1,28 +1,32 @@
-// backend/routes/rotasFinanceiro.js
 const express = require('express');
 const router = express.Router();
 const financeiroController = require('../controllers/financeiroController');
-const { db } = require('../database/database'); // Importamos o db, embora o controller o use mais
 
-// --- Rotas de Apoio (Listas) ---
+// Listas auxiliares
 router.get('/formaspagamento', financeiroController.listarFormasPagamento);
 router.get('/categorias', financeiroController.listarCategorias);
-router.get('/contascaixa', financeiroController.listarContasCaixa);
 
-// --- Rotas do Dashboard (Página 1) ---
+// --- ROTAS DE CONTAS / CAIXAS (CORRIGIDAS) ---
+router.get('/contascaixa', financeiroController.listarContas); // Usa a função nova SQL
+router.post('/contascaixa', financeiroController.criarConta);
+router.delete('/contascaixa/:id', financeiroController.removerConta);
+
+// Dashboard e Movimentos
 router.get('/dashboard/resumo', financeiroController.getDashboardResumo);
 router.get('/movimentocaixa', financeiroController.getMovimentoCaixa);
-router.post('/lancamento', financeiroController.criarLancamentoManual);
 
-// --- Rotas de Contas a Receber (Página 2) ---
+// Lançamentos
+router.post('/lancamento', financeiroController.criarLancamento);
+router.delete('/lancamento/:id', financeiroController.excluirLancamento);
+
+// Contas a Receber
 router.get('/contasareceber/resumo', financeiroController.getContasAReceberResumo);
 router.get('/contasareceber', financeiroController.listarContasAReceber);
-router.post('/lancamento/:id/baixar', financeiroController.baixarLancamento); // Ação de pagar
+router.post('/lancamento/:id/baixar', financeiroController.baixarLancamento);
 
-// --- Rotas de Relatórios (Página 3) ---
+// Contas a Pagar e Relatórios
 router.get('/relatorios/dre', financeiroController.getRelatorioDRE);
-
-
-console.log('✅ Ficheiro de rotas FINANCEIRO carregado!'); // Log para sabermos que funcionou
+router.get('/contasapagar', financeiroController.listarContasAPagar);
+router.get('/contasapagar/resumo', financeiroController.obterResumoContasPagar);
 
 module.exports = router;

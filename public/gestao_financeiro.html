@@ -13,14 +13,13 @@
             cursor: pointer;
             user-select: none;
         }
-
         th[data-sort]:hover {
             background-color: #e5e7eb;
         }
     </style>
 </head>
 
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 bg-gray-50">
 
     <div class="max-w-7xl mx-auto">
         <header class="mb-10">
@@ -28,35 +27,57 @@
             <h1 class="text-4xl font-bold text-gray-800 mt-2">Módulo Financeiro</h1>
         </header>
 
-        <div class="mb-8 flex justify-end">
+        <div class="mb-8 flex justify-end gap-3">
+            <a href="gestao_contas_receber.html" 
+            class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 transition-colors">
+            <span>📒</span> Contas a Receber
+            </a>
+
+            <a href="gestao_contas_pagar.html" 
+            class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2 transition-colors">
+            <span>💸</span> Contas a Pagar
+            </a>
+
             <button id="btnAbrirModalDespesa"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
-                [ - ] Lançar Nova Despesa
+            class="bg-gray-700 hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors">
+            [ - ] Saída Avulsa
             </button>
         </div>
 
-        <section id="dashboard-resumo" class="mb-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="dashboard-card bg-blue-100 border-blue-300">
-                <h4 class="text-blue-800">Saldo Atual Total</h4>
-                <p id="card-saldo" class="dashboard-valor text-blue-900">R$ 0,00</p>
+        <section id="dashboard-resumo" class="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Saldo Atual Total</h4>
+                <p id="card-saldo" class="text-2xl font-bold text-blue-900 mt-1">R$ 0,00</p>
             </div>
-            <div class="dashboard-card bg-green-100 border-green-300">
-                <h4 class="text-green-800">Entradas do Mês</h4>
-                <p id="card-entradas" class="dashboard-valor text-green-900">R$ 0,00</p>
+            
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Entradas do Mês</h4>
+                <p id="card-entradas" class="text-2xl font-bold text-green-600 mt-1">R$ 0,00</p>
             </div>
-            <div class="dashboard-card bg-red-100 border-red-300">
-                <h4 class="text-red-800">Saídas do Mês</h4>
-                <p id="card-saidas" class="dashboard-valor text-red-900">R$ 0,00</p>
+            
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Saídas do Mês</h4>
+                <p id="card-saidas" class="text-2xl font-bold text-red-600 mt-1">R$ 0,00</p>
             </div>
-            <div class="dashboard-card bg-yellow-100 border-yellow-300">
-                <h4 class="text-yellow-800">A Receber (Vencido)</h4>
-                <p id="card-vencido" class="dashboard-valor text-yellow-900">R$ 0,00</p>
+            
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500 transition-transform hover:scale-105">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">A Receber (Vencido)</h4>
+                <p id="card-vencido" class="text-2xl font-bold text-yellow-600 mt-1">R$ 0,00</p>
             </div>
         </section>
 
         <section id="dashboard-movimentos" class="mt-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Últimos Lançamentos</h2>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    Movimento do Dia 📅
+                </h2>
+                <div class="flex items-center gap-2 bg-white p-2 rounded shadow border border-gray-200">
+                    <span class="text-sm font-bold text-gray-600 pl-2">Data:</span>
+                    <input type="date" id="filtroDataMovimento" class="border-none bg-transparent p-1 text-gray-700 outline-none focus:ring-0 font-medium cursor-pointer">
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-lg border border-gray-200">
                 <div id="table-scroll-container">
                     <table class="w-full" id="tabela-movimentos">
                         <thead class="bg-gray-100 table-sticky-header" id="tabela-movimentos-header">
@@ -81,41 +102,91 @@
                         </thead>
                         <tbody id="tabela-movimentos-corpo">
                             <tr>
-                                <td colspan="4" class="text-center p-4 text-gray-500">A carregar movimentos...</td>
+                                <td colspan="4" class="text-center p-4 text-gray-500">Carregando...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <div class="mt-6 pt-4 border-t-2 border-gray-100 flex flex-col md:flex-row justify-end items-center gap-8 bg-gray-50/50 p-4 rounded-lg">
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Entradas (Dia)</p>
+                        <p id="totalDiaEntradas" class="text-xl font-bold text-green-600">R$ 0,00</p>
+                    </div>
+                    <div class="text-right border-l border-gray-200 pl-8">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Saídas (Dia)</p>
+                        <p id="totalDiaSaidas" class="text-xl font-bold text-red-600">R$ 0,00</p>
+                    </div>
+                    <div class="text-right border-l border-gray-200 pl-8">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Saldo (Dia)</p>
+                        <p id="totalDiaSaldo" class="text-2xl font-bold text-blue-900">R$ 0,00</p>
+                    </div>
+                </div>
+
             </div>
         </section>
-
     </div>
 
-    <div id="modalDespesa" class="modal-overlay modal-oculto">
-        <div class="modal-content">
-            <h3>Lançar Nova Despesa</h3>
-            <form id="formDespesa">
-                <label>Descrição:</label>
-                <input type="text" id="despesaDescricao" required>
-                <label>Valor (R$):</label>
-                <input type="number" id="despesaValor" step="0.01" required>
-                <label>Data Pagamento:</label>
-                <input type="date" id="despesaData" required>
-                <label>Categoria:</label>
-                <select id="despesaCategoria" required>
-                    <option value="">A carregar categorias...</option>
-                </select>
-                <label>Pagar com (Caixa/Conta):</label>
-                <select id="despesaConta" required>
-                    <option value="">A carregar contas...</option>
-                </select>
-                <button type="submit">Salvar Lançamento</button>
-                <button type="button" id="btnFecharModal">Cancelar</button>
+    <div id="modalDespesa" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg transform transition-all scale-100 border border-gray-200">
+            
+            <div class="flex justify-between items-center mb-6 border-b pb-2">
+                <h3 class="text-2xl font-bold text-gray-800">Lançar Saída Avulsa</h3>
+                <button type="button" id="btnFecharModalX" class="text-gray-400 hover:text-gray-600 text-xl">
+                    ✖
+                </button>
+            </div>
+
+            <form id="formDespesa" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Descrição</label>
+                    <input type="text" id="despesaDescricao" required placeholder="Ex: Compra de café, Material de limpeza..."
+                        class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Valor (R$)</label>
+                        <input type="number" id="despesaValor" step="0.01" required placeholder="0,00"
+                            class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Data Pagamento</label>
+                        <input type="date" id="despesaData" required
+                            class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Categoria</label>
+                    <select id="despesaCategoria" required
+                        class="w-full border border-gray-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Pagar com (Caixa/Conta)</label>
+                    <select id="despesaConta" required
+                        class="w-full border border-gray-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all">
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                    <button type="button" id="btnFecharModal" 
+                        class="px-5 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                        class="px-5 py-2.5 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 shadow-lg transition-transform active:scale-95 flex items-center gap-2">
+                        <span>💸</span> Confirmar Saída
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
     <script src="js/gestao_financeiro.js" defer></script>
 </body>
-
 </html>

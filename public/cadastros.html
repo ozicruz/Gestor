@@ -1,49 +1,41 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastros - Sistema de Gestão</title>
-    <!-- Tailwind CSS (CDN) -->
+    <title>Cadastros</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fontes do Google -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Ficheiro de Estilos CSS Externo -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body class="p-4 md:p-8">
 
     <div class="max-w-4xl mx-auto">
-        <header class="mb-10">
-            <a href="index.html" class="text-blue-600 hover:underline">&larr; Voltar à Página Inicial</a>
-            <h1 class="text-4xl font-bold text-gray-800 text-center mt-2">Cadastros Gerais</h1>
-            <p class="mt-2 text-lg text-gray-600 text-center">Gira os produtos e serviços da sua oficina.</p>
+        <header class="mb-10 text-center">
+            <a href="index.html" class="text-blue-600 hover:underline block mb-2">&larr; Voltar à Página Inicial</a>
+            <h1 class="text-4xl font-bold text-gray-800">Cadastros Gerais 📦</h1>
+            <p class="mt-2 text-gray-500">Gerencie os itens e preços da sua oficina.</p>
         </header>
 
         <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-            <!-- Card: Produtos -->
-            <a href="gestao_produtos.html" class="nav-card">
+            <a href="gestao_produtos.html" class="nav-card border-l-4 border-green-600">
                 <div>
                     <h3>Produtos (Peças)</h3>
-                    <p>Adicione, edite, remova e controle o stock das suas peças e produtos.</p>
+                    <p>Controle de estoque, preços de custo e venda de peças.</p>
                 </div>
-                <span class="go-arrow">Enter &rarr;</span>
+                <span class="go-arrow">Acessar &rarr;</span>
             </a>
 
-            <!-- Card: Serviços -->
-            <a href="gestao_servicos.html" class="nav-card">
+            <a href="gestao_servicos.html" class="nav-card border-l-4 border-indigo-600">
                 <div>
-                    <h3>Serviços</h3>
-                    <p>Registe e gira os preços dos serviços oferecidos pela sua empresa.</p>
+                    <h3>Serviços (Mão de Obra)</h3>
+                    <p>Tabela de preços dos serviços prestados (ex: Troca de óleo).</p>
                 </div>
-                <span class="go-arrow">Enter &rarr;</span>
+                <span class="go-arrow">Acessar &rarr;</span>
             </a>
+
         </main>
     </div>
-
 </body>
-
 </html>

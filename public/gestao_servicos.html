@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,94 +7,64 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
-
-    <style>
-        th[data-sort] {
-            cursor: pointer;
-            user-select: none;
-        }
-
-        th[data-sort]:hover {
-            background-color: #e5e7eb;
-            /* cinza-200 */
-        }
-    </style>
+    <style>th[data-sort] { cursor: pointer; user-select: none; } th[data-sort]:hover { background-color: #e5e7eb; }</style>
 </head>
-
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 bg-gray-50">
 
     <div class="max-w-7xl mx-auto">
-        <a href="cadastros.html" class="text-blue-600 hover:underline">&larr; Voltar à Página cadastros</a>
-        <div id="feedback-alert" class="feedback-alert"></div>
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">Gestão de Serviços</h1>
-            <button id="btnNovoServico"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
-                + Novo Serviço
-            </button>
-        </div>
-
-        <div class="mb-4">
-            <input type="text" id="input-busca-servico" placeholder="🔎 Pesquisar por nome..."
-                class="form-input w-full md:w-1/3">
-        </div>
-
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="overflow-x-auto">
-                <div id="table-scroll-container">
-                    <table class="w-full">
-                        <thead class="bg-gray-100 table-sticky-header" id="tabela-servicos-header">
-                            <tr>
-                                <th data-sort="nome"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Nome do Serviço <span class="sort-arrow"> ▲</span>
-                                </th>
-                                <th data-sort="preco"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Preço <span class="sort-arrow"></span>
-                                </th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-servicos" class="divide-y divide-gray-200">
-                        </tbody>
-                    </table>
-                </div>
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <a href="cadastros.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar</a>
+                <h1 class="text-4xl font-bold text-gray-800 mt-2">Serviços (Mão de Obra) 🔧</h1>
             </div>
+            <button id="btnNovoServico" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2">
+                <span>+</span> Novo Serviço
+            </button>
+        </header>
+
+        <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="relative">
+                <input type="text" id="input-busca-servico" placeholder="Buscar serviço..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="absolute left-3 top-2.5 text-gray-400">🔍</div>
+            </div>
+        </div>
+
+        <div id="feedback-alert" class="hidden"></div>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <table class="w-full">
+                <thead class="bg-gray-100 border-b">
+                    <tr>
+                        <th data-sort="id" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">ID</th>
+                        <th data-sort="nome" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Nome do Serviço</th>
+                        <th data-sort="preco" class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">Valor Padrão (R$)</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-servicos" class="divide-y divide-gray-200">
+                    <tr><td colspan="4" class="text-center p-4 text-gray-500">Carregando...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div id="servico-modal" class="modal-overlay modal-oculto">
-        <div class="modal-content">
-            <h2 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">Novo Serviço</h2>
-            <form id="servico-form">
+    <div id="modal-servico" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Gerenciar Serviço</h2>
+            <form id="form-servico" class="space-y-4">
                 <input type="hidden" id="servico-id">
-                <div class="mb-4">
-                    <label for="servico-nome" class="block text-sm font-medium text-gray-700">Nome do Serviço</label>
-                    <input type="text" id="servico-nome" required class="form-input mt-1 block w-full">
-                </div>
-                <div class="mb-4">
-                    <label for="servico-descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
-                    <textarea id="servico-descricao" rows="3" class="form-input mt-1 block w-full"></textarea>
-                </div>
-                <div class="mb-4">
-                    <label for="servico-preco" class="block text-sm font-medium text-gray-700">Preço (R$)</label>
-                    <input type="text" id="servico-preco" required placeholder="50,00"
-                        class="form-input mt-1 block w-full">
-                </div>
-                <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" id="btn-cancelar"
-                        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                <div><label class="block text-sm font-medium text-gray-700">Nome</label><input type="text" id="servico-nome" required class="form-input w-full mt-1 uppercase"></div>
+                <div><label class="block text-sm font-medium text-gray-700">Descrição (Opcional)</label><textarea id="servico-descricao" rows="2" class="form-input w-full mt-1"></textarea></div>
+                <div><label class="block text-sm font-medium text-gray-700">Valor Padrão (R$)</label><input type="text" id="servico-preco" required class="form-input w-full mt-1" placeholder="0,00"></div>
+                
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="btn-cancelar" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="js/gestao_servicos.js" defer></script>
+    <script src="js/gestao_servicos.js"></script>
 </body>
-
 </html>

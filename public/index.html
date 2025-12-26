@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,86 +8,101 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body class="p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
         <header class="mb-10 text-center">
-            <h1 class="text-4xl font-bold text-gray-800">Sistema de Gestão de Oficina</h1>
-            <p class="mt-2 text-lg text-gray-600">Selecione um módulo para começar a trabalhar.</p>
+            <h1 class="text-4xl font-bold text-gray-800 tracking-tight">Sistema de Gestão de Oficina</h1>
+            <p class="mt-2 text-lg text-gray-500">Bem-vindo! Selecione um módulo para começar.</p>
         </header>
 
-        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-            <a href="gestao_os.html" class="nav-card">
-                <h3>Ordens de Serviço</h3>
-                <p>Abra e gira o estado das Ordens de Serviço para cada veículo.</p>
-                <span class="go-arrow">Enter &rarr;</span>
-            </a>
-
-            <a href="gestao_patio.html" class="nav-card">
-                <h3>Pátio</h3>
-                <p>Veja rapidamente todos os veículos que estão atualmente na oficina.</p>
-                <span class="go-arrow">Enter &rarr;</span>
-            </a>
-
-            <a href="gestao_vendas.html" class="nav-card">
-                <h3>Venda de Balcão</h3>
-                <p>Registe vendas diretas de produtos para clientes no balcão da loja.</p>
-                <span class="go-arrow">Enter &rarr;</span>
-            </a>
-
-            <a href="gestao_clientes.html" class="nav-card">
-                <h3>Clientes e Veículos</h3>
-                <p>Gira a base de dados de clientes e as suas respetivas motos.</p>
-                <span class="go-arrow">Enter &rarr;</span>
-            </a>
-
-            <a href="cadastros.html" class="nav-card">
-                <h3>Cadastros</h3>
-                <p>Gira os seus Produtos (Peças) e Serviços para usar nas Ordens de Serviço.</p>
-                <span class="go-arrow">Enter &rarr;</span>
-            </a>
-
-            <a href="gestao_financeiro.html" class="nav-card">
+            <a href="gestao_os.html" class="nav-card border-l-4 border-blue-500">
                 <div>
-                    <h3>Financeiro</h3>
-                    <p>Lançar novas despesas, receitas ou ver o fluxo de caixa.</p>
+                    <h3>Ordens de Serviço 🔧</h3>
+                    <p>Abra e gira o estado das Ordens de Serviço, orçamentos e aprovações.</p>
                 </div>
-                <span class="go-arrow">Enter &rarr;</span>
+                <span class="go-arrow">Acessar &rarr;</span>
             </a>
 
-            <a href="relatorios.html" class="nav-card">
+            <a href="gestao_patio.html" class="nav-card border-l-4 border-orange-500">
                 <div>
-                    <h3>Relatórios</h3>
-                    <p>Veja o desempenho financeiro, lucro bruto e vendas da sua oficina.</p>
+                    <h3>Pátio 🏍️</h3>
+                    <p>Controle visual dos veículos que estão atualmente na oficina.</p>
                 </div>
-                <span class="go-arrow">Enter &rarr;</span>
+                <span class="go-arrow">Acessar &rarr;</span>
             </a>
 
-            <a href="gestao_contas_receber.html" class="nav-card">
+            <a href="gestao_vendas.html" class="nav-card border-l-4 border-purple-500">
                 <div>
-                    <h3>Contas a Receber</h3>
-                    <p>Gira todos os pagamentos pendentes (fiado) dos seus clientes.</p>
+                    <h3>Vendas 🛒</h3>
+                    <p>Venda rápida de peças e produtos diretos ao cliente (PDV).</p>
                 </div>
-                <span class="go-arrow">Enter &rarr;</span>
+                <span class="go-arrow">Acessar &rarr;</span>
             </a>
-            <a href="configuracoes.html" class="nav-card">
+
+            <a href="gestao_clientes.html" class="nav-card border-l-4 border-teal-500">
                 <div>
-                    <h3>Configurações</h3>
-                    <p>Gira os dados da sua empresa, nome, endereço e informações do recibo.</p>
+                    <h3>Clientes e Veículos 👥</h3>
+                    <p>Base de dados completa de clientes e histórico das motos.</p>
+                </div>
+                <span class="go-arrow">Acessar &rarr;</span>
+            </a>
+
+            <a href="cadastros.html" class="nav-card border-l-4 border-gray-500">
+                <div>
+                    <h3>Cadastros Gerais 📦</h3>
+                    <p>Registe peças, produtos e tabela de preços de serviços.</p>
+                </div>
+                <span class="go-arrow">Acessar &rarr;</span>
+            </a>
+
+            <a href="gestao_financeiro.html" class="nav-card border-l-4 border-green-600">
+                <div>
+                    <h3>Financeiro 💰</h3>
+                    <p>Fluxo de caixa, entradas, saídas e lucro líquido.</p>
+                </div>
+                <span class="go-arrow">Acessar &rarr;</span>
+            </a>
+
+            <a href="gestao_contas_receber.html" class="nav-card border-l-4 border-yellow-500">
+                <div>
+                    <h3>Contas a Receber 📒</h3>
+                    <p>Controle de fiados e pagamentos pendentes de clientes.</p>
+                </div>
+                <span class="go-arrow">Acessar &rarr;</span>
+            </a>
+
+            <a href="relatorios.html" class="nav-card border-l-4 border-indigo-500">
+                <div>
+                    <h3>Relatórios 📊</h3>
+                    <p>Análise de desempenho, DRE e rankings de vendas.</p>
+                </div>
+                <span class="go-arrow">Acessar &rarr;</span>
+            </a>
+
+            <a href="configuracoes.html" class="nav-card border-l-4 border-slate-700">
+                <div>
+                    <h3>Configurações ⚙️</h3>
+                    <p>Dados da empresa, backup de segurança e ajustes do sistema.</p>
                 </div>
                 <span class="go-arrow">Configurar &rarr;</span>
+            </a>
+            <a href="config_financeiro.html" class="nav-card border-l-4 border-emerald-600">
+                <div>
+                    <h3>Contas e Bancos 🏦</h3>
+                    <p>Cadastre bancos, caixas e saldos iniciais.</p>
+                </div>
+                <span class="go-arrow">Gerir &rarr;</span>
             </a>
 
         </main>
 
-        <footer class="text-center mt-12 text-gray-500 text-sm">
+        <footer class="text-center mt-16 text-gray-400 text-sm">
             <p>&copy; <span id="currentYear"></span> ZySystems. Todos os direitos reservados.</p>
         </footer>
     </div>
-
-    <script src="js/index.js" defer></script>
+    <script>document.getElementById('currentYear').textContent = new Date().getFullYear();</script>
 </body>
-
 </html>

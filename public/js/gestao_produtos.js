@@ -1,250 +1,258 @@
-// public/js/gestao_produtos.js (Versão Final com Stock Mínimo)
-
 document.addEventListener('DOMContentLoaded', () => {
+    
     // --- CONFIGURAÇÃO ---
     const API_URL = 'http://localhost:3002/api';
+    let produtoIdEdicao = null;
+    let listaProdutosCache = []; 
+    let ordemAtual = { coluna: 'nome', direcao: 'asc' };
 
-    // --- ELEMENTOS DO DOM (ATUALIZADO) ---
-    const tabelaProdutosBody = document.getElementById('tabela-produtos');
-    const modal = document.getElementById('produto-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const produtoForm = document.getElementById('produto-form');
-    const btnNovoProduto = document.getElementById('btnNovoProduto');
-    const btnCancelar = document.getElementById('btn-cancelar');
+    // --- ELEMENTOS DO DOM ---
+    const tabelaCorpo = document.getElementById('tabela-produtos');
+    const inputBusca = document.getElementById('input-busca-produto');
     const feedbackAlert = document.getElementById('feedback-alert');
-    const inputId = document.getElementById('produto-id');
+
+    // Modal Produto (Criar/Editar)
+    const modalProduto = document.getElementById('modal-produto');
+    const formProduto = document.getElementById('form-produto');
+    const btnNovo = document.getElementById('btnNovoProduto');
+    const btnCancelar = document.getElementById('btn-cancelar');
+
+    // Modal Entrada (Novo)
+    const modalEntrada = document.getElementById('modal-entrada');
+    const formEntrada = document.getElementById('form-entrada-estoque');
+
+    // Inputs do Form Produto
     const inputNome = document.getElementById('produto-nome');
     const inputDescricao = document.getElementById('produto-descricao');
     const inputEstoque = document.getElementById('produto-estoque');
-    const inputPreco = document.getElementById('produto-preco');
+    const inputMinimo = document.getElementById('produto-stock-minimo');
     const inputCusto = document.getElementById('produto-custo');
-    const inputStockMinimo = document.getElementById('produto-stock-minimo'); // --- NOVO ---
-    const inputBusca = document.getElementById('input-busca-produto');
-    const headersTabela = document.querySelectorAll('#tabela-produtos-header th[data-sort]');
+    const inputPreco = document.getElementById('produto-preco');
 
-    let todosOsProdutos = [];
-    let sortColumn = 'nome';
-    let sortDirection = 'asc';
-
-    // --- FUNÇÕES AUXILIARES (CORRIGIDAS) ---
-
-    const parseCurrency = (value) => {
-        if (typeof value !== 'string') {
-            return (typeof value === 'number') ? value : 0;
-        }
-        const soNumerosEVirgula = value.replace(/[^0-9,]/g, '');
-        const numeroComPonto = soNumerosEVirgula.replace(',', '.');
-        return parseFloat(numeroComPonto) || 0;
+    // --- FUNÇÕES AUXILIARES ---
+    const safeNumber = (val) => {
+        if (typeof val === 'number') return val;
+        if (!val) return 0;
+        return parseFloat(val.toString().replace(',', '.')) || 0;
     };
 
-    const formatCurrencyForInput = (value) => {
-        return (parseFloat(value) || 0).toFixed(2).replace('.', ',');
-    };
+    const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(safeNumber(val));
 
-    const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    const formatarParaInput = (valor) => (parseFloat(valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const showAlert = (message, isSuccess = true) => {
         feedbackAlert.textContent = message;
-        feedbackAlert.className = `feedback-alert p-4 mb-4 text-sm rounded-lg ${isSuccess ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
-        feedbackAlert.style.display = 'block';
-        setTimeout(() => { feedbackAlert.style.display = 'none'; }, 4000);
+        feedbackAlert.className = `p-4 mb-4 rounded-lg font-bold text-center shadow-sm ${isSuccess ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`;
+        feedbackAlert.classList.remove('hidden');
+        setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
     };
 
-    // --- FUNÇÕES PRINCIPAIS (CRUD) ---
-
+    // --- 1. CARREGAR PRODUTOS ---
     const carregarProdutos = async () => {
         try {
             const response = await fetch(`${API_URL}/produtos`);
-            if (!response.ok) throw new Error('Erro ao carregar produtos.');
-
-            todosOsProdutos = await response.json();
-            aplicarFiltroEOrdem();
+            listaProdutosCache = await response.json();
+            renderizarTabela(); 
         } catch (error) {
-            showAlert(error.message, false);
+            console.error(error);
+            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 p-4">Erro ao carregar produtos.</td></tr>';
         }
     };
 
-    const aplicarFiltroEOrdem = () => {
+    // --- 2. RENDERIZAR TABELA ---
+    const renderizarTabela = () => {
+        tabelaCorpo.innerHTML = '';
         const termo = inputBusca.value.toLowerCase();
-        const produtosFiltrados = todosOsProdutos.filter(produto =>
-            produto.nome.toLowerCase().includes(termo)
+
+        let filtrados = listaProdutosCache.filter(p => 
+            p.nome.toLowerCase().includes(termo) || 
+            (p.descricao && p.descricao.toLowerCase().includes(termo))
         );
 
-        // ATUALIZADO: Adicionado 'stock_minimo'
-        produtosFiltrados.sort((a, b) => {
-            let valA = a[sortColumn];
-            let valB = b[sortColumn];
-
-            if (['quantidade_em_estoque', 'preco_unitario', 'valor_custo', 'stock_minimo'].includes(sortColumn)) {
-                valA = parseFloat(valA) || 0;
-                valB = parseFloat(valB) || 0;
-            } else {
-                valA = (valA || '').toLowerCase();
-                valB = (valB || '').toLowerCase();
-            }
-
-            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        filtrados.sort((a, b) => {
+            let valA = a[ordemAtual.coluna];
+            let valB = b[ordemAtual.coluna];
+            if (typeof valA === 'number') return ordemAtual.direcao === 'asc' ? valA - valB : valB - valA;
+            valA = (valA || '').toString().toLowerCase(); valB = (valB || '').toString().toLowerCase();
+            if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
+            if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
             return 0;
         });
 
-        desenharTabela(produtosFiltrados);
-    };
-
-    // ATUALIZADO: Adicionada coluna "Stock Mín."
-    const desenharTabela = (produtosParaRenderizar) => {
-        tabelaProdutosBody.innerHTML = '';
-        if (produtosParaRenderizar.length === 0) {
-            tabelaProdutosBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">Nenhum produto encontrado.</td></tr>`;
+        if (filtrados.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-6 text-gray-500 italic">Nenhum produto encontrado.</td></tr>';
             return;
         }
-        produtosParaRenderizar.forEach(produto => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${produto.nome}</div><div class="text-sm text-gray-500">${(produto.descricao || '').substring(0, 40)}...</div></td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${produto.quantidade_em_estoque}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${produto.stock_minimo}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(produto.valor_custo)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${formatCurrency(produto.preco_unitario)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button data-action="editar-produto" data-produto-id="${produto.id}" class="text-indigo-600 hover:text-indigo-900 mr-3">Editar</button>
-                    <button data-action="remover-produto" data-produto-id="${produto.id}" class="text-red-600 hover:text-red-900">Remover</button>
-                </td>
+
+        filtrados.forEach(p => {
+            const estoqueBaixo = p.quantidade_em_estoque <= p.stock_minimo;
+            const classeEstoque = estoqueBaixo ? 'text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-100' : 'text-gray-700';
+            const iconeAlerta = estoqueBaixo ? '⚠️' : '';
+
+            tabelaCorpo.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100 transition-colors">
+                    <td class="px-6 py-4 text-gray-500 font-mono text-xs">#${p.id}</td>
+                    <td class="px-6 py-4">
+                        <p class="font-bold text-gray-800">${p.nome}</p>
+                        <p class="text-xs text-gray-500 truncate max-w-xs">${p.descricao || '-'}</p>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="${classeEstoque}">${iconeAlerta} ${p.quantidade_em_estoque}</span>
+                    </td>
+                    <td class="px-6 py-4 text-right font-medium text-gray-800">${formatCurrency(p.preco_unitario)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex justify-end gap-2">
+                            <button onclick="abrirModalEntrada(${p.id})" class="text-green-600 hover:text-green-800 bg-green-50 hover:bg-green-100 p-2 rounded transition-colors" title="Dar Entrada (Comprar)">
+                                📥
+                            </button>
+                            <button onclick="editarProduto(${p.id})" class="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-2 rounded transition-colors" title="Editar">
+                                ✏️
+                            </button>
+                            <button onclick="excluirProduto(${p.id})" class="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 p-2 rounded transition-colors" title="Excluir">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
             `;
-            tabelaProdutosBody.appendChild(tr);
         });
     };
 
-    // --- Funções do Modal (ATUALIZADAS) ---
+    // --- 3. LÓGICA DE ORDENAÇÃO ---
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const coluna = th.dataset.sort;
+            if (ordemAtual.coluna === coluna) ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
+            else { ordemAtual.coluna = coluna; ordemAtual.direcao = 'asc'; }
+            renderizarTabela();
+        });
+    });
 
-    const abrirModal = async (isEdit = false, produtoId = null) => {
-        produtoForm.reset();
-        inputId.value = '';
-        if (isEdit && produtoId) {
-            modalTitle.textContent = 'Editar Produto';
-            const produto = todosOsProdutos.find(p => p.id === produtoId);
-            if (produto) {
-                inputId.value = produto.id;
-                inputNome.value = produto.nome;
-                inputDescricao.value = produto.descricao;
-                inputEstoque.value = produto.quantidade_em_estoque;
-                inputStockMinimo.value = produto.stock_minimo || 0; // --- NOVO ---
-                inputCusto.value = formatCurrencyForInput(produto.valor_custo);
-                inputPreco.value = formatCurrencyForInput(produto.preco_unitario);
-            } else {
-                showAlert('Erro: Produto não encontrado para edição.', false);
-                return;
-            }
-        } else {
-            modalTitle.textContent = 'Novo Produto';
-            inputCusto.value = '0,00';
-            inputPreco.value = '0,00';
-            inputEstoque.value = 0;
-            inputStockMinimo.value = 0; // --- NOVO ---
-        }
-        modal.classList.remove('modal-oculto');
-        setTimeout(() => { inputNome.focus(); }, 100);
-    };
-
-    const fecharModal = () => modal.classList.add('modal-oculto');
-
-    const removerProduto = async (id) => {
-        if (confirm('Tem a certeza que deseja remover este produto?')) {
-            try {
-                const response = await fetch(`${API_URL}/produtos/${id}`, { method: 'DELETE' });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.message);
-                showAlert(result.message);
-                carregarProdutos();
-            } catch (error) {
-                showAlert(error.message, false);
-            }
-        }
-    };
-
-    // --- EVENT LISTENERS ---
-    btnNovoProduto.addEventListener('click', () => abrirModal(false));
-    btnCancelar.addEventListener('click', fecharModal);
-
-    // Listener do Formulário (ATUALIZADO)
-    produtoForm.addEventListener('submit', async (e) => {
+    // --- 4. SALVAR PRODUTO (CRIAR / EDITAR) ---
+    formProduto.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const id = inputId.value;
+        const btnSalvar = formProduto.querySelector('button[type="submit"]');
+        const txtOriginal = btnSalvar.innerText;
+        btnSalvar.innerText = "Salvando..."; btnSalvar.disabled = true;
 
-        // ATUALIZADO: Adiciona 'stock_minimo'
-        const produtoData = {
-            nome: inputNome.value,
-            descricao: inputDescricao.value,
-            quantidade_em_estoque: parseInt(inputEstoque.value, 10),
-            preco_unitario: parseCurrency(inputPreco.value),
-            valor_custo: parseCurrency(inputCusto.value),
-            stock_minimo: parseInt(inputStockMinimo.value, 10) // --- NOVO ---
+        const dados = {
+            nome: inputNome.value.trim().toUpperCase(),
+            descricao: inputDescricao.value.trim(),
+            quantidade_em_estoque: parseInt(inputEstoque.value),
+            stock_minimo: parseInt(inputMinimo.value) || 0,
+            valor_custo: safeNumber(inputCusto.value),
+            preco_unitario: safeNumber(inputPreco.value)
         };
 
-        const method = id ? 'PUT' : 'POST';
-        const url = id ? `${API_URL}/produtos/${id}` : `${API_URL}/produtos`;
+        try {
+            let url = `${API_URL}/produtos`;
+            let method = 'POST';
+            if (produtoIdEdicao) { url += `/${produtoIdEdicao}`; method = 'PUT'; }
+
+            const response = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados) });
+            if (!response.ok) throw new Error("Erro ao salvar produto.");
+
+            showAlert("Produto salvo!", true);
+            modalProduto.classList.add('hidden');
+            formProduto.reset();
+            carregarProdutos();
+        } catch (error) { console.error(error); showAlert(error.message, false); } 
+        finally { btnSalvar.innerText = txtOriginal; btnSalvar.disabled = false; }
+    });
+
+    // --- 5. ENTRADA DE ESTOQUE (NOVO) ---
+    window.abrirModalEntrada = (id) => {
+        const p = listaProdutosCache.find(prod => prod.id === id);
+        if (!p) return;
+
+        document.getElementById('entrada-produto-id').value = p.id;
+        document.getElementById('entrada-produto-nome').textContent = p.nome;
+        document.getElementById('entrada-qtd').value = 1;
+        document.getElementById('entrada-custo').value = formatarParaInput(p.valor_custo); // Sugere o custo atual
+        document.getElementById('entrada-obs').value = '';
+
+        modalEntrada.classList.remove('hidden');
+        setTimeout(() => document.getElementById('entrada-qtd').focus(), 100);
+    };
+
+    formEntrada.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = formEntrada.querySelector('button[type="submit"]');
+        btn.disabled = true; btn.innerHTML = 'Processando...';
+
+        const id = document.getElementById('entrada-produto-id').value;
+        const qtdEntrada = parseInt(document.getElementById('entrada-qtd').value);
+        const novoCusto = safeNumber(document.getElementById('entrada-custo').value);
+        
+        // Recupera o produto atual para somar o estoque
+        const produtoAtual = listaProdutosCache.find(p => p.id == id);
+        if(!produtoAtual) return;
+
+        const novoEstoque = produtoAtual.quantidade_em_estoque + qtdEntrada;
+
+        // Payload: Atualiza estoque e custo
+        const dadosAtualizacao = {
+            ...produtoAtual,
+            quantidade_em_estoque: novoEstoque,
+            valor_custo: novoCusto,
+            observacao: document.getElementById('entrada-obs').value
+        };
 
         try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(produtoData)
+            // 1. Atualiza o Produto
+            const resProd = await fetch(`${API_URL}/produtos/${id}`, { 
+                method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dadosAtualizacao) 
             });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message);
+            if(!resProd.ok) throw new Error("Erro ao atualizar estoque.");
 
-            showAlert(result.message);
-            fecharModal();
-            carregarProdutos();
-        } catch (error) {
-            showAlert(error.message, false);
+            // 2. (Opcional - Futuro) Aqui poderíamos lançar no financeiro automaticamente (POST /financeiro/lancamentos)
+            // Por enquanto, apenas atualiza o cadastro do produto.
+
+            showAlert(`Entrada de +${qtdEntrada} itens realizada!`, true);
+            modalEntrada.classList.add('hidden');
+            carregarProdutos(); // Atualiza a tela
+        } catch(err) {
+            console.error(err);
+            showAlert("Erro na entrada: " + err.message, false);
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<span>✅</span> Confirmar';
         }
     });
 
-    // Listener da Tabela (para Editar/Remover)
-    tabelaProdutosBody.addEventListener('click', (e) => {
-        const button = e.target.closest('[data-action]');
-        if (!button) return;
-
-        const action = button.dataset.action;
-        const produtoId = button.dataset.produtoId;
-
-        if (action === 'editar-produto') {
-            abrirModal(true, parseInt(produtoId));
+    // --- AÇÕES GLOBAIS ---
+    window.editarProduto = async (id) => {
+        const p = listaProdutosCache.find(prod => prod.id === id);
+        if (p) {
+            produtoIdEdicao = p.id;
+            inputNome.value = p.nome;
+            inputDescricao.value = p.descricao || '';
+            inputEstoque.value = p.quantidade_em_estoque;
+            inputMinimo.value = p.stock_minimo;
+            inputCusto.value = formatarParaInput(p.valor_custo);
+            inputPreco.value = formatarParaInput(p.preco_unitario);
+            document.querySelector('#modal-produto h2').textContent = "Editar Produto";
+            modalProduto.classList.remove('hidden');
         }
-        if (action === 'remover-produto') {
-            removerProduto(parseInt(produtoId));
+    };
+
+    window.excluirProduto = async (id) => {
+        if (confirm("Tem a certeza que deseja excluir este produto?")) {
+            try {
+                const res = await fetch(`${API_URL}/produtos/${id}`, { method: 'DELETE' });
+                if (res.ok) { carregarProdutos(); showAlert("Produto removido.", true); } 
+                else { const err = await res.json(); alert(`Erro: ${err.message}`); }
+            } catch (err) { console.error(err); alert("Erro de conexão."); }
         }
+    };
+
+    btnNovo.addEventListener('click', () => {
+        produtoIdEdicao = null; formProduto.reset();
+        document.querySelector('#modal-produto h2').textContent = "Novo Produto";
+        modalProduto.classList.remove('hidden');
+        setTimeout(() => inputNome.focus(), 100);
     });
 
-    // Listener da Busca
-    inputBusca.addEventListener('input', aplicarFiltroEOrdem);
-
-    // Listener para ORDENAÇÃO
-    headersTabela.forEach(header => {
-        header.addEventListener('click', () => {
-            const newSortColumn = header.dataset.sort;
-
-            if (sortColumn === newSortColumn) {
-                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
-            } else {
-                sortColumn = newSortColumn;
-                sortDirection = 'asc';
-            }
-
-            headersTabela.forEach(h => {
-                const arrow = h.querySelector('.sort-arrow');
-                if (h.dataset.sort === sortColumn) {
-                    arrow.innerHTML = sortDirection === 'asc' ? ' ▲' : ' ▼';
-                } else {
-                    arrow.innerHTML = '';
-                }
-            });
-
-            aplicarFiltroEOrdem();
-        });
-    });
-
-    // --- INICIALIZAÇÃO ---
+    btnCancelar.addEventListener('click', () => modalProduto.classList.add('hidden'));
+    inputBusca.addEventListener('input', renderizarTabela);
     carregarProdutos();
 });

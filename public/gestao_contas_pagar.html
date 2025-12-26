@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contas a Pagar - Gestão de Oficina</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8 bg-gray-50">
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <a href="gestao_financeiro.html" class="text-blue-600 hover:text-blue-800">&larr; Voltar</a>
+                <h1 class="text-4xl font-bold text-gray-800 mt-2">Contas a Pagar 💸</h1>
+            </div>
+            <button id="btn-nova-conta" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow">
+                + Nova Conta a Pagar
+            </button>
+        </header>
+
+        <section class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Total a Pagar</h4>
+                <p id="card-total" class="text-2xl font-bold text-gray-800">R$ 0,00</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-800">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Vencido (Atrasado)</h4>
+                <p id="card-vencido" class="text-2xl font-bold text-red-600">R$ 0,00</p>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+                <h4 class="text-gray-500 text-sm font-bold uppercase">Vence Hoje</h4>
+                <p id="card-hoje" class="text-2xl font-bold text-yellow-600">R$ 0,00</p>
+            </div>
+        </section>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-100 border-b">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Descrição</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Categoria</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Vencimento</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">Valor</th>
+                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-pagar-corpo" class="divide-y divide-gray-200">
+                    <tr><td colspan="5" class="text-center p-4">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="modal-nova-conta" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden flex items-center justify-center z-40">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 class="text-xl font-bold mb-4">Lançar Conta a Pagar</h2>
+            <form id="form-nova-conta" class="space-y-3">
+                <input type="text" id="nova-descricao" placeholder="Descrição (Ex: Luz)" class="w-full border p-2 rounded" required>
+                <input type="number" step="0.01" id="nova-valor" placeholder="Valor (R$)" class="w-full border p-2 rounded" required>
+                <div>
+                    <label class="text-xs font-bold text-gray-500">Vencimento</label>
+                    <input type="date" id="nova-vencimento" class="w-full border p-2 rounded" required>
+                </div>
+                <select id="nova-categoria" class="w-full border p-2 rounded" required><option>Carregando...</option></select>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" id="btn-cancelar" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">Cancelar</button>
+                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-bold">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-pagamento" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md transform transition-all scale-100">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Realizar Pagamento</h2>
+                <button type="button" onclick="document.getElementById('modal-pagamento').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✖</button>
+            </div>
+            
+            <p id="pagamento-descricao-texto" class="text-sm text-gray-500 mb-6 font-medium border-l-4 border-green-500 pl-3">...</p>
+            
+            <form id="form-pagamento" class="space-y-4">
+                <input type="hidden" id="pagamento-id">
+                
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Valor a Pagar (R$)</label>
+                    <input type="number" step="0.01" id="pagamento-valor" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" required>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Data Pagamento</label>
+                        <input type="date" id="pagamento-data" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Conta (Saída)</label>
+                        <select id="pagamento-conta" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white" required>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Forma de Pagamento</label>
+                    <select id="pagamento-forma" class="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
+                    <button type="button" id="btn-cancelar-pagamento" class="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow flex items-center gap-2">
+                        <span>✅</span> Confirmar Pagamento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/gestao_contas_pagar.js"></script>
+</body>
+</html>

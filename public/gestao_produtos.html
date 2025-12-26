@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,113 +7,112 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <style>th[data-sort] { cursor: pointer; user-select: none; } th[data-sort]:hover { background-color: #e5e7eb; }</style>
 </head>
-
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 bg-gray-50">
 
     <div class="max-w-7xl mx-auto">
-        <div class="flex justify-between items-center mb-6">
-            <a href="cadastros.html" class="text-blue-600 hover:underline">&larr; Voltar à Página cadastros</a>
-            <div id="feedback-alert" class="feedback-alert" style="display: none;"></div>
-            <h1 class="text-3xl font-bold text-gray-800">Gestão de Produtos (Peças)</h1>
-            <button id="btnNovoProduto"
-                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow">
-                + Novo Produto
-            </button>
-        </div>
-
-        <div class="mb-4">
-            <input type="text" id="input-busca-produto" placeholder="🔎 Pesquisar por nome..."
-                class="form-input w-full md:w-1/3">
-        </div>
-
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="overflow-x-auto">
-                <div id="table-scroll-container">
-                    <table class="w-full">
-                        <thead class="bg-gray-100 table-sticky-header" id="tabela-produtos-header">
-                            <tr>
-                                <th data-sort="nome"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Nome <span class="sort-arrow"> ▲</span></th>
-                                <th data-sort="quantidade_em_estoque"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Estoque <span class="sort-arrow"></span></th>
-                                <th data-sort="stock_minimo"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Stock Mín. <span class="sort-arrow"></span></th>
-                                <th data-sort="valor_custo"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Custo <span class="sort-arrow"></span></th>
-                                <th data-sort="preco_unitario"
-                                    class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Preço Venda <span class="sort-arrow"></span></th>
-                                <th
-                                    class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
-                                    Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-produtos" class="divide-y divide-gray-200">
-                        </tbody>
-                    </table>
-                </div>
-
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <a href="cadastros.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar</a>
+                <h1 class="text-4xl font-bold text-gray-800 mt-2">Produtos (Peças) 📦</h1>
             </div>
+            <button id="btnNovoProduto" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow flex items-center gap-2">
+                <span>+</span> Novo Produto
+            </button>
+        </header>
+
+        <div class="mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="relative">
+                <input type="text" id="input-busca-produto" placeholder="Buscar peça..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="absolute left-3 top-2.5 text-gray-400">🔍</div>
+            </div>
+        </div>
+
+        <div id="feedback-alert" class="hidden"></div>
+
+        <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+            <table class="w-full">
+                <thead class="bg-gray-100 border-b">
+                    <tr>
+                        <th data-sort="id" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">ID</th>
+                        <th data-sort="nome" class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Nome / Descrição</th>
+                        <th data-sort="quantidade_em_estoque" class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">Estoque</th>
+                        <th data-sort="preco_unitario" class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">Preço Venda</th>
+                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-600 uppercase">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-produtos" class="divide-y divide-gray-200">
+                    <tr><td colspan="5" class="text-center p-4 text-gray-500">Carregando...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <div id="produto-modal" class="modal-overlay modal-oculto">
-        <div class="modal-content">
-            <h2 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">Novo Produto</h2>
-            <form id="produto-form">
+    <div id="modal-produto" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Gerenciar Produto</h2>
+            <form id="form-produto" class="space-y-4">
                 <input type="hidden" id="produto-id">
-                <div class="mb-4">
-                    <label for="produto-nome" class="block text-sm font-medium text-gray-700">Nome do Produto</label>
-                    <input type="text" id="produto-nome" required class="form-input mt-1 block w-full">
+                <div><label class="block text-sm font-medium text-gray-700">Nome da Peça</label><input type="text" id="produto-nome" required class="form-input w-full mt-1 uppercase"></div>
+                <div><label class="block text-sm font-medium text-gray-700">Descrição (Opcional)</label><textarea id="produto-descricao" rows="2" class="form-input w-full mt-1"></textarea></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700">Estoque Atual</label><input type="number" id="produto-estoque" required class="form-input w-full mt-1"></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Estoque Mínimo</label><input type="number" id="produto-stock-minimo" value="5" class="form-input w-full mt-1"></div>
                 </div>
-                <div class="mb-4">
-                    <label for="produto-descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
-                    <textarea id="produto-descricao" rows="3" class="form-input mt-1 block w-full"></textarea>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700">Custo (R$)</label><input type="text" id="produto-custo" class="form-input w-full mt-1" placeholder="0,00"></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Venda (R$)</label><input type="text" id="produto-preco" required class="form-input w-full mt-1" placeholder="0,00"></div>
                 </div>
-
-                <div class="grid grid-cols-4 gap-4">
-                    <div class="mb-4">
-                        <label for="produto-estoque" class="block text-sm font-medium text-gray-700">Qtd.
-                            Estoque</label>
-                        <input type="number" id="produto-estoque" required value="0"
-                            class="form-input mt-1 block w-full">
-                    </div>
-                    <div class="mb-4">
-                        <label for="produto-stock-minimo" class="block text-sm font-medium text-gray-700">Stock
-                            Mínimo</label>
-                        <input type="number" id="produto-stock-minimo" required value="0"
-                            class="form-input mt-1 block w-full">
-                    </div>
-                    <div class="mb-4">
-                        <label for="produto-custo" class="block text-sm font-medium text-gray-700">Valor Custo
-                            (R$)</label>
-                        <input type="text" id="produto-custo" required placeholder="12,50" value="0"
-                            class="form-input mt-1 block w-full">
-                    </div>
-                    <div class="mb-4">
-                        <label for="produto-preco" class="block text-sm font-medium text-gray-700">Preço Venda
-                            (R$)</label>
-                        <input type="text" id="produto-preco" required placeholder="19,90"
-                            class="form-input mt-1 block w-full">
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-3 mt-4">
-                    <button type="button" id="btn-cancelar"
-                        class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" id="btn-cancelar" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300">Cancelar</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Salvar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="js/gestao_produtos.js" defer></script>
-</body>
+    <div id="modal-entrada" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm border border-gray-200">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800">📥 Entrada de Estoque</h3>
+                <button onclick="document.getElementById('modal-entrada').classList.add('hidden')" class="text-gray-400 hover:text-red-500 font-bold text-2xl">&times;</button>
+            </div>
+            
+            <form id="form-entrada-estoque">
+                <input type="hidden" id="entrada-produto-id">
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-500 mb-1">Produto:</p>
+                    <p id="entrada-produto-nome" class="font-bold text-lg text-blue-900 truncate">Nome do Produto</p>
+                </div>
 
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Qtd. Entrada</label>
+                        <input type="number" id="entrada-qtd" class="form-input w-full text-center font-bold text-lg border-green-300 focus:ring-green-500" min="1" value="1" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Novo Custo (R$)</label>
+                        <input type="text" id="entrada-custo" class="form-input w-full text-right" placeholder="0,00">
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Observação / Fornecedor</label>
+                    <input type="text" id="entrada-obs" class="form-input w-full text-sm" placeholder="Ex: Nota Fiscal 123...">
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="document.getElementById('modal-entrada').classList.add('hidden')" class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-bold hover:bg-gray-200">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 shadow-lg flex items-center gap-2">
+                        <span>✅</span> Confirmar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/gestao_produtos.js"></script>
+</body>
 </html>

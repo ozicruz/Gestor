@@ -50,9 +50,39 @@ const buscarDetalhesVenda = async (req, res) => {
     }
 };
 
+const listarRankingServicos = async (req, res) => {
+    const { data_inicio, data_fim } = req.query;
+    if (!data_inicio || !data_fim) {
+        return res.status(400).json({ message: "Datas obrigatórias." });
+    }
+    try {
+        const servicos = await RelatorioModel.findRankingServicos(data_inicio, data_fim);
+        res.json(servicos);
+    } catch (err) {
+        console.error("Erro ao buscar ranking de serviços:", err.message);
+        res.status(500).json({ message: "Erro ao buscar ranking de serviços.", error: err.message });
+    }
+};
+
+const listarRankingClientes = async (req, res) => {
+    const { data_inicio, data_fim } = req.query;
+    if (!data_inicio || !data_fim) {
+        return res.status(400).json({ message: "Datas obrigatórias." });
+    }
+    try {
+        const clientes = await RelatorioModel.findRankingClientes(data_inicio, data_fim);
+        res.json(clientes);
+    } catch (err) {
+        console.error("Erro ao buscar ranking de clientes:", err.message);
+        res.status(500).json({ message: "Erro ao buscar ranking de clientes.", error: err.message });
+    }
+};
+
 module.exports = {
     listarProdutosMaisVendidos,
     listarStockBaixo,
     listarVendasRealizadas,
-    buscarDetalhesVenda
+    buscarDetalhesVenda,
+    listarRankingServicos,
+    listarRankingClientes
 };

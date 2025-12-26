@@ -1,5 +1,3 @@
-// public/js/gestao_contas_receber.js (Versão ATUALIZADA com Ordenação)
-
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. REFERÊNCIAS AOS ELEMENTOS ---
@@ -7,9 +5,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardTotalVencido = document.getElementById('card-total-vencido');
     const cardReceberHoje = document.getElementById('card-receber-hoje');
     const tabelaCorpo = document.getElementById('tabela-pendencias-corpo');
+    
+    // Modal
     const modalBaixa = document.getElementById('modalBaixa');
     const formBaixa = document.getElementById('formBaixa');
     const btnFecharModalBaixa = document.getElementById('btnFecharModalBaixa');
+    const btnFecharX = document.getElementById('btnFecharX');
+    
+    // Campos do Form
     const modalBaixaTitulo = document.getElementById('modalBaixaTitulo');
     const baixaLancamentoId = document.getElementById('baixaLancamentoId');
     const baixaValorOriginal = document.getElementById('baixaValorOriginal');
@@ -18,32 +21,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const baixaContaCaixa = document.getElementById('baixaContaCaixa');
     const baixaFormaPagamento = document.getElementById('baixaFormaPagamento');
 
-    // --- NOVO: Seletores e Variáveis de Ordenação ---
-    const headersTabela = document.querySelectorAll('#tabela-pendencias-header th[data-sort]');
-    let todasAsPendencias = []; // Guarda a lista completa
-    let sortColumn = 'DataVencimento'; // Coluna padrão (Vencimento)
-    let sortDirection = 'asc'; // Direção padrão (mais antigos primeiro)
+    // Ordenação
+    const headersTabela = document.querySelectorAll('#tabela-pendencias th[data-sort]');
+    let todasAsPendencias = []; 
+    let sortColumn = 'DataVencimento'; 
+    let sortDirection = 'asc'; 
 
-    // --- 2. FUNÇÕES DE FORMATAÇÃO ---
+    // --- 2. FUNÇÕES AUXILIARES ---
     function formatarMoeda(valor) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
     }
+    
     function formatarData(dataISO) {
-        return new Date(dataISO).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        if(!dataISO) return '-';
+        const [ano, mes, dia] = dataISO.split('T')[0].split('-');
+        return `${dia}/${mes}/${ano}`;
     }
 
-    // --- 3. FUNÇÕES PRINCIPAIS DE ATUALIZAÇÃO ---
-
-    // Função ÚNICA para atualizar TUDO
+    // --- 3. ATUALIZAÇÃO DE DADOS ---
     async function atualizarPainel() {
-        console.log("A atualizar painel de Contas a Receber...");
         await Promise.all([
             atualizarCardsResumo(),
-            carregarPendenciasDaAPI() // Carrega os dados da tabela
+            carregarPendenciasDaAPI()
         ]);
     }
 
-    // Função para os CARDS (sem alteração)
     async function atualizarCardsResumo() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contasareceber/resumo');
@@ -52,31 +54,24 @@ document.addEventListener('DOMContentLoaded', () => {
             cardTotalVencido.textContent = formatarMoeda(resumo.TotalVencido);
             cardReceberHoje.textContent = formatarMoeda(resumo.ReceberHoje);
         } catch (err) {
-            console.error("Erro ao buscar resumo de contas a receber:", err);
-            cardTotalReceber.textContent = "Erro";
+            console.error("Erro resumo:", err);
         }
     }
 
-    // --- NOVO: Funções refatoradas para a Tabela (com ordenação) ---
-
-    // 1. Busca os dados da API
     async function carregarPendenciasDaAPI() {
         try {
             const response = await fetch('http://localhost:3002/api/financeiro/contasareceber');
             todasAsPendencias = await response.json();
-            aplicarFiltroEOrdem(); // Chama a função para ordenar e desenhar
+            aplicarFiltroEOrdem();
         } catch (err) {
-            console.error("Erro ao buscar pendências:", err);
-            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Erro ao carregar pendências.</td></tr>';
+            console.error("Erro lista:", err);
+            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-red-500">Erro ao carregar dados.</td></tr>';
         }
     }
 
-    // 2. Função central que ordena e chama o "desenho"
     const aplicarFiltroEOrdem = () => {
-        // (Sem filtro por enquanto, mas podemos adicionar um inputBusca aqui no futuro)
         const pendenciasFiltradas = [...todasAsPendencias];
 
-        // Ordena
         pendenciasFiltradas.sort((a, b) => {
             let valA = a[sortColumn];
             let valB = b[sortColumn];
@@ -97,39 +92,36 @@ document.addEventListener('DOMContentLoaded', () => {
             return 0;
         });
 
-        // 3. Desenha
         desenharTabela(pendenciasFiltradas);
     };
 
-    // 4. Função que desenha a tabela
-    const desenharTabela = (pendenciasParaRenderizar) => {
-        tabelaCorpo.innerHTML = ''; // Limpa a tabela
-        if (pendenciasParaRenderizar.length === 0) {
-            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhuma pendência encontrada.</td></tr>';
+    const desenharTabela = (pendencias) => {
+        tabelaCorpo.innerHTML = ''; 
+        if (pendencias.length === 0) {
+            tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhum recebimento pendente. 👏👏</td></tr>';
             return;
         }
 
-        const hoje = new Date(new Date().toISOString().split('T')[0]);
+        const hoje = new Date().toISOString().split('T')[0];
 
-        pendenciasParaRenderizar.forEach(p => {
-            const dataVenc = new Date(p.DataVencimento);
-            let statusClasse = 'text-gray-700'; // A vencer
-            if (dataVenc < hoje) {
-                statusClasse = 'text-red-600 font-bold'; // Vencido
-            }
+        pendencias.forEach(p => {
+            const isVencido = p.DataVencimento < hoje;
+            const statusClasse = isVencido ? 'text-red-600 font-bold' : 'text-gray-700';
+            const statusTexto = isVencido ? ' (Vencido)' : '';
+
+            // Escapa aspas para evitar erro no onclick
+            const descSafe = p.Descricao.replace(/'/g, "\\'");
+            const clienteSafe = p.ClienteNome ? p.ClienteNome.replace(/'/g, "\\'") : 'Consumidor Final';
 
             const linha = `
-                <tr class="border-t hover:bg-gray-50">
-                    <td class="p-3">${p.ClienteNome || 'Consumidor Final'}</td>
-                    <td class="p-3">${p.Descricao}</td>
-                    <td class="p-3 ${statusClasse}">${formatarData(p.DataVencimento)}</td>
-                    <td class="p-3 text-right font-semibold">${formatarMoeda(p.Valor)}</td>
-                    <td class="p-3 text-center">
-                        <button data-acao="dar-baixa" 
-                                data-id="${p.id}" 
-                                data-valor="${p.Valor}" 
-                                data-descricao="${p.Descricao}"
-                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 rounded-lg text-sm shadow">
+                <tr class="border-b hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 font-medium text-gray-800">${p.ClienteNome || 'Consumidor Final'}</td>
+                    <td class="px-6 py-4 text-gray-600">${p.Descricao}</td>
+                    <td class="px-6 py-4 ${statusClasse}">${formatarData(p.DataVencimento)}${statusTexto}</td>
+                    <td class="px-6 py-4 text-right font-bold text-gray-800">${formatarMoeda(p.Valor)}</td>
+                    <td class="px-6 py-4 text-center">
+                        <button onclick="window.abrirModalBaixa(${p.id}, '${descSafe}', '${clienteSafe}', ${p.Valor})" 
+                                class="bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 font-bold py-1 px-3 rounded text-sm shadow transition-colors">
                             Receber
                         </button>
                     </td>
@@ -139,71 +131,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    // --- 4. LÓGICA DO MODAL "DAR BAIXA" (sem alteração) ---
-    // (O seu código original de carregarContasBaixa, carregarFormasPagamentoBaixa, abrirModalBaixa, etc., fica aqui)
-    // (Vou colar por si, para garantir)
-
-    async function carregarContasBaixa() {
-        try {
-            const response = await fetch('http://localhost:3002/api/financeiro/contascaixa');
-            const contas = await response.json();
-            baixaContaCaixa.innerHTML = '<option value="">Selecione a conta...</option>';
-            contas.forEach(conta => {
-                const option = document.createElement('option');
-                option.value = conta.id;
-                option.textContent = conta.Nome;
-                baixaContaCaixa.appendChild(option);
-            });
-        } catch (err) {
-            console.error('Erro ao carregar contas:', err);
-            baixaContaCaixa.innerHTML = '<option value="">Erro ao carregar</option>';
-        }
-    }
-
-    async function carregarFormasPagamentoBaixa() {
-        try {
-            const response = await fetch('http://localhost:3002/api/financeiro/formaspagamento');
-            const formas = await response.json();
-            baixaFormaPagamento.innerHTML = '<option value="">Selecione a forma...</option>';
-            formas.forEach(forma => {
-                if (forma.TipoLancamento === 'A_VISTA') {
-                    const option = document.createElement('option');
-                    option.value = forma.id;
-                    option.textContent = forma.Nome;
-                    baixaFormaPagamento.appendChild(option);
-                }
-            });
-        } catch (err) {
-            console.error('Erro ao carregar formas de pagamento:', err);
-            baixaFormaPagamento.innerHTML = '<option value="">Erro ao carregar</option>';
-        }
-    }
-
-    function abrirModalBaixa(id, descricao, valor) {
-        modalBaixaTitulo.textContent = `Receber Pagamento (${descricao})`;
+    // --- 4. LÓGICA DO MODAL ---
+    
+    // Torna global para o onclick do HTML funcionar
+    window.abrirModalBaixa = async (id, descricao, cliente, valor) => {
+        modalBaixaTitulo.textContent = `Receber de: ${cliente}`;
         baixaLancamentoId.value = id;
         baixaValorOriginal.textContent = formatarMoeda(valor);
         baixaValorRecebido.value = valor;
         baixaDataPagamento.value = new Date().toISOString().split('T')[0];
 
-        carregarContasBaixa();
-        carregarFormasPagamentoBaixa();
-        modalBaixa.classList.remove('modal-oculto');
+        // Carrega combos apenas se necessário
+        if (baixaContaCaixa.options.length <= 1) await carregarCombos();
+
+        modalBaixa.classList.remove('hidden');
+    };
+
+    const fecharModal = () => modalBaixa.classList.add('hidden');
+    
+    if(btnFecharModalBaixa) btnFecharModalBaixa.addEventListener('click', fecharModal);
+    if(btnFecharX) btnFecharX.addEventListener('click', fecharModal);
+
+    async function carregarCombos() {
+        try {
+            const [resContas, resFormas] = await Promise.all([
+                fetch('http://localhost:3002/api/financeiro/contascaixa'),
+                fetch('http://localhost:3002/api/financeiro/formaspagamento')
+            ]);
+            
+            const contas = await resContas.json();
+            const formas = await resFormas.json();
+
+            baixaContaCaixa.innerHTML = '<option value="">Selecione...</option>';
+            contas.forEach(c => baixaContaCaixa.innerHTML += `<option value="${c.id}">${c.Nome}</option>`);
+
+            baixaFormaPagamento.innerHTML = '<option value="">Selecione...</option>';
+            formas.forEach(f => {
+                if (f.TipoLancamento === 'A_VISTA') {
+                    baixaFormaPagamento.innerHTML += `<option value="${f.id}">${f.Nome}</option>`;
+                }
+            });
+        } catch (err) { console.error('Erro combos:', err); }
     }
 
-    btnFecharModalBaixa.addEventListener('click', () => {
-        modalBaixa.classList.add('modal-oculto');
-    });
-
-    tabelaCorpo.addEventListener('click', (e) => {
-        const botao = e.target.closest('[data-acao="dar-baixa"]');
-        if (botao) {
-            const id = botao.dataset.id;
-            const valor = parseFloat(botao.dataset.valor);
-            const descricao = botao.dataset.descricao;
-            abrirModalBaixa(id, descricao, valor);
-        }
-    });
 
     formBaixa.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -216,18 +186,17 @@ document.addEventListener('DOMContentLoaded', () => {
             FormaPagamentoID: parseInt(baixaFormaPagamento.value)
         };
 
-        if (!dadosBaixa.ValorRecebido || dadosBaixa.ValorRecebido <= 0) {
+        if (dadosBaixa.ValorRecebido <= 0) {
             alert("O valor recebido deve ser maior que zero."); return;
         }
-        if (!dadosBaixa.DataPagamento) {
-            alert("A data de pagamento é obrigatória."); return;
+        if (!dadosBaixa.ContaCaixaID || !dadosBaixa.FormaPagamentoID) {
+            alert("Selecione Conta e Forma de Pagamento."); return;
         }
-        if (!dadosBaixa.FormaPagamentoID) {
-            alert("A forma de pagamento é obrigatória."); return;
-        }
-        if (!dadosBaixa.ContaCaixaID) {
-            alert("A conta/caixa de destino é obrigatória."); return;
-        }
+
+        const btnSubmit = formBaixa.querySelector('button[type="submit"]');
+        const textoOriginal = btnSubmit.innerHTML;
+        btnSubmit.innerHTML = "Processando...";
+        btnSubmit.disabled = true;
 
         try {
             const response = await fetch(`http://localhost:3002/api/financeiro/lancamento/${id}/baixar`, {
@@ -236,22 +205,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(dadosBaixa)
             });
 
-            const resultado = await response.json();
-            if (!response.ok) { throw new Error(resultado.message); }
+            if (!response.ok) { 
+                const erro = await response.json();
+                throw new Error(erro.message); 
+            }
 
-            alert('Pagamento registrado com sucesso!');
-            modalBaixa.classList.add('modal-oculto');
-
-            // ATUALIZADO: Recarrega tudo (Cards e Tabela)
+            alert('Recebimento registrado com sucesso! 💰');
+            fecharModal();
             await atualizarPainel();
 
         } catch (err) {
-            console.error('Erro ao dar baixa em pagamento:', err);
-            alert(`Erro ao salvar: ${err.message}`);
+            alert(`Erro: ${err.message}`);
+        } finally {
+            btnSubmit.innerHTML = textoOriginal;
+            btnSubmit.disabled = false;
         }
     });
 
-    // --- NOVO: Listener para ORDENAÇÃO ---
+    // Ordenação (Listeners)
     headersTabela.forEach(header => {
         header.addEventListener('click', () => {
             const newSortColumn = header.dataset.sort;
@@ -270,12 +241,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     arrow.innerHTML = '';
                 }
             });
-
-            // Re-renderiza a tabela com a nova ordem
             aplicarFiltroEOrdem();
         });
     });
 
-    // --- 5. CARREGAMENTO INICIAL ---
+    // Inicialização
     atualizarPainel();
 });
