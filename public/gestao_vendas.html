@@ -207,22 +207,30 @@
         </div>
     </div>
 
-    <div id="produto-modal" class="modal-overlay modal-oculto">
-        <div class="modal-content">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Cadastro Rápido de Produto</h2>
+    <div id="produto-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center z-50 flex">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Novo Produto (Rápido)</h2>
             <form id="produto-form-rapido" class="space-y-4">
-                <div><label class="block text-sm font-medium text-gray-700">Nome</label><input type="text" id="rapido-nome" required class="form-input mt-1"></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-sm font-medium text-gray-700">Custo (R$)</label><input type="text" id="rapido-custo" class="form-input mt-1"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">Venda (R$)</label><input type="text" id="rapido-preco" required class="form-input mt-1"></div>
+                <div>
+                    <input type="text" id="rapido-nome" placeholder="Nome do Produto *" required class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500 uppercase">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div><label class="block text-sm font-medium text-gray-700">Estoque Inicial</label><input type="number" id="rapido-estoque" value="1" class="form-input mt-1"></div>
-                    <div><label class="block text-sm font-medium text-gray-700">Mínimo</label><input type="number" id="rapido-minimo" value="0" class="form-input mt-1"></div>
+                    <input type="number" id="rapido-custo" placeholder="Custo (R$)" step="0.01" class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                    <input type="number" id="rapido-preco" placeholder="Venda (R$)" step="0.01" required class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-gray-500 ml-1">Estoque Inicial</label>
+                        <input type="number" id="rapido-estoque" value="1" class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 ml-1">Mínimo</label>
+                        <input type="number" id="rapido-minimo" value="2" class="w-full p-3 border rounded focus:ring-2 focus:ring-blue-500">
+                    </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" id="btn-cancelar-rapido" class="bg-gray-200 text-gray-800 px-4 py-2 rounded">Cancelar</button>
-                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Salvar</button>
+                    <button type="button" id="btn-cancelar-rapido" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium">Cancelar</button>
+                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow">Salvar</button>
                 </div>
             </form>
         </div>

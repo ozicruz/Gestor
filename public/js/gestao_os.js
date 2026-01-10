@@ -25,20 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(safeNumber(val));
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
     
-    const debounce = (func, wait) => {
-        let timeout;
-        return function(...args) {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(this, args), wait);
-        };
-    };
-
     const showAlert = (msg, success = true) => {
         if (!feedbackAlert) return alert(msg);
         feedbackAlert.textContent = msg;
-        feedbackAlert.className = `p-4 mb-4 rounded text-center font-bold ${success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+        feedbackAlert.className = `p-4 mb-4 rounded text-center font-bold fixed top-4 right-4 z-[9999] shadow-lg animate-bounce ${success ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`;
         feedbackAlert.classList.remove('hidden');
-        setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
+        setTimeout(() => feedbackAlert.classList.add('hidden'), 3000);
     };
 
     // --- CARREGAR DADOS ---
@@ -66,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error("Erro dados aux:", error); }
     };
 
-    // --- AUTOCOMPLETE ---
+    // --- AUTOCOMPLETE INTELIGENTE (COM TAB E ENTER) ---
     const setupAutocomplete = (inputId, listId, dataArray, priceInputId, hiddenIdCallback, tipoItem = 'produto') => {
         const input = document.getElementById(inputId);
         const list = document.getElementById(listId);
@@ -75,9 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!input || !list) return;
         
         let currentFocus = -1;
+        let lastResults = []; 
 
-        input.addEventListener('input', debounce(function() {
-            hiddenIdCallback(null); 
+        const selectItem = (item) => {
+            input.value = item.nome;
+            if(priceInput && tipoItem !== 'veiculo') {
+                const p = item.preco_unitario || item.preco || item.valor || 0;
+                priceInput.value = p.toFixed(2);
+            }
+            hiddenIdCallback(item.id);
+            list.innerHTML = '';
+            list.classList.add('hidden');
+            if(priceInput) priceInput.focus();
+        };
+
+        input.addEventListener('input', function() {
+            hiddenIdCallback(null); // Limpa ID ao digitar (mas não impede adicionar depois)
             const termo = input.value.toLowerCase(); 
             list.innerHTML = ''; currentFocus = -1;
             
@@ -88,20 +93,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 (item.nome && item.nome.toLowerCase().includes(termo)) || 
                 (item.codigo && item.codigo.toLowerCase().includes(termo))
             );
-
-            matches.sort((a, b) => {
-                const nomeA = (a.nome || '').toLowerCase();
-                const nomeB = (b.nome || '').toLowerCase();
-                if (nomeA.startsWith(termo) && !nomeB.startsWith(termo)) return -1;
-                if (!nomeA.startsWith(termo) && nomeB.startsWith(termo)) return 1;
-                return nomeA.localeCompare(nomeB);
-            });
+            
+            lastResults = matches; 
 
             if (matches.length > 0) { 
                 list.classList.remove('hidden'); 
-                matches.slice(0, 20).forEach(item => { 
+                matches.slice(0, 10).forEach(item => { 
                     const div = document.createElement('div'); 
-                    div.className = "autocomplete-item p-2 hover:bg-blue-100 cursor-pointer border-b text-sm text-gray-700"; 
+                    div.className = "p-2 hover:bg-blue-100 cursor-pointer border-b text-sm text-gray-700 bg-white"; 
                     
                     let displayHtml = '';
                     if (tipoItem === 'veiculo') {
@@ -116,21 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         displayHtml = `<strong>${item.nome}</strong> - ${formatCurrency(p)}${estoqueInfo}`;
                     }
                     div.innerHTML = displayHtml;
-
-                    div.addEventListener('click', function() { 
-                        input.value = item.nome; 
-                        if(priceInput && tipoItem !== 'veiculo') { 
-                            const p = item.preco_unitario || item.preco || 0; 
-                            priceInput.value = p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
-                        } 
-                        hiddenIdCallback(item.id); 
-                        list.innerHTML = ''; 
-                        list.classList.add('hidden'); 
-                    }); 
+                    div.addEventListener('mousedown', (e) => { e.preventDefault(); selectItem(item); }); 
                     list.appendChild(div); 
                 }); 
             } else { list.classList.add('hidden'); }
-        }, 300));
+        });
 
         input.addEventListener('keydown', function(e) { 
             let x = list.getElementsByTagName('div'); 
@@ -138,8 +127,27 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (e.key === 'ArrowUp') { currentFocus--; addActive(x); } 
             else if (e.key === 'Enter') { 
                 if (currentFocus > -1 && x) { e.preventDefault(); x[currentFocus].click(); }
+                else if (lastResults.length > 0) { e.preventDefault(); selectItem(lastResults[0]); }
             } 
+            else if (e.key === 'Tab') {
+                if(lastResults.length > 0 && input.value.length > 2) { 
+                    // Se tiver resultado e o usuário der TAB, seleciona o primeiro
+                    selectItem(lastResults[0]); 
+                } 
+                list.classList.add('hidden');
+            }
             else if (e.key === 'Escape') list.classList.add('hidden'); 
+        });
+
+        // Blur Inteligente: Se o usuário sair do campo e tiver digitado o nome certinho, seleciona
+        input.addEventListener('blur', () => {
+            setTimeout(() => { 
+                if (window.tempProdutoId === null && window.tempServicoId === null && input.value.trim() !== '' && lastResults.length > 0) {
+                    const match = lastResults.find(i => i.nome.toLowerCase() === input.value.toLowerCase());
+                    if(match) selectItem(match);
+                }
+                list.classList.add('hidden'); 
+            }, 200);
         });
 
         function addActive(x) { 
@@ -147,16 +155,16 @@ document.addEventListener('DOMContentLoaded', () => {
             removeActive(x); 
             if (currentFocus >= x.length) currentFocus = 0; 
             if (currentFocus < 0) currentFocus = (x.length - 1); 
-            x[currentFocus].classList.add('bg-blue-200', 'font-bold'); 
+            x[currentFocus].classList.add('bg-blue-200'); 
             x[currentFocus].scrollIntoView({ block: 'nearest' }); 
         }
-        function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove('bg-blue-200', 'font-bold'); }
-        document.addEventListener('click', (e) => { if (e.target !== input && e.target !== list) list.classList.add('hidden'); });
+        function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove('bg-blue-200'); }
     };
 
     // --- MODAL DE NOVA OS ---
     const abrirModalNovaOS = () => {
         const anterior = document.getElementById('modal-nova-os-container'); if(anterior) anterior.remove();
+        
         const div = document.createElement('div');
         div.id = 'modal-nova-os-container';
         div.className = "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]";
@@ -170,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div id="msg-erro-placa" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700 text-center">
                     <p class="font-bold">Veículo não encontrado!</p>
-                    <a href="cadastros.html" class="underline mt-1 block text-blue-600">Cadastrar Veículo Agora &rarr;</a>
+                    <a href="clientes_veiculos.html" class="underline mt-1 block text-blue-600">Cadastrar Veículo Agora &rarr;</a>
                 </div>
                 <div class="flex justify-between gap-3 mt-4">
                     <button id="btn-cancel-placa-modal" class="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">Cancelar</button>
@@ -187,14 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
         input.focus();
         setupAutocomplete('input-nova-placa-modal', 'list-nova-placa-autocomplete', cacheVeiculos, null, () => {}, 'veiculo');
 
-        const fechar = () => div.remove();
+        const fechar = () => { if(div) div.remove(); };
 
         const tentarCriar = async () => {
             const placa = input.value.trim().toUpperCase();
-            if (placa.length < 3) {
-                input.classList.add('border-red-500');
-                return;
-            }
+            if (placa.length < 3) { input.classList.add('border-red-500'); return; }
 
             btnCriar.disabled = true;
             btnCriar.innerHTML = 'Verificando...';
@@ -223,20 +228,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         alert("Erro: " + data.message);
                     }
                 }
-            } catch (err) {
-                alert("Erro de conexão.");
-            } finally {
-                btnCriar.disabled = false;
-                btnCriar.innerHTML = 'Criar OS &rarr;';
-            }
+            } catch (err) { alert("Erro de conexão."); } 
+            finally { btnCriar.disabled = false; btnCriar.innerHTML = 'Criar OS &rarr;'; }
         };
 
         btnCancel.onclick = fechar;
         btnCriar.onclick = tentarCriar;
         input.onkeydown = (e) => { 
-            if(e.key === 'Enter') {
-                setTimeout(() => tentarCriar(), 150); 
-            }
+            if(e.key === 'Enter') { e.preventDefault(); setTimeout(() => tentarCriar(), 100); }
+            if(e.key === 'Escape') fechar();
         };
     };
 
@@ -262,13 +262,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         lista.forEach(os => {
             let badge = 'bg-gray-100 text-gray-800'; const st = (os.status || 'Orçamento').toUpperCase();
-            
-            // Lógica de cores atualizada para o novo fluxo
             if (st.includes('FINALIZADA') || st.includes('CONCLU') || st.includes('FATURADA')) badge = 'bg-green-100 text-green-800 border border-green-200';
-            else if (st === 'PRONTO') badge = 'bg-teal-100 text-teal-800 border border-teal-200 font-bold'; // Nova cor para Pronto
+            else if (st === 'PRONTO') badge = 'bg-teal-100 text-teal-800 border border-teal-200 font-bold';
             else if (st.includes('ANDAMENTO')) badge = 'bg-blue-100 text-blue-800 border border-blue-200';
             else if (st.includes('AGUARDANDO')) badge = 'bg-orange-100 text-orange-800 border border-orange-200';
-            else badge = 'bg-yellow-100 text-yellow-800 border border-yellow-200'; // Orçamento
+            else badge = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
 
             const mecanico = os.mecanico_nome ? `<br><span class="text-xs text-blue-600 font-bold">🔧 ${os.mecanico_nome}</span>` : '';
             const valorTotal = os.total_calculado !== undefined ? os.total_calculado : os.total;
@@ -285,10 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>`;
         });
     };
-
-    document.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', () => { const col = th.dataset.sort; ordemAtual.direcao = (ordemAtual.coluna === col && ordemAtual.direcao === 'asc') ? 'desc' : 'asc'; ordemAtual.coluna = col; renderizarTabela(); });
-    });
 
     // --- MODAL DE EDIÇÃO ---
     window.abrirModalEdicao = async (id = null) => {
@@ -326,8 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('modal-mecanico').value = dados.mecanico_id.toString();
             }
 
+            // Ativa o Autocomplete Inteligente
             setupAutocomplete('add-item-nome', 'list-item-autocomplete', cacheProdutos, 'add-item-valor', (id) => { window.tempProdutoId = id; }, 'produto');
             setupAutocomplete('add-servico-nome', 'list-servico-autocomplete', cacheServicos, 'add-servico-valor', (id) => { window.tempServicoId = id; }, 'servico');
+            
             atualizarListasVisuais();
         } catch (err) { console.error(err); modalBody.innerHTML = `<p class="text-red-500 p-4">Erro: ${err.message}</p>`; }
     };
@@ -337,18 +333,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const disabledAttr = isLocked ? 'disabled' : '';
         const bgInput = isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white';
 
-        // FLUXO SOLICITADO: Orçamento -> Aguardando peças -> Em andamento -> Pronto
         const opcoesFluxo = ['Orçamento', 'Aguardando peças', 'Em andamento', 'Pronto'];
-        
         let opcoesStatus = '';
-        opcoesFluxo.forEach(st => {
-            opcoesStatus += `<option value="${st}" ${dados.status === st ? 'selected' : ''}>${st}</option>`;
-        });
-
-        // Se o status atual não estiver no fluxo padrão (ex: Finalizada), adiciona ele
-        if (isLocked && !opcoesFluxo.includes(dados.status)) {
-            opcoesStatus += `<option value="${dados.status}" selected>${dados.status}</option>`;
-        }
+        opcoesFluxo.forEach(st => { opcoesStatus += `<option value="${st}" ${dados.status === st ? 'selected' : ''}>${st}</option>`; });
+        if (isLocked && !opcoesFluxo.includes(dados.status)) { opcoesStatus += `<option value="${dados.status}" selected>${dados.status}</option>`; }
 
         let optionsMecanicos = '<option value="">Selecione...</option>';
         cacheUsuarios.forEach(u => optionsMecanicos += `<option value="${u.id}">${u.nome}</option>`);
@@ -358,35 +346,22 @@ document.addEventListener('DOMContentLoaded', () => {
             statusBadge += `<div class="mt-1 text-right"><a href="#" onclick="window.imprimirReciboVenda(${dados.venda_gerada_id})" class="text-xs font-bold text-blue-600 hover:underline">Venda #${dados.venda_gerada_id}</a></div>`;
         }
 
-        // LÓGICA DO BOTÃO "GERAR VENDA"
         let htmlBotoes = '';
         if (!isLocked) {
             htmlBotoes = `<button onclick="salvarAlteracoes()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 mr-2">💾 Salvar</button>`;
-            
-            // Só libera se estiver PRONTO
             if (dados.status === 'Pronto') {
                 htmlBotoes += `<button onclick="gerarVenda(${dados.id})" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">💰 Gerar Venda</button>`;
             } else {
-                // Botão desabilitado visualmente para indicar o fluxo
                 htmlBotoes += `<button disabled class="bg-gray-300 text-gray-500 px-4 py-2 rounded font-bold cursor-not-allowed" title="Mude o status para 'Pronto' para liberar a venda">💰 Gerar Venda</button>`;
             }
-        } else {
-            htmlBotoes = `<span class="px-4 py-2 bg-gray-100 text-gray-600 rounded font-bold border">Bloqueado</span>`;
-        }
-
-        let nomeMecanicoExibicao = dados.mecanico_nome;
-        if (!nomeMecanicoExibicao && dados.mecanico_id) {
-            const mec = cacheUsuarios.find(u => u.id == dados.mecanico_id);
-            if (mec) nomeMecanicoExibicao = mec.nome;
-        }
-        if (!nomeMecanicoExibicao) nomeMecanicoExibicao = 'Não Informado';
+        } else { htmlBotoes = `<span class="px-4 py-2 bg-gray-100 text-gray-600 rounded font-bold border">Bloqueado</span>`; }
 
         modalBody.innerHTML = `
             <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 flex justify-between items-center">
                 <div><h3 class="font-bold text-gray-800 text-lg">Cliente: ${dados.cliente_nome || 'NÃO IDENTIFICADO'}</h3><p class="text-gray-600 text-sm">Veículo: <span class="font-bold uppercase">${dados.placa || '-'}</span> ${dados.modelo || ''}</p></div>
                 <div class="text-right"><p class="text-xs text-gray-400 font-bold">OS #${dados.id || 'NOVA'}</p>${statusBadge}</div>
             </div>
-            <div class="mb-6"><label class="block text-xs font-bold text-blue-700 uppercase mb-1">Mecânico / Responsável Técnico</label>${isLocked ? `<div class="p-2 bg-gray-100 rounded border font-bold text-gray-700">${nomeMecanicoExibicao}</div>` : `<select id="modal-mecanico" class="form-input w-full ${bgInput}">${optionsMecanicos}</select>`}</div>
+            <div class="mb-6"><label class="block text-xs font-bold text-blue-700 uppercase mb-1">Mecânico / Responsável Técnico</label>${isLocked ? `<div class="p-2 bg-gray-100 rounded border font-bold text-gray-700">${dados.mecanico_nome||'Não Informado'}</div>` : `<select id="modal-mecanico" class="form-input w-full ${bgInput}">${optionsMecanicos}</select>`}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Problema Relatado</label><textarea id="modal-problema" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.problema_relatado || ''}</textarea></div>
                 <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Diagnóstico Técnico</label><textarea id="modal-diagnostico" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.diagnostico_tecnico || ''}</textarea></div>
@@ -403,34 +378,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button onclick="fecharModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-bold hover:bg-gray-300">Fechar</button>
                 <button onclick="imprimirOS(${dados.id})" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 shadow">🖨️ Imprimir</button>
                 ${htmlBotoes}
-            </div>
-        `;
+            </div>`;
     };
 
+    // --- CORREÇÃO APLICADA: PERMITE ADICIONAR SEM ID (ITEM AVULSO) ---
     window.adicionarItemLista = () => { 
         const nome = document.getElementById('add-item-nome').value; 
         const qtd = safeNumber(document.getElementById('add-item-qtd').value); 
         const val = safeNumber(document.getElementById('add-item-valor').value); 
-        if(!nome) return alert("Preencha o nome."); 
-        itensParaSalvar.push({ produto_id: window.tempProdutoId, nome, quantidade: qtd, valor_unitario: val }); 
+        
+        if(!nome) return showAlert("Preencha o nome do item.", false); 
+        
+        // ADICIONA MESMO SEM PRODUTO_ID (VAI COMO ITEM AVULSO)
+        itensParaSalvar.push({ produto_id: window.tempProdutoId || null, nome, quantidade: qtd, valor_unitario: val }); 
+        
+        // Reset
         document.getElementById('add-item-nome').value=''; 
         document.getElementById('add-item-valor').value=''; 
         document.getElementById('add-item-qtd').value='1'; 
         window.tempProdutoId=null; 
         atualizarListasVisuais(); 
+        document.getElementById('add-item-nome').focus();
     };
 
     window.adicionarServicoLista = () => { 
         const nome = document.getElementById('add-servico-nome').value; 
         const qtd = safeNumber(document.getElementById('add-servico-qtd').value); 
         const val = safeNumber(document.getElementById('add-servico-valor').value); 
-        if(!nome) return alert("Preencha o nome."); 
-        servicosParaSalvar.push({ servico_id: window.tempServicoId, nome, quantidade: qtd, valor: val }); 
+        
+        if(!nome) return showAlert("Preencha o nome do serviço.", false); 
+        
+        // ADICIONA MESMO SEM SERVICO_ID
+        servicosParaSalvar.push({ servico_id: window.tempServicoId || null, nome, quantidade: qtd, valor: val }); 
+        
+        // Reset
         document.getElementById('add-servico-nome').value=''; 
         document.getElementById('add-servico-valor').value=''; 
         document.getElementById('add-servico-qtd').value='1'; 
         window.tempServicoId=null; 
         atualizarListasVisuais(); 
+        document.getElementById('add-servico-nome').focus();
     };
 
     window.removerItemLista = (idx) => { itensParaSalvar.splice(idx, 1); atualizarListasVisuais(); };
@@ -458,199 +445,77 @@ document.addEventListener('DOMContentLoaded', () => {
                 servicos: servicosParaSalvar
             };
             const res = await fetch(`${API_URL}/os/${osIdEdicao}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            if (res.ok) { showAlert("OS Salva!"); if(typeof window.carregarOS === 'function') window.carregarOS(); window.fecharModal(); return true; } 
-            else { const err = await res.json(); alert("Erro ao salvar: " + err.message); return false; }
-        } catch (err) { alert("Erro de conexão."); return false; }
+            if (res.ok) { showAlert("OS Salva!", true); if(typeof window.carregarOS === 'function') window.carregarOS(); window.fecharModal(); return true; } 
+            else { const err = await res.json(); showAlert("Erro ao salvar: " + err.message, false); return false; }
+        } catch (err) { showAlert("Erro de conexão.", false); return false; }
     };
 
     window.gerarVenda = async (id) => { if(confirm("Deseja enviar para Vendas?")) { const salvou = await window.salvarAlteracoes(); if(salvou) window.location.href = `gestao_vendas.html?carregar_os=${id}`; } };
     window.fecharModal = () => modalOS.classList.add('hidden', 'modal-oculto');
 
-    // --- IMPRESSÃO DE RECIBO DE VENDA (Mantido para compatibilidade) ---
+    // --- IMPRESSÃO DE RECIBO DE VENDA ---
     window.imprimirReciboVenda = async (vendaId) => {
-        if(!vendaId) return alert("Venda não identificada.");
+        if(!vendaId) return showAlert("Venda não identificada.", false);
         try {
             const res = await fetch(`${API_URL}/relatorios/vendas/${vendaId}`);
-            if(!res.ok) throw new Error("Venda não encontrada no sistema.");
+            if(!res.ok) throw new Error("Venda não encontrada.");
             const venda = await res.json();
             
             let emp = { nome_fantasia: 'Minha Oficina' };
             try { const r = await fetch(`${API_URL}/empresa`); if(r.ok) emp = await r.json(); } catch(e){}
 
-            // ESTE É O ESTILO QUE VOCÊ GOSTOU EM GESTAO_VENDAS.JS
             let itensHtml = '';
             [...(venda.itens || []), ...(venda.servicos || [])].forEach(i => {
                 const sub = i.subtotal || (i.quantidade * (i.valor_unitario || i.valor));
                 itensHtml += `<tr><td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${i.quantidade}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(i.valor_unitario || i.valor || 0)}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(sub)}</td></tr>`;
             });
 
-            const htmlContent = `<html><head><meta charset="UTF-8"><title>Recibo Venda #${vendaId}</title><style>body{font-family:'Helvetica',sans-serif;padding:30px;font-size:14px;color:#333}.header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:10px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin:20px 0}th{text-align:left;border-bottom:2px solid #000;padding:8px;background:#eee}td{padding:8px}.totals{width:300px;margin-left:auto;text-align:right}.row{display:flex;justify-content:space-between;padding:4px 0}.final{border-top:2px solid #000;font-weight:bold;font-size:18px;margin-top:5px;padding-top:5px}.footer{text-align:center;margin-top:40px;border-top:1px dashed #ccc;padding-top:10px;font-size:12px;color:#666}</style></head><body>
-            <div class="header"><div><h1>${emp.nome_fantasia}</h1></div><div style="text-align:right;"><h2>RECIBO #${venda.id}</h2><p>${new Date(venda.data).toLocaleDateString('pt-BR')}</p></div></div>
-            <p><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor'}</p>
-            <table><thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table>
-            <div class="totals"><div class="row"><span>Desconto:</span><span>- ${formatCurrency(venda.desconto_valor || 0)}</span></div><div class="row final"><span>TOTAL:</span><span>${formatCurrency(venda.total)}</span></div></div>
-            <div class="footer"><p>Documento sem valor fiscal.</p></div>
-            </body></html>`;
+            const htmlContent = `<html><head><meta charset="UTF-8"><title>Recibo Venda #${vendaId}</title><style>body{font-family:'Helvetica',sans-serif;padding:30px;font-size:14px;color:#333}.header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:10px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin:20px 0}th{text-align:left;border-bottom:2px solid #000;padding:8px;background:#eee}td{padding:8px}.totals{width:300px;margin-left:auto;text-align:right}.row{display:flex;justify-content:space-between;padding:4px 0}.final{border-top:2px solid #000;font-weight:bold;font-size:18px;margin-top:5px;padding-top:5px}.footer{text-align:center;margin-top:40px;border-top:1px dashed #ccc;padding-top:10px;font-size:12px;color:#666}</style></head><body><div class="header"><div><h1>${emp.nome_fantasia}</h1></div><div style="text-align:right;"><h2>RECIBO #${venda.id}</h2><p>${new Date(venda.data).toLocaleDateString('pt-BR')}</p></div></div><p><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor'}</p><table><thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table><div class="totals"><div class="row"><span>Desconto:</span><span>- ${formatCurrency(venda.desconto_valor || 0)}</span></div><div class="row final"><span>TOTAL:</span><span>${formatCurrency(venda.total)}</span></div></div><div class="footer"><p>Documento sem valor fiscal.</p></div></body></html>`;
 
             if (window.electronAPI) window.electronAPI.send('print-to-pdf', { html: htmlContent, name: `Venda_${vendaId}.pdf` });
             else { const w = window.open('', '', 'width=800,height=600'); w.document.write(htmlContent); w.document.close(); w.print(); }
-
-        } catch(e) { console.error(e); alert("Erro ao gerar recibo: " + e.message); }
+        } catch(e) { console.error(e); showAlert("Erro ao gerar recibo: " + e.message, false); }
     };
 
-    // --- NOVA IMPRESSÃO DE OS (Baseada em gestao_vendas.js) ---
     window.imprimirOS = async (id) => {
         try {
             const res = await fetch(`${API_URL}/os/${id}`);
-            if (!res.ok) throw new Error("Erro ao buscar dados da OS.");
+            if (!res.ok) throw new Error("Erro ao buscar OS.");
             const os = await res.json();
 
             let emp = { nome_fantasia: 'Minha Oficina', endereco: '', telefone: '', email: '' };
             try { const resEmp = await fetch(`${API_URL}/empresa`); if (resEmp.ok) emp = await resEmp.json(); } catch (e) { }
 
-            // LÓGICA COPIADA DE GESTAO_VENDAS.JS PARA NORMALIZAR ITENS
-            // Isso resolve o problema do "undefined"
             let listaImpressao = [];
-
-            // Processar Produtos (Peças)
             if (os.itens && os.itens.length > 0) {
-                os.itens.forEach(item => {
-                    listaImpressao.push({
-                        // Tenta todas as possibilidades de nome, se falhar usa 'Peça' (igual Vendas)
-                        nome: item.nome || item.nome_produto || item.descricao || 'Peça', 
-                        quantidade: item.quantidade,
-                        valor: item.valor_unitario || item.valor || 0
-                    });
-                });
+                os.itens.forEach(item => { listaImpressao.push({ nome: item.nome || item.nome_produto || item.descricao || 'Peça', quantidade: item.quantidade, valor: item.valor_unitario || item.valor || 0 }); });
             }
-
-            // Processar Serviços
             if (os.servicos && os.servicos.length > 0) {
-                os.servicos.forEach(serv => {
-                    listaImpressao.push({
-                        nome: serv.nome || serv.descricao || 'Serviço',
-                        quantidade: serv.quantidade || 1,
-                        valor: serv.valor || 0
-                    });
-                });
+                os.servicos.forEach(serv => { listaImpressao.push({ nome: serv.nome || serv.descricao || 'Serviço', quantidade: serv.quantidade, valor: serv.valor || 0 }); });
             }
 
-            // GERAÇÃO DO HTML (Usando o CSS do gestao_vendas.js que você gostou)
             let itensHtml = '';
-            if (listaImpressao.length === 0) {
-                itensHtml = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#777;">Nenhum item registrado.</td></tr>';
-            } else {
+            if (listaImpressao.length === 0) { itensHtml = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#777;">Nenhum item registrado.</td></tr>'; } 
+            else {
                 listaImpressao.forEach(i => {
                     const totalItem = i.quantidade * i.valor;
-                    itensHtml += `
-                        <tr>
-                            <td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome}</td>
-                            <td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${i.quantidade}</td>
-                            <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(i.valor)}</td>
-                            <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(totalItem)}</td>
-                        </tr>
-                    `;
+                    itensHtml += `<tr><td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${i.quantidade}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(i.valor)}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(totalItem)}</td></tr>`;
                 });
             }
 
-            // HTML Baseado em gestao_vendas.js + Campos da OS
-            const htmlContent = `
-                <html>
-                <head>
-                    <title>OS #${os.id}</title>
-                    <style>
-                        body { font-family: 'Helvetica', sans-serif; padding: 30px; font-size: 14px; color: #333; }
-                        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-                        .header h1 { margin: 0; font-size: 22px; }
-                        .header p { margin: 2px 0; font-size: 12px; }
-                        .box-info { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border: 1px solid #eee; border-radius: 4px; }
-                        .box-title { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 5px; }
-                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                        th { text-align: left; border-bottom: 2px solid #000; padding: 8px; background: #eee; }
-                        td { padding: 8px; }
-                        .totals { width: 300px; margin-left: auto; text-align: right; }
-                        .row { display: flex; justify-content: space-between; padding: 4px 0; }
-                        .final { border-top: 2px solid #000; font-weight: bold; font-size: 18px; margin-top: 5px; padding-top: 5px; }
-                        .footer { text-align: center; margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 10px; font-size: 12px; color: #666; }
-                        .status { font-weight: bold; padding: 3px 8px; background: #eee; border-radius: 4px; font-size: 12px; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <div>
-                            <h1>${emp.nome_fantasia}</h1>
-                            <p>${emp.endereco || ''}</p>
-                            <p>${emp.telefone || ''}</p>
-                        </div>
-                        <div style="text-align:right;">
-                            <h2>ORDEM DE SERVIÇO</h2>
-                            <p>#${os.id}</p>
-                            <p>${new Date(os.data_entrada).toLocaleDateString('pt-BR')}</p>
-                            <span class="status">${os.status}</span>
-                        </div>
-                    </div>
+            const htmlContent = `<html><head><title>OS #${os.id}</title><style>body { font-family: 'Helvetica', sans-serif; padding: 30px; font-size: 14px; color: #333; } .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; } .header h1 { margin: 0; font-size: 22px; } .header p { margin: 2px 0; font-size: 12px; } .box-info { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border: 1px solid #eee; border-radius: 4px; } .box-title { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 5px; } table { width: 100%; border-collapse: collapse; margin: 20px 0; } th { text-align: left; border-bottom: 2px solid #000; padding: 8px; background: #eee; } td { padding: 8px; } .totals { width: 300px; margin-left: auto; text-align: right; } .row { display: flex; justify-content: space-between; padding: 4px 0; } .final { border-top: 2px solid #000; font-weight: bold; font-size: 18px; margin-top: 5px; padding-top: 5px; } .footer { text-align: center; margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 10px; font-size: 12px; color: #666; } .status { font-weight: bold; padding: 3px 8px; background: #eee; border-radius: 4px; font-size: 12px; }</style></head><body>
+                <div class="header"><div><h1>${emp.nome_fantasia}</h1><p>${emp.endereco || ''}</p><p>${emp.telefone || ''}</p></div><div style="text-align:right;"><h2>ORDEM DE SERVIÇO</h2><p>#${os.id}</p><p>${new Date(os.data_entrada).toLocaleDateString('pt-BR')}</p><span class="status">${os.status}</span></div></div>
+                <div class="box-info"><div class="box-title">Cliente / Veículo</div><div style="display: flex; justify-content: space-between;"><div><strong>${os.cliente_nome || 'Consumidor'}</strong><br>${os.cliente_telefone || ''}</div><div style="text-align:right;"><strong>${os.placa || ''}</strong><br>${os.modelo || ''}</div></div></div>
+                <div class="box-info"><div class="box-title">Problema Relatado</div><p style="margin:0;">${os.problema_relatado || 'Não informado.'}</p></div>
+                ${os.diagnostico_tecnico ? `<div class="box-info"><div class="box-title">Diagnóstico Técnico</div><p style="margin:0;">${os.diagnostico_tecnico}</p></div>` : ''}
+                <table><thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table>
+                <div class="totals"><div class="row final"><span>TOTAL:</span><span>${formatCurrency(os.total)}</span></div></div>
+                <div class="footer"><div style="display: flex; justify-content: space-between; margin-top: 40px;"><div style="width: 45%; border-top: 1px solid #000; padding-top: 5px;">Assinatura da Oficina</div><div style="width: 45%; border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div></div></div>
+            </body></html>`;
 
-                    <div class="box-info">
-                        <div class="box-title">Cliente / Veículo</div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <div><strong>${os.cliente_nome || 'Consumidor'}</strong><br>${os.cliente_telefone || ''}</div>
-                            <div style="text-align:right;"><strong>${os.placa || ''}</strong><br>${os.modelo || ''}</div>
-                        </div>
-                    </div>
-
-                    <div class="box-info">
-                        <div class="box-title">Problema Relatado</div>
-                        <p style="margin:0;">${os.problema_relatado || 'Não informado.'}</p>
-                    </div>
-
-                    ${os.diagnostico_tecnico ? `
-                    <div class="box-info">
-                        <div class="box-title">Diagnóstico Técnico</div>
-                        <p style="margin:0;">${os.diagnostico_tecnico}</p>
-                    </div>` : ''}
-
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Descrição</th>
-                                <th style="text-align:center">Qtd</th>
-                                <th style="text-align:right">Unit.</th>
-                                <th style="text-align:right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${itensHtml}
-                        </tbody>
-                    </table>
-
-                    <div class="totals">
-                        <div class="row final">
-                            <span>TOTAL:</span>
-                            <span>${formatCurrency(os.total)}</span>
-                        </div>
-                    </div>
-
-                    <div class="footer">
-                        <div style="display: flex; justify-content: space-between; margin-top: 40px;">
-                            <div style="width: 45%; border-top: 1px solid #000; padding-top: 5px;">Assinatura da Oficina</div>
-                            <div style="width: 45%; border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `;
-
-            if (window.electronAPI) {
-                window.electronAPI.send('print-to-pdf', { html: htmlContent, name: `OS_${os.id}.pdf` });
-            } else {
-                const w = window.open('', '', 'width=900,height=700');
-                w.document.write(htmlContent); w.document.close(); setTimeout(() => w.print(), 500);
-            }
-
-        } catch (e) {
-            console.error(e);
-            alert("Erro ao gerar PDF da OS: " + e.message);
-        }
+            if (window.electronAPI) { window.electronAPI.send('print-to-pdf', { html: htmlContent, name: `OS_${os.id}.pdf` }); } 
+            else { const w = window.open('', '', 'width=900,height=700'); w.document.write(htmlContent); w.document.close(); setTimeout(() => w.print(), 500); }
+        } catch (e) { console.error(e); showAlert("Erro ao gerar PDF da OS: " + e.message, false); }
     };
 
     if (btnNovaOS) btnNovaOS.addEventListener('click', abrirModalNovaOS);

@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     inputCliente.title = "Cliente vinculado à OS";
                 }
             } else {
-                alert("Aviso: Esta OS não tem cliente vinculado no cadastro. Selecione um cliente manualmente.");
+                showAlert("Aviso: Esta OS não tem cliente vinculado no cadastro. Selecione um cliente manualmente.", false);
             }
 
             if (os.itens && os.itens.length > 0) {
@@ -160,8 +160,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const showAlert = (msg, success = true) => {
         if (!feedbackAlert) return;
         feedbackAlert.textContent = msg;
-        feedbackAlert.className = `p-4 mb-4 text-sm rounded-lg ${success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
+        feedbackAlert.className = `p-4 mb-4 text-sm rounded-lg shadow font-bold text-center ${success ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`;
         feedbackAlert.classList.remove('hidden');
+        
+        // Garante que o alerta fique visível no topo
+        feedbackAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
         setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
     };
 
@@ -382,8 +386,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const totEl = document.getElementById('total-valor');
         if (totEl) {
             let totalHtml = formatCurrency(total);
-            
-            // Adiciona a informação das parcelas ao lado do total se for > 1x
             if (vendaAtual.numParcelas > 1) {
                 const valorParcela = total / vendaAtual.numParcelas;
                 totalHtml += ` <span class="text-xs text-gray-500 font-normal block md:inline">(ou ${vendaAtual.numParcelas}x de ${formatCurrency(valorParcela)})</span>`;
@@ -399,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderizarItensVenda();
     };
 
-    // --- ADD PRODUTO/SERVIÇO (Mantido) ---
+    // --- ADD PRODUTO/SERVIÇO ---
     const adicionarProduto = async () => {
         const id = selectedItems.produto;
         const inputQtd = document.getElementById('input-produto-qtd');
@@ -477,13 +479,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if(inputServicoQtd) inputServicoQtd.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); btnAddServico.click(); } });
     if(inputServicoValorManual) inputServicoValorManual.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); btnAddServico.click(); } });
 
-    // --- FORMA PAGAMENTO (COM SELEÇÃO AUTOMÁTICA INTELIGENTE) ---
-    // --- FORMA PAGAMENTO (COM SELEÇÃO AUTOMÁTICA INTELIGENTE) ---
+    // --- FORMA PAGAMENTO ---
     const handleFormaPagamento = () => {
         if (!selectFormaPagamento) return;
         const opt = selectFormaPagamento.options[selectFormaPagamento.selectedIndex];
         
-        // Reset visual dos blocos
         blocoParcelamento?.classList.add('hidden');
         blocoContaCaixa?.classList.add('hidden');
         blocoDataVencimento?.classList.add('hidden');
@@ -502,7 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tipo === 'A_PRAZO') {
             blocoDataVencimento?.classList.remove('hidden');
             blocoDesconto?.classList.add('hidden');
-            
             vendaAtual.numParcelas = 1;
             if (inputDataVencimento) {
                 const hoje = new Date();
@@ -510,43 +509,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 inputDataVencimento.value = hoje.toISOString().split('T')[0];
             }
         } else {
-            // --- LÓGICA DE PAGAMENTO À VISTA (DINHEIRO, PIX, CARTÃO) ---
             blocoContaCaixa?.classList.remove('hidden'); 
             
             if (selectContaCaixa && listaContasCaixa.length > 0) {
                 let contaAlvo = null;
-
-                // 1. Verifica se é Dinheiro
                 if (nomePagamento.includes('dinheiro') || nomePagamento.includes('espécie')) {
-                    // Procura conta com 'caixa' ou 'gaveta' no nome
-                    contaAlvo = listaContasCaixa.find(c => {
-                        const nomeConta = c.Nome.toLowerCase();
-                        return nomeConta.includes('caixa') || nomeConta.includes('gaveta');
-                    });
+                    contaAlvo = listaContasCaixa.find(c => c.Nome.toLowerCase().includes('caixa') || c.Nome.toLowerCase().includes('gaveta'));
                 } else {
-                    // 2. Se for Pix, Cartão, Débito -> Tenta achar 'Banco'
                     contaAlvo = listaContasCaixa.find(c => c.Nome.toLowerCase().includes('banco'));
-                    
-                    // 3. Fallback: Se não achar "Banco", pega a primeira que NÃO seja Caixa/Dinheiro
-                    // Isso serve para contas nomeadas como "Nubank", "Inter", "Sicoob"
-                    if (!contaAlvo) {
-                        contaAlvo = listaContasCaixa.find(c => {
-                            const nomeConta = c.Nome.toLowerCase();
-                            return !nomeConta.includes('caixa') && !nomeConta.includes('gaveta');
-                        });
-                    }
+                    if (!contaAlvo) contaAlvo = listaContasCaixa.find(c => !c.Nome.toLowerCase().includes('caixa') && !c.Nome.toLowerCase().includes('gaveta'));
                 }
-                
-                // Aplica a seleção se encontrou
-                if (contaAlvo) {
-                    selectContaCaixa.value = contaAlvo.id;
-                } else if (listaContasCaixa.length > 0) {
-                    // Último recurso: seleciona a primeira da lista se a lógica falhar
-                    selectContaCaixa.value = listaContasCaixa[0].id;
-                }
+                if (contaAlvo) selectContaCaixa.value = contaAlvo.id;
+                else if (listaContasCaixa.length > 0) selectContaCaixa.value = listaContasCaixa[0].id;
             }
 
-            // Lógica de Parcelamento (Cartão de Crédito costuma aceitar parcelas mesmo sendo "À Vista" no lançamento financeiro imediato, dependendo da sua regra)
             if (aceitaParcelas) {
                 blocoParcelamento?.classList.remove('hidden');
                 const max = parseInt(opt.dataset.maxParcelas) || 12;
@@ -587,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const usuarioJson = localStorage.getItem('usuario_logado');
         const usuario = usuarioJson ? JSON.parse(usuarioJson) : null;
-        if (!usuario) return alert("Erro: Usuário não identificado.");
+        if (!usuario) return showAlert("Erro: Usuário não identificado.", false);
         
         if (!formaId) return showAlert('Selecione forma de pagamento.', false);
         const formaObj = listaFormasPagamento.find(f => f.id == formaId);
@@ -601,8 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
         vendaAtual.FormaPagamentoID = parseInt(formaId);
         vendaAtual.ContaCaixaID = (formaObj.TipoLancamento === 'A_VISTA' && contaId) ? parseInt(contaId) : null;
         vendaAtual.DataVencimento = (formaObj.TipoLancamento === 'A_PRAZO') ? dataVenc : null;
-        
-        // Garante que o valor final calculado seja o enviado
         vendaAtual.desconto_valor = vendaAtual.desconto_valor_calculado || 0;
         vendaAtual.acrescimo_valor = vendaAtual.acrescimo_valor_calculado || 0;
         
@@ -625,7 +599,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await res.json();
             if (!res.ok) throw new Error(result.message);
 
-            // Atualiza com dados finais do back-end para impressão
             ultimaVendaSalva = { ...vendaAtual, id: result.id, data: new Date() };
 
             if (vendaConfirmacaoEl && confirmacaoTextoEl) {
@@ -633,8 +606,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (vendaForm) vendaForm.style.display = 'none';
                 vendaConfirmacaoEl.style.display = 'block';
             } else {
-                alert(`✅ Venda #${result.id} realizada!`);
-                window.location.reload();
+                showAlert(`✅ Venda #${result.id} realizada!`, true);
+                setTimeout(() => window.location.reload(), 1500);
             }
 
         } catch (e) { 
@@ -644,7 +617,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- IMPRESSÃO FINAL (COM VENCIMENTO) ---
+    // --- IMPRESSÃO RECIBO ---
     const imprimirRecibo = async () => {
         if (!ultimaVendaSalva) return;
         let emp = { nome_fantasia: 'OFICINA', endereco: '', cnpj_cpf: '', telefone: '' };
@@ -654,7 +627,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const nomeCliente = cli ? cli.nome : 'Consumidor Final';
         const nomeArquivo = `Venda_${ultimaVendaSalva.id}.pdf`;
 
-        // Tabela de itens
         let itensHtml = '';
         ultimaVendaSalva.itens.forEach(i => {
             itensHtml += `<tr>
@@ -665,7 +637,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
         });
 
-        // Forma de Pagamento
         const formaObj = listaFormasPagamento.find(f => f.id == ultimaVendaSalva.FormaPagamentoID);
         let nomeForma = formaObj ? formaObj.Nome : 'Dinheiro';
         nomeForma = nomeForma.replace(/Fiado/gi, '').replace('/', '').trim(); 
@@ -677,15 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
             nomeForma += ` (${parcelas}x de ${formatCurrency(valorParcela)})`;
         }
 
-        // --- LÓGICA DO VENCIMENTO ---
         let htmlVencimento = '';
         if (ultimaVendaSalva.DataVencimento) {
-            // Converte YYYY-MM-DD para DD/MM/AAAA sem problemas de fuso horário
             const [ano, mes, dia] = ultimaVendaSalva.DataVencimento.split('-');
             const dataFormatada = `${dia}/${mes}/${ano}`;
             htmlVencimento = `<div class="row" style="color: #c02424; font-weight: bold; border-top: 1px dashed #ddd; margin-top:5px; padding-top:5px;"><span>Vencimento:</span><span>${dataFormatada}</span></div>`;
         }
-        // -----------------------------
 
         let htmlAcrescimo = '';
         if (ultimaVendaSalva.acrescimo_valor > 0) {
@@ -707,12 +675,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .final{border-top:2px solid #333;margin-top:10px;padding-top:10px;font-size:18px;font-weight:bold;color:#000}
             .footer{text-align:center;margin-top:50px;font-size:11px;color:#999;border-top:1px dashed #ddd;padding-top:10px}
         </style></head><body>
-            
             <div class="header">
                 <div class="info-empresa">
                     <h1>${emp.nome_fantasia}</h1>
                     <p>${emp.endereco || ''}</p>
-                    <p>${emp.cnpj_cpf ? `CNPJ/CPF: ${emp.cnpj_cpf}` : ''}</p>
                     <p><strong>WhatsApp / Tel:</strong> ${emp.telefone || ''}</p>
                 </div>
                 <div class="info-recibo">
@@ -720,27 +686,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p>${new Date().toLocaleDateString('pt-BR')}</p>
                 </div>
             </div>
-
-            <div class="box-cliente">
-                <strong>Cliente:</strong> ${nomeCliente}
-            </div>
-
+            <div class="box-cliente"><strong>Cliente:</strong> ${nomeCliente}</div>
             <table>
                 <thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead>
                 <tbody>${itensHtml}</tbody>
             </table>
-
             <div class="totals">
                 <div class="row"><span>Subtotal:</span><span>${formatCurrency(ultimaVendaSalva.subtotal)}</span></div>
                 <div class="row"><span>(-) Desconto:</span><span>- ${formatCurrency(ultimaVendaSalva.desconto_valor||0)}</span></div>
                 ${htmlAcrescimo}
                 <div class="row"><span>Pagamento:</span><span>${nomeForma}</span></div>
-                
                 ${htmlVencimento}
-
                 <div class="row final"><span>TOTAL:</span><span>${formatCurrency(ultimaVendaSalva.total)}</span></div>
             </div>
-
             <div class="footer"><p>Obrigado pela preferência!</p></div>
         </body></html>`;
 
@@ -765,4 +723,203 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAutocomplete('input-search-produto', 'results-produto', 'produto');
     setupAutocomplete('input-search-servico', 'results-servico', 'servico');
     popularDadosIniciais();
+
+    // ============================================================
+    // --- LÓGICA DE CADASTRO RÁPIDO (FINAL E CORRIGIDA) ---
+    // ============================================================
+
+    const fecharModalSeguro = (modal) => {
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = ''; 
+        }
+    };
+
+    // --- 1. CLIENTE RÁPIDO ---
+    const btnNovoClienteRapido = document.getElementById('btn-novo-cliente-rapido');
+    const modalClienteRapido = document.getElementById('modal-rapido-cliente');
+    const formClienteRapido = document.getElementById('form-rapido-cliente');
+
+    if (btnNovoClienteRapido) {
+        btnNovoClienteRapido.addEventListener('click', () => {
+            if (modalClienteRapido) {
+                formClienteRapido.reset();
+                modalClienteRapido.classList.remove('hidden');
+                setTimeout(() => document.getElementById('rapido-cliente-nome').focus(), 100);
+            }
+        });
+    }
+
+    if (modalClienteRapido) {
+        const btnCancelar = modalClienteRapido.querySelector('button[type="button"]');
+        if (btnCancelar) {
+            btnCancelar.removeAttribute('onclick');
+            btnCancelar.addEventListener('click', () => fecharModalSeguro(modalClienteRapido));
+        }
+    }
+
+    if (formClienteRapido) {
+        formClienteRapido.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSalvar = formClienteRapido.querySelector('button[type="submit"]');
+            if(btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = "Salvando..."; }
+
+            const nome = document.getElementById('rapido-cliente-nome').value.toUpperCase();
+            const telefone = document.getElementById('rapido-cliente-telefone').value;
+
+            try {
+                const res = await fetch(`${API_URL}/clientes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, telefone, email: '', endereco: '' })
+                });
+
+                if (res.ok) {
+                    const novoCliente = await res.json();
+                    
+                    // 1. Fecha o modal PRIMEIRO (para o usuário ver a tela destravada)
+                    fecharModalSeguro(modalClienteRapido);
+                    
+                    // 2. Mostra notificação não-intrusiva
+                    showAlert('Cliente cadastrado com sucesso!', true);
+                    
+                    const inputCliente = document.getElementById('input-search-cliente');
+                    if (inputCliente) {
+                        inputCliente.value = nome;
+                        selectedItems.cliente = novoCliente.id;
+                        vendaAtual.cliente_id = novoCliente.id;
+                        inputCliente.classList.add('bg-green-50');
+                        setTimeout(() => document.getElementById('input-search-produto').focus(), 300);
+                    }
+                } else {
+                    showAlert('Erro ao cadastrar cliente.', false);
+                }
+            } catch (err) { console.error(err); showAlert('Erro de conexão.', false); } 
+            finally { if(btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; } }
+        });
+    }
+
+    // --- 2. SERVIÇO RÁPIDO ---
+    const btnNovoServicoRapido = document.getElementById('btn-novo-servico-rapido');
+    const modalServicoRapido = document.getElementById('modal-rapido-servico');
+    const formServicoRapido = document.getElementById('form-rapido-servico');
+
+    if (btnNovoServicoRapido) {
+        btnNovoServicoRapido.addEventListener('click', () => {
+            if (modalServicoRapido) {
+                formServicoRapido.reset();
+                modalServicoRapido.classList.remove('hidden');
+                setTimeout(() => document.getElementById('rapido-servico-nome').focus(), 100);
+            }
+        });
+    }
+
+    if (modalServicoRapido) {
+        const btnCancelar = modalServicoRapido.querySelector('button[type="button"]');
+        if (btnCancelar) {
+            btnCancelar.removeAttribute('onclick');
+            btnCancelar.addEventListener('click', () => fecharModalSeguro(modalServicoRapido));
+        }
+    }
+
+    if (formServicoRapido) {
+        formServicoRapido.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSalvar = formServicoRapido.querySelector('button[type="submit"]');
+            if(btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = "Salvando..."; }
+
+            const nome = document.getElementById('rapido-servico-nome').value.toUpperCase();
+            const preco = parseFloat(document.getElementById('rapido-servico-preco').value) || 0;
+
+            try {
+                const res = await fetch(`${API_URL}/servicos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, preco, descricao: 'Cadastro Rápido' })
+                });
+
+                if (res.ok) {
+                    const novoServico = await res.json();
+                    
+                    fecharModalSeguro(modalServicoRapido);
+                    showAlert('Serviço cadastrado!', true);
+
+                    const inputServico = document.getElementById('input-search-servico');
+                    if (inputServico) {
+                        inputServico.value = nome;
+                        selectedItems.servico = novoServico.id;
+                        document.getElementById('input-servico-valor-manual').value = preco.toFixed(2);
+                        document.getElementById('input-servico-qtd').focus();
+                    }
+                } else {
+                    showAlert('Erro ao cadastrar serviço.', false);
+                }
+            } catch (err) { console.error(err); showAlert('Erro de conexão.', false); }
+            finally { if(btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; } }
+        });
+    }
+
+    // --- 3. PRODUTO RÁPIDO ---
+    const btnNovoProdutoRapido = document.getElementById('btn-novo-produto-rapido');
+    const modalProdutoRapido = document.getElementById('produto-modal');
+    const formProdutoRapido = document.getElementById('produto-form-rapido');
+    const btnCancelarProdutoRapido = document.getElementById('btn-cancelar-rapido');
+
+    if (btnNovoProdutoRapido) {
+        btnNovoProdutoRapido.addEventListener('click', () => {
+            if (modalProdutoRapido) {
+                formProdutoRapido.reset();
+                modalProdutoRapido.classList.remove('hidden');
+                setTimeout(() => document.getElementById('rapido-nome').focus(), 100);
+            }
+        });
+    }
+
+    if (btnCancelarProdutoRapido) {
+        btnCancelarProdutoRapido.addEventListener('click', () => fecharModalSeguro(modalProdutoRapido));
+    }
+
+    if (formProdutoRapido) {
+        formProdutoRapido.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btnSalvar = formProdutoRapido.querySelector('button[type="submit"]');
+            if(btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = "Salvando..."; }
+
+            const dados = {
+                nome: document.getElementById('rapido-nome').value.toUpperCase(),
+                preco_unitario: parseFloat(document.getElementById('rapido-preco').value) || 0,
+                valor_custo: parseFloat(document.getElementById('rapido-custo').value) || 0,
+                quantidade_em_estoque: parseFloat(document.getElementById('rapido-estoque').value) || 0,
+                stock_minimo: parseFloat(document.getElementById('rapido-minimo').value) || 0,
+                descricao: 'Cadastro Rápido'
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/produtos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                if (res.ok) {
+                    const novoProduto = await res.json();
+                    
+                    fecharModalSeguro(modalProdutoRapido);
+                    showAlert('Produto cadastrado com sucesso!', true);
+
+                    const inputProd = document.getElementById('input-search-produto');
+                    if (inputProd) {
+                        inputProd.value = dados.nome;
+                        selectedItems.produto = novoProduto.id;
+                        document.getElementById('input-produto-valor-manual').value = dados.preco_unitario.toFixed(2);
+                        document.getElementById('input-produto-qtd').focus();
+                    }
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    showAlert('Erro: ' + (err.message || 'Verifique se o nome já existe.'), false);
+                }
+            } catch (err) { console.error(err); showAlert('Erro de conexão.', false); } 
+            finally { if(btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = "Salvar"; } }
+        });
+    }
 });
