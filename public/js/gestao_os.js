@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { console.error("Erro dados aux:", error); }
     };
 
-    // --- AUTOCOMPLETE INTELIGENTE (COM TAB E ENTER) ---
+    // --- AUTOCOMPLETE INTELIGENTE (COM ORDENAÇÃO CORRIGIDA PARA SERVIÇOS) ---
     const setupAutocomplete = (inputId, listId, dataArray, priceInputId, hiddenIdCallback, tipoItem = 'produto') => {
         const input = document.getElementById(inputId);
         const list = document.getElementById(listId);
@@ -69,8 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentFocus = -1;
         let lastResults = []; 
 
+        // Helper para pegar o nome ou descrição de forma segura
+        const getNome = (item) => (item.nome || item.descricao || '').toLowerCase();
+
         const selectItem = (item) => {
-            input.value = item.nome;
+            // Usa nome ou descrição para preencher o input
+            input.value = item.nome || item.descricao;
+            
             if(priceInput && tipoItem !== 'veiculo') {
                 const p = item.preco_unitario || item.preco || item.valor || 0;
                 priceInput.value = p.toFixed(2);
@@ -82,17 +87,35 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         input.addEventListener('input', function() {
-            hiddenIdCallback(null); // Limpa ID ao digitar (mas não impede adicionar depois)
+            hiddenIdCallback(null);
             const termo = input.value.toLowerCase(); 
             list.innerHTML = ''; currentFocus = -1;
             
             if (termo.length < 1) { list.classList.add('hidden'); return; }
 
             const dadosSeguros = dataArray || [];
-            const matches = dadosSeguros.filter(item => 
-                (item.nome && item.nome.toLowerCase().includes(termo)) || 
-                (item.codigo && item.codigo.toLowerCase().includes(termo))
-            );
+            
+            // 1. Filtra (procura em nome, descrição ou código)
+            let matches = dadosSeguros.filter(item => {
+                const nomeItem = getNome(item);
+                const codigoItem = (item.codigo || '').toLowerCase();
+                return nomeItem.includes(termo) || codigoItem.includes(termo);
+            });
+
+            // 2. Ordena Alfabeticamente (Agora funciona para Produtos e Serviços)
+            matches.sort((a, b) => {
+                const nomeA = getNome(a);
+                const nomeB = getNome(b);
+                
+                // Prioridade para quem COMEÇA com o termo digitado
+                const aComeca = nomeA.startsWith(termo);
+                const bComeca = nomeB.startsWith(termo);
+                
+                if (aComeca && !bComeca) return -1;
+                if (!aComeca && bComeca) return 1;
+                
+                return nomeA.localeCompare(nomeB);
+            });
             
             lastResults = matches; 
 
@@ -103,8 +126,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     div.className = "p-2 hover:bg-blue-100 cursor-pointer border-b text-sm text-gray-700 bg-white"; 
                     
                     let displayHtml = '';
+                    // Define o texto a ser exibido (Nome ou Descrição)
+                    const textoPrincipal = item.nome || item.descricao;
+
                     if (tipoItem === 'veiculo') {
-                        displayHtml = `<strong>${item.nome}</strong> <span class="text-xs text-gray-500 uppercase">${item.codigo} - ${item.cliente_nome || ''}</span>`;
+                        displayHtml = `<strong>${textoPrincipal}</strong> <span class="text-xs text-gray-500 uppercase">${item.codigo} - ${item.cliente_nome || ''}</span>`;
                     } else {
                         const p = item.preco_unitario || item.preco || item.valor || 0; 
                         let estoqueInfo = '';
@@ -112,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             const corEstoque = item.quantidade_em_estoque > 0 ? 'text-gray-500' : 'text-red-500 font-bold';
                             estoqueInfo = ` <span class="text-xs ${corEstoque} ml-2">(Estq: ${item.quantidade_em_estoque})</span>`;
                         }
-                        displayHtml = `<strong>${item.nome}</strong> - ${formatCurrency(p)}${estoqueInfo}`;
+                        displayHtml = `<strong>${textoPrincipal}</strong> - ${formatCurrency(p)}${estoqueInfo}`;
                     }
                     div.innerHTML = displayHtml;
                     div.addEventListener('mousedown', (e) => { e.preventDefault(); selectItem(item); }); 
@@ -121,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else { list.classList.add('hidden'); }
         });
 
+        // Navegação por teclado (Mantida)
         input.addEventListener('keydown', function(e) { 
             let x = list.getElementsByTagName('div'); 
             if (e.key === 'ArrowDown') { currentFocus++; addActive(x); } 
@@ -130,20 +157,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if (lastResults.length > 0) { e.preventDefault(); selectItem(lastResults[0]); }
             } 
             else if (e.key === 'Tab') {
-                if(lastResults.length > 0 && input.value.length > 2) { 
-                    // Se tiver resultado e o usuário der TAB, seleciona o primeiro
-                    selectItem(lastResults[0]); 
-                } 
+                if(lastResults.length > 0 && input.value.length > 2) { selectItem(lastResults[0]); } 
                 list.classList.add('hidden');
             }
             else if (e.key === 'Escape') list.classList.add('hidden'); 
         });
 
-        // Blur Inteligente: Se o usuário sair do campo e tiver digitado o nome certinho, seleciona
         input.addEventListener('blur', () => {
             setTimeout(() => { 
                 if (window.tempProdutoId === null && window.tempServicoId === null && input.value.trim() !== '' && lastResults.length > 0) {
-                    const match = lastResults.find(i => i.nome.toLowerCase() === input.value.toLowerCase());
+                    // Tenta encontrar correspondência exata tanto por nome quanto por descrição
+                    const match = lastResults.find(i => getNome(i) === input.value.toLowerCase());
                     if(match) selectItem(match);
                 }
                 list.classList.add('hidden'); 

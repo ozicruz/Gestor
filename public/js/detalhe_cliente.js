@@ -336,9 +336,8 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
 });
 
-// --- FUNÇÃO GLOBAL DE RECIBO ---
+// --- FUNÇÃO GLOBAL DE RECIBO (CORRIGIDA E CALCULADA) ---
 window.verDetalhesVenda = async (vendaId) => {
-    // (Mantido igual)
     const modal = document.getElementById('modalRecibo');
     const formatCurrencyRecibo = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
@@ -352,11 +351,19 @@ window.verDetalhesVenda = async (vendaId) => {
         document.getElementById('recibo-forma').textContent = venda.forma_pagamento || 'Padrão';
         
         const tbody = document.getElementById('recibo-lista-itens');
+        
+        // Variável para somar o subtotal real baseado nos itens da lista
+        let somaVisualSubtotal = 0;
+
         if(tbody) {
             tbody.innerHTML = '';
+            
+            // 1. Processar Produtos
             if (venda.itens) {
                 venda.itens.forEach(item => {
                     const totalItem = item.subtotal || (item.quantidade * item.valor_unitario);
+                    somaVisualSubtotal += totalItem; // Soma na conta
+
                     tbody.innerHTML += `
                         <tr>
                             <td class="p-2"><div class="font-bold text-gray-800">${item.nome || item.descricao}</div><div class="text-xs text-gray-500">Produto</div></td>
@@ -365,20 +372,30 @@ window.verDetalhesVenda = async (vendaId) => {
                         </tr>`;
                 });
             }
+
+            // 2. Processar Serviços (Com correção de valor zerado)
             if (venda.servicos) {
                 venda.servicos.forEach(serv => {
+                    const valUnit = serv.valor || serv.preco || 0;
+                    const totalServico = serv.subtotal || (serv.quantidade * valUnit);
+                    somaVisualSubtotal += totalServico; // Soma na conta
+
                     tbody.innerHTML += `
                         <tr class="bg-blue-50">
                             <td class="p-2"><div class="font-bold text-blue-800">${serv.nome || serv.descricao}</div><div class="text-xs text-blue-500">Serviço</div></td>
                             <td class="text-center p-2">${serv.quantidade}</td>
-                            <td class="text-right p-2 font-medium text-blue-700">${formatCurrencyRecibo(serv.subtotal)}</td>
+                            <td class="text-right p-2 font-medium text-blue-700">${formatCurrencyRecibo(totalServico)}</td>
                         </tr>`;
                 });
             }
         }
 
-        const subtotal = venda.subtotal || venda.total; 
-        document.getElementById('recibo-subtotal').textContent = formatCurrencyRecibo(subtotal);
+        // --- EXIBIÇÃO DOS TOTAIS ---
+        
+        // Usa a soma visual calculada acima. Se for 0 (erro de carga), tenta usar o do banco.
+        const subtotalFinal = somaVisualSubtotal > 0 ? somaVisualSubtotal : (venda.subtotal || venda.total);
+        
+        document.getElementById('recibo-subtotal').textContent = formatCurrencyRecibo(subtotalFinal);
         document.getElementById('recibo-total').textContent = formatCurrencyRecibo(venda.total);
         
         const descRow = document.getElementById('recibo-desconto-row');
