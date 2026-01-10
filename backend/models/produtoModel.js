@@ -25,8 +25,6 @@ const findById = (id) => {
     return dbGet('SELECT * FROM Produtos WHERE id = ?', [id]);
 };
 
-// ... (resto das funções criar, atualizar, remover ficam iguais) ...
-
 const create = (produto) => {
     // ATUALIZADO: Adicionado 'stock_minimo'
     const { nome, descricao, quantidade_em_estoque, preco_unitario, valor_custo, stock_minimo } = produto;
@@ -49,11 +47,45 @@ const remove = (id) => {
     return dbRun('DELETE FROM Produtos WHERE id = ?', [id]);
 };
 
+// 1. Busca os melhores preços (Filtrando Retornos e Custo Zero)
+const getMelhoresPrecos = (id) => {
+    const sql = `
+        SELECT observacao, custo_unitario, data
+        FROM MovimentacoesEstoque
+        WHERE produto_id = ? 
+        AND tipo = 'ENTRADA'
+        AND custo_unitario > 0
+        AND observacao NOT LIKE 'Retorno OS%'
+        ORDER BY custo_unitario ASC
+        LIMIT 5
+    `;
+    return dbAll(sql, [id]);
+};
+
+// 2. Registra Entrada e Atualiza Estoque (Transação atômica idealmente, mas aqui simplificado)
+const registrarEntrada = async (idProduto, quantidade, custo, obs) => {
+    // A. Adiciona no histórico
+    await dbRun(
+        `INSERT INTO MovimentacoesEstoque (produto_id, quantidade, tipo, custo_unitario, observacao) VALUES (?, ?, 'ENTRADA', ?, ?)`,
+        [idProduto, quantidade, custo, obs]
+    );
+
+    // B. Atualiza o saldo do produto e o custo de custo atual
+    // Nota: Atualizamos o valor_custo do produto para o valor da última compra
+    return dbRun(
+        `UPDATE Produtos SET quantidade_em_estoque = quantidade_em_estoque + ?, valor_custo = ? WHERE id = ?`,
+        [quantidade, custo, idProduto]
+    );
+};
+
 module.exports = {
     findAll,
     findById,
     create,
     update,
     remove,
-    searchByName // <-- EXPORTAR A NOVA FUNÇÃO
+    searchByName,
+    getMelhoresPrecos,
+    registrarEntrada
+
 };

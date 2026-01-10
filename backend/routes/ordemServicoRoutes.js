@@ -1,14 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const osController = require('../controllers/ordemServicoController');
+const ordemServicoController = require('../controllers/ordemServicoController');
 
-// Rotas Padrão
-router.get('/', osController.listarOS);
-router.post('/', osController.criarOrdemServico);
-router.get('/:id', osController.buscarOSPorId);
-router.put('/:id', osController.atualizarOS);
+// Listar todas
+router.get('/', ordemServicoController.listarOS);
 
-// Rota de Gerar Venda (POST)
-router.post('/:id/gerar-venda', osController.gerarVendaDeOS);
+// Criar nova
+router.post('/', ordemServicoController.criarOrdemServico);
+
+// Buscar uma específica
+router.get('/:id', ordemServicoController.buscarOSPorId);
+
+// Atualizar (Salvar/Editar)
+// O erro estava aqui: certifique-se de que o controller exporta 'atualizarOrdemServico'
+router.put('/:id', ordemServicoController.atualizarOrdemServico);
 
 module.exports = router;

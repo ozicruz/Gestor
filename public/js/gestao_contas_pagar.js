@@ -31,20 +31,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const carregarTudo = async () => {
         // Resumo
         try {
-            const resResumo = await fetch(`${API_URL}/financeiro/contasapagar/resumo`);
+            // CORREÇÃO: rota com hífen
+            const resResumo = await fetch(`${API_URL}/financeiro/contas-pagar/resumo`);
             const resumo = await resResumo.json();
-            document.getElementById('card-total').textContent = formatCurrency(resumo.TotalAPagar);
-            document.getElementById('card-vencido').textContent = formatCurrency(resumo.TotalVencido);
-            document.getElementById('card-hoje').textContent = formatCurrency(resumo.PagarHoje);
+            document.getElementById('card-total').textContent = formatCurrency(resumo.TotalAPagar || 0);
+            document.getElementById('card-vencido').textContent = formatCurrency(resumo.TotalVencido || 0);
+            document.getElementById('card-hoje').textContent = formatCurrency(resumo.PagarHoje || 0);
         } catch(e) { console.error("Erro resumo:", e); }
 
         // Tabela
         try {
-            const resLista = await fetch(`${API_URL}/financeiro/contasapagar`);
+            // CORREÇÃO: rota com hífen
+            const resLista = await fetch(`${API_URL}/financeiro/contas-pagar`);
             const lista = await resLista.json();
             
             tabelaCorpo.innerHTML = '';
-            if(lista.length === 0) {
+            if(!lista || lista.length === 0) {
                 tabelaCorpo.innerHTML = '<tr><td colspan="5" class="text-center p-4 text-gray-500">Nenhuma conta pendente. 👏👏</td></tr>';
                 return;
             }
@@ -55,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isVencido = item.DataVencimento < hoje;
                 const classeVencimento = isVencido ? 'text-red-600 font-bold' : 'text-gray-700';
                 
-                // ATENÇÃO: Passando parametros para a função abrirModalPagamento
+                // Botão de Pagar
                 const btnPagar = `<button onclick="abrirModalPagamento(${item.id}, '${item.Descricao.replace(/'/g, "\\'")}', ${item.Valor})" 
                                     class="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold border border-green-200 hover:bg-green-200 transition-colors">
                                     Pagar
@@ -101,8 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const carregarOpcoesPagamento = async () => {
         try {
             const [resContas, resFormas] = await Promise.all([
-                fetch(`${API_URL}/financeiro/contascaixa`),
-                fetch(`${API_URL}/financeiro/formaspagamento`)
+                // CORREÇÃO: 'contas' (sem 'caixa')
+                fetch(`${API_URL}/financeiro/contas`),
+                // CORREÇÃO: 'formas-pagamento' (com hífen)
+                fetch(`${API_URL}/financeiro/formas-pagamento`)
             ]);
             
             const contas = await resContas.json();
@@ -139,8 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSubmit.disabled = true;
 
         try {
-            const response = await fetch(`${API_URL}/financeiro/lancamento/${id}/baixar`, {
-                method: 'POST',
+            // CORREÇÃO: 'lancamentos' (plural)
+            const response = await fetch(`${API_URL}/financeiro/lancamentos/${id}/baixar`, {
+                method: 'PUT', // Geralmente baixa é PUT, mas verifique se seu backend espera PUT ou POST
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(dadosBaixa)
             });
@@ -201,7 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSalvar.disabled = true;
 
         try {
-            const response = await fetch(`${API_URL}/financeiro/lancamento`, {
+            // CORREÇÃO: 'lancamentos' (plural)
+            const response = await fetch(`${API_URL}/financeiro/lancamentos`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(dados)
@@ -227,7 +233,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.excluirConta = async (id) => {
         if(!confirm("Tem certeza que deseja excluir esta conta?")) return;
         try {
-            await fetch(`${API_URL}/financeiro/lancamento/${id}`, { method: 'DELETE' });
+            // CORREÇÃO: 'lancamentos' (plural)
+            await fetch(`${API_URL}/financeiro/lancamentos/${id}`, { method: 'DELETE' });
             carregarTudo();
         } catch (err) { alert("Erro ao excluir: " + err.message); }
     };

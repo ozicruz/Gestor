@@ -1,16 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_URL = 'http://localhost:3002/api';
     
-    // ESTADO
+    // --- ESTADO ---
     let listaOSCache = [];
-    let cacheProdutos = []; 
-    let cacheServicos = []; 
+    let cacheProdutos = [], cacheServicos = [], cacheUsuarios = [], cacheVeiculos = [];
     let ordemAtual = { coluna: 'id', direcao: 'desc' }; 
     let osIdEdicao = null;
-    let itensParaSalvar = []; 
-    let servicosParaSalvar = [];
+    let itensParaSalvar = [], servicosParaSalvar = [];
 
-    // ELEMENTOS
+    // --- VARIÁVEIS TEMPORÁRIAS GLOBAIS ---
+    window.tempProdutoId = null;
+    window.tempServicoId = null;
+
+    // --- ELEMENTOS ---
     const tabelaCorpo = document.getElementById('tabela-os');
     const inputBusca = document.getElementById('input-busca-placa');
     const btnNovaOS = document.getElementById('btnNovaOS');
@@ -22,6 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const safeNumber = (val) => parseFloat(String(val).replace(',', '.')) || 0;
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(safeNumber(val));
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
+    
+    const debounce = (func, wait) => {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    };
 
     const showAlert = (msg, success = true) => {
         if (!feedbackAlert) return alert(msg);
@@ -31,166 +41,213 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => feedbackAlert.classList.add('hidden'), 4000);
     };
 
-    // --- CARREGAR DADOS AUXILIARES ---
+    // --- CARREGAR DADOS ---
     const carregarDadosAuxiliares = async () => {
         try {
-            const [resProd, resServ] = await Promise.all([
-                fetch(`${API_URL}/produtos`),
-                fetch(`${API_URL}/servicos`)
+            const [resProd, resServ, resUsers, resVeic] = await Promise.all([
+                fetch(`${API_URL}/produtos`).catch(() => ({ ok: false })),
+                fetch(`${API_URL}/servicos`).catch(() => ({ ok: false })),
+                fetch(`${API_URL}/usuarios`).catch(() => ({ ok: false })),
+                fetch(`${API_URL}/veiculos`).catch(() => ({ ok: false }))
             ]);
+
             if (resProd.ok) cacheProdutos = await resProd.json();
             if (resServ.ok) cacheServicos = await resServ.json();
-        } catch (error) {
-            console.error("Erro dados aux:", error);
-        }
+            if (resUsers.ok) cacheUsuarios = await resUsers.json();
+            if (resVeic.ok) {
+                const veiculos = await resVeic.json();
+                cacheVeiculos = veiculos.map(v => ({
+                    id: v.id,
+                    nome: v.placa, 
+                    codigo: (v.modelo || '') + ' ' + (v.marca || ''), 
+                    cliente_nome: v.cliente_nome 
+                }));
+            }
+        } catch (error) { console.error("Erro dados aux:", error); }
     };
 
-    // --- AUTOCOMPLETE INTELIGENTE ---
-    const setupAutocomplete = (inputId, listId, dataArray, priceInputId, hiddenIdCallback) => {
+    // --- AUTOCOMPLETE ---
+    const setupAutocomplete = (inputId, listId, dataArray, priceInputId, hiddenIdCallback, tipoItem = 'produto') => {
         const input = document.getElementById(inputId);
         const list = document.getElementById(listId);
         const priceInput = document.getElementById(priceInputId);
         
         if (!input || !list) return;
-
+        
         let currentFocus = -1;
 
-        input.addEventListener('input', function() {
+        input.addEventListener('input', debounce(function() {
             hiddenIdCallback(null); 
-            const termo = this.value.toLowerCase();
-            list.innerHTML = '';
-            currentFocus = -1;
+            const termo = input.value.toLowerCase(); 
+            list.innerHTML = ''; currentFocus = -1;
             
-            if (termo.length < 1) {
-                list.classList.add('hidden');
-                return;
-            }
+            if (termo.length < 1) { list.classList.add('hidden'); return; }
 
-            const matches = dataArray.filter(item => 
+            const dadosSeguros = dataArray || [];
+            const matches = dadosSeguros.filter(item => 
                 (item.nome && item.nome.toLowerCase().includes(termo)) || 
                 (item.codigo && item.codigo.toLowerCase().includes(termo))
             );
 
             matches.sort((a, b) => {
-                const nomeA = a.nome.toLowerCase();
-                const nomeB = b.nome.toLowerCase();
-                const aStarts = nomeA.startsWith(termo);
-                const bStarts = nomeB.startsWith(termo);
-                if (aStarts && !bStarts) return -1;
-                if (!aStarts && bStarts) return 1; 
-                return nomeA.localeCompare(nomeB); 
+                const nomeA = (a.nome || '').toLowerCase();
+                const nomeB = (b.nome || '').toLowerCase();
+                if (nomeA.startsWith(termo) && !nomeB.startsWith(termo)) return -1;
+                if (!nomeA.startsWith(termo) && nomeB.startsWith(termo)) return 1;
+                return nomeA.localeCompare(nomeB);
             });
 
-            if (matches.length > 0) {
-                list.classList.remove('hidden');
-                matches.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = "autocomplete-item p-2 hover:bg-blue-100 cursor-pointer border-b text-sm text-gray-700";
-                    const estoqueInfo = item.quantidade_em_estoque !== undefined ? ` (Est: ${item.quantidade_em_estoque})` : '';
+            if (matches.length > 0) { 
+                list.classList.remove('hidden'); 
+                matches.slice(0, 20).forEach(item => { 
+                    const div = document.createElement('div'); 
+                    div.className = "autocomplete-item p-2 hover:bg-blue-100 cursor-pointer border-b text-sm text-gray-700"; 
                     
-                    // CORREÇÃO 1: Busca o preço correto (produtos usam preco_unitario, serviços usam preco/valor)
-                    const precoItem = item.preco_unitario || item.preco || item.valor || 0;
+                    let displayHtml = '';
+                    if (tipoItem === 'veiculo') {
+                        displayHtml = `<strong>${item.nome}</strong> <span class="text-xs text-gray-500 uppercase">${item.codigo} - ${item.cliente_nome || ''}</span>`;
+                    } else {
+                        const p = item.preco_unitario || item.preco || item.valor || 0; 
+                        let estoqueInfo = '';
+                        if (item.quantidade_em_estoque !== undefined && item.quantidade_em_estoque !== null) {
+                            const corEstoque = item.quantidade_em_estoque > 0 ? 'text-gray-500' : 'text-red-500 font-bold';
+                            estoqueInfo = ` <span class="text-xs ${corEstoque} ml-2">(Estq: ${item.quantidade_em_estoque})</span>`;
+                        }
+                        displayHtml = `<strong>${item.nome}</strong> - ${formatCurrency(p)}${estoqueInfo}`;
+                    }
+                    div.innerHTML = displayHtml;
 
-                    div.innerHTML = `<strong>${item.nome}</strong> - ${formatCurrency(precoItem)}${estoqueInfo}`;
-                    div.innerHTML += `<input type='hidden' value='${JSON.stringify(item)}'>`;
+                    div.addEventListener('click', function() { 
+                        input.value = item.nome; 
+                        if(priceInput && tipoItem !== 'veiculo') { 
+                            const p = item.preco_unitario || item.preco || 0; 
+                            priceInput.value = p.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); 
+                        } 
+                        hiddenIdCallback(item.id); 
+                        list.innerHTML = ''; 
+                        list.classList.add('hidden'); 
+                    }); 
+                    list.appendChild(div); 
+                }); 
+            } else { list.classList.add('hidden'); }
+        }, 300));
 
-                    div.addEventListener('click', function() {
-                        selecionarItem(item);
-                    });
-                    list.appendChild(div);
-                });
-            } else {
-                list.classList.add('hidden');
-            }
+        input.addEventListener('keydown', function(e) { 
+            let x = list.getElementsByTagName('div'); 
+            if (e.key === 'ArrowDown') { currentFocus++; addActive(x); } 
+            else if (e.key === 'ArrowUp') { currentFocus--; addActive(x); } 
+            else if (e.key === 'Enter') { 
+                if (currentFocus > -1 && x) { e.preventDefault(); x[currentFocus].click(); }
+            } 
+            else if (e.key === 'Escape') list.classList.add('hidden'); 
         });
 
-        input.addEventListener('keydown', function(e) {
-            let x = list.getElementsByTagName('div');
-            if (e.key === 'ArrowDown') { currentFocus++; addActive(x); }
-            else if (e.key === 'ArrowUp') { currentFocus--; addActive(x); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (currentFocus > -1 && x) x[currentFocus].click(); }
-            else if (e.key === 'Escape') list.classList.add('hidden');
-        });
-
-        function addActive(x) {
-            if (!x) return;
-            removeActive(x);
-            if (currentFocus >= x.length) currentFocus = 0;
-            if (currentFocus < 0) currentFocus = (x.length - 1);
-            x[currentFocus].classList.add('bg-blue-200', 'font-bold');
-            x[currentFocus].scrollIntoView({ block: 'nearest' });
+        function addActive(x) { 
+            if (!x) return; 
+            removeActive(x); 
+            if (currentFocus >= x.length) currentFocus = 0; 
+            if (currentFocus < 0) currentFocus = (x.length - 1); 
+            x[currentFocus].classList.add('bg-blue-200', 'font-bold'); 
+            x[currentFocus].scrollIntoView({ block: 'nearest' }); 
         }
-
-        function removeActive(x) {
-            for (let i = 0; i < x.length; i++) x[i].classList.remove('bg-blue-200', 'font-bold');
-        }
-
-        function selecionarItem(item) {
-            input.value = item.nome;
-            if(priceInput) {
-                // CORREÇÃO 2: Preenche o input formatado bonitinho
-                const val = item.preco_unitario || item.preco || item.valor || 0;
-                // Se for 0, deixa vazio para mostrar o placeholder R$ 0,00, senão formata "19,90"
-                if (val === 0) {
-                    priceInput.value = "";
-                } else {
-                    priceInput.value = val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                }
-            }
-            hiddenIdCallback(item.id);
-            list.innerHTML = '';
-            list.classList.add('hidden');
-        }
-
-        document.addEventListener('click', (e) => {
-            if (e.target !== input && e.target !== list) list.classList.add('hidden');
-        });
+        function removeActive(x) { for (let i = 0; i < x.length; i++) x[i].classList.remove('bg-blue-200', 'font-bold'); }
+        document.addEventListener('click', (e) => { if (e.target !== input && e.target !== list) list.classList.add('hidden'); });
     };
 
-    // --- MANIPULAÇÃO DE MODAL E PLACA ---
-    const solicitarPlacaVisual = () => {
-        return new Promise((resolve) => {
-            const div = document.createElement('div');
-            div.className = "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]";
-            div.innerHTML = `
-                <div class="bg-white rounded-xl shadow-2xl p-6 w-96 border border-gray-200">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Nova Ordem de Serviço</h3>
-                    <div class="mb-6">
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2 text-center">Digite a Placa</label>
-                        <input type="text" id="input-nova-placa-modal" class="w-full border-2 border-gray-300 rounded-lg p-3 text-3xl text-center uppercase font-bold text-gray-800 focus:border-blue-600 outline-none" placeholder="ABC1234" maxlength="8" autocomplete="off">
-                    </div>
-                    <div class="flex justify-between gap-3">
-                        <button id="btn-cancel-placa-modal" class="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">Cancelar</button>
-                        <button id="btn-confirm-placa-modal" class="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg">Criar OS &rarr;</button>
-                    </div>
-                </div>`;
-            document.body.appendChild(div);
-            const input = document.getElementById('input-nova-placa-modal');
-            input.focus();
-            const fechar = (val) => { div.remove(); resolve(val); };
-            document.getElementById('btn-cancel-placa-modal').onclick = () => fechar(null);
-            const confirmar = () => {
-                const v = input.value.trim().toUpperCase();
-                if(v.length < 3) return input.classList.add('border-red-500');
-                fechar(v);
-            };
-            document.getElementById('btn-confirm-placa-modal').onclick = confirmar;
-            input.onkeydown = (e) => { if(e.key === 'Enter') confirmar(); };
-            div.onclick = (e) => { if(e.target === div) fechar(null); };
-        });
+    // --- MODAL DE NOVA OS ---
+    const abrirModalNovaOS = () => {
+        const anterior = document.getElementById('modal-nova-os-container'); if(anterior) anterior.remove();
+        const div = document.createElement('div');
+        div.id = 'modal-nova-os-container';
+        div.className = "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60]";
+        div.innerHTML = `
+            <div class="bg-white rounded-xl shadow-2xl p-6 w-96 border border-gray-200 relative">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Nova Ordem de Serviço</h3>
+                <div class="mb-2 relative">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2 text-center">Digite a Placa do Veículo</label>
+                    <input type="text" id="input-nova-placa-modal" class="w-full border-2 border-gray-300 rounded-lg p-3 text-3xl text-center uppercase font-bold text-gray-800 focus:border-blue-600 outline-none" placeholder="ABC1234" maxlength="8" autocomplete="off">
+                    <div id="list-nova-placa-autocomplete" class="hidden absolute left-0 right-0 bg-white border border-gray-300 shadow-lg max-h-40 overflow-y-auto z-50 rounded-b-lg"></div>
+                </div>
+                <div id="msg-erro-placa" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700 text-center">
+                    <p class="font-bold">Veículo não encontrado!</p>
+                    <a href="cadastros.html" class="underline mt-1 block text-blue-600">Cadastrar Veículo Agora &rarr;</a>
+                </div>
+                <div class="flex justify-between gap-3 mt-4">
+                    <button id="btn-cancel-placa-modal" class="flex-1 px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-lg hover:bg-gray-200">Cancelar</button>
+                    <button id="btn-confirm-placa-modal" class="flex-1 px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-lg">Criar OS &rarr;</button>
+                </div>
+            </div>`;
+        document.body.appendChild(div);
+
+        const input = document.getElementById('input-nova-placa-modal');
+        const btnCriar = document.getElementById('btn-confirm-placa-modal');
+        const btnCancel = document.getElementById('btn-cancel-placa-modal');
+        const msgErro = document.getElementById('msg-erro-placa');
+
+        input.focus();
+        setupAutocomplete('input-nova-placa-modal', 'list-nova-placa-autocomplete', cacheVeiculos, null, () => {}, 'veiculo');
+
+        const fechar = () => div.remove();
+
+        const tentarCriar = async () => {
+            const placa = input.value.trim().toUpperCase();
+            if (placa.length < 3) {
+                input.classList.add('border-red-500');
+                return;
+            }
+
+            btnCriar.disabled = true;
+            btnCriar.innerHTML = 'Verificando...';
+            msgErro.classList.add('hidden');
+            input.classList.remove('border-red-500');
+
+            try {
+                const res = await fetch(`${API_URL}/os`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ placa: placa }) 
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    fechar();
+                    showAlert(`OS #${data.id} criada!`);
+                    await carregarOS();
+                    window.abrirModalEdicao(data.id);
+                } else {
+                    if (res.status === 404 || (data.message && data.message.includes('encontrado'))) {
+                        msgErro.classList.remove('hidden');
+                        input.classList.add('border-red-500');
+                        input.select();
+                    } else {
+                        alert("Erro: " + data.message);
+                    }
+                }
+            } catch (err) {
+                alert("Erro de conexão.");
+            } finally {
+                btnCriar.disabled = false;
+                btnCriar.innerHTML = 'Criar OS &rarr;';
+            }
+        };
+
+        btnCancel.onclick = fechar;
+        btnCriar.onclick = tentarCriar;
+        input.onkeydown = (e) => { 
+            if(e.key === 'Enter') {
+                setTimeout(() => tentarCriar(), 150); 
+            }
+        };
     };
 
     // --- CARREGAR LISTA ---
-    const carregarOS = async () => {
+    window.carregarOS = async () => {
         try {
             const res = await fetch(`${API_URL}/os`);
             if (!res.ok) throw new Error("Erro API");
             listaOSCache = await res.json();
             renderizarTabela();
-        } catch (err) {
-            console.error(err);
-            if(tabelaCorpo) tabelaCorpo.innerHTML = '<tr><td colspan="7" class="text-center text-red-500">Erro ao carregar dados.</td></tr>';
-        }
+        } catch (err) { console.error(err); if(tabelaCorpo) tabelaCorpo.innerHTML = '<tr><td colspan="7" class="text-center text-red-500">Erro ao carregar dados.</td></tr>'; }
     };
 
     const renderizarTabela = () => {
@@ -199,404 +256,406 @@ document.addEventListener('DOMContentLoaded', () => {
         const termo = inputBusca ? inputBusca.value.toLowerCase() : '';
         let lista = listaOSCache.filter(o => JSON.stringify(o).toLowerCase().includes(termo));
 
-        if (lista.length === 0) {
-            tabelaCorpo.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-gray-500">Nenhuma OS encontrada.</td></tr>';
-            return;
-        }
+        if (lista.length === 0) { tabelaCorpo.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-gray-500">Nenhuma OS encontrada.</td></tr>'; return; }
 
-        lista.sort((a, b) => {
-            let valA = a[ordemAtual.coluna], valB = b[ordemAtual.coluna];
-            if (['id', 'total'].includes(ordemAtual.coluna)) { valA = safeNumber(valA); valB = safeNumber(valB); }
-            else { valA = String(valA||'').toLowerCase(); valB = String(valB||'').toLowerCase(); }
-            if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1;
-            if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1;
-            return 0;
-        });
+        lista.sort((a, b) => { let valA = a[ordemAtual.coluna], valB = b[ordemAtual.coluna]; if (['id', 'total', 'total_calculado'].includes(ordemAtual.coluna)) { valA = safeNumber(valA); valB = safeNumber(valB); } else { valA = String(valA||'').toLowerCase(); valB = String(valB||'').toLowerCase(); } if (valA < valB) return ordemAtual.direcao === 'asc' ? -1 : 1; if (valA > valB) return ordemAtual.direcao === 'asc' ? 1 : -1; return 0; });
 
         lista.forEach(os => {
-            let badge = 'bg-gray-100 text-gray-800';
-            const st = (os.status || 'Orçamento').toUpperCase();
-            if (st.includes('FINALIZADA') || st.includes('CONCLU')) badge = 'bg-green-100 text-green-800 border border-green-200';
+            let badge = 'bg-gray-100 text-gray-800'; const st = (os.status || 'Orçamento').toUpperCase();
+            
+            // Lógica de cores atualizada para o novo fluxo
+            if (st.includes('FINALIZADA') || st.includes('CONCLU') || st.includes('FATURADA')) badge = 'bg-green-100 text-green-800 border border-green-200';
+            else if (st === 'PRONTO') badge = 'bg-teal-100 text-teal-800 border border-teal-200 font-bold'; // Nova cor para Pronto
             else if (st.includes('ANDAMENTO')) badge = 'bg-blue-100 text-blue-800 border border-blue-200';
-            else if (st.includes('ENTREGUE')) badge = 'bg-teal-100 text-teal-800 border border-teal-200';
-            else badge = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+            else if (st.includes('AGUARDANDO')) badge = 'bg-orange-100 text-orange-800 border border-orange-200';
+            else badge = 'bg-yellow-100 text-yellow-800 border border-yellow-200'; // Orçamento
+
+            const mecanico = os.mecanico_nome ? `<br><span class="text-xs text-blue-600 font-bold">🔧 ${os.mecanico_nome}</span>` : '';
+            const valorTotal = os.total_calculado !== undefined ? os.total_calculado : os.total;
 
             tabelaCorpo.innerHTML += `
                 <tr class="hover:bg-gray-50 border-b transition-colors cursor-pointer" onclick="abrirModalEdicao(${os.id})">
                     <td class="px-6 py-4 font-bold text-gray-700">#${os.id}</td>
                     <td class="px-6 py-4 font-bold uppercase">${os.placa || '-'}</td>
                     <td class="px-6 py-4 text-gray-600">${os.cliente_nome || 'Consumidor'}</td>
-                    <td class="px-6 py-4 text-sm">${formatDate(os.data_entrada)}</td>
-                    <td class="px-6 py-4 font-bold text-gray-800">${formatCurrency(os.total)}</td>
+                    <td class="px-6 py-4 text-sm">${formatDate(os.data_entrada)}${mecanico}</td>
+                    <td class="px-6 py-4 font-bold text-gray-800">${formatCurrency(valorTotal)}</td>
                     <td class="px-6 py-4 text-center"><span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${badge}">${os.status}</span></td>
-                    <td class="px-6 py-4 text-right whitespace-nowrap">
-                        <button class="text-blue-600 font-bold hover:text-blue-800 bg-blue-50 px-3 py-1 rounded hover:bg-blue-100">Ver / Editar</button>
-                    </td>
+                    <td class="px-6 py-4 text-right whitespace-nowrap"><button class="text-blue-600 font-bold hover:text-blue-800 bg-blue-50 px-3 py-1 rounded hover:bg-blue-100">Ver / Editar</button></td>
                 </tr>`;
         });
     };
 
     document.querySelectorAll('th[data-sort]').forEach(th => {
-        th.addEventListener('click', () => {
-            const col = th.dataset.sort;
-            ordemAtual.direcao = (ordemAtual.coluna === col && ordemAtual.direcao === 'asc') ? 'desc' : 'asc';
-            ordemAtual.coluna = col;
-            renderizarTabela();
-        });
+        th.addEventListener('click', () => { const col = th.dataset.sort; ordemAtual.direcao = (ordemAtual.coluna === col && ordemAtual.direcao === 'asc') ? 'desc' : 'asc'; ordemAtual.coluna = col; renderizarTabela(); });
     });
 
     // --- MODAL DE EDIÇÃO ---
     window.abrirModalEdicao = async (id = null) => {
-        osIdEdicao = id;
-        itensParaSalvar = [];
+        osIdEdicao = id; 
+        itensParaSalvar = []; 
         servicosParaSalvar = [];
-        
+        window.tempProdutoId = null;
+        window.tempServicoId = null;
+
         modalOS.classList.remove('hidden', 'modal-oculto');
         modalBody.innerHTML = '<div class="text-center p-10"><p>Carregando...</p></div>';
 
-        if (cacheProdutos.length === 0) await carregarDadosAuxiliares();
+        if (cacheProdutos.length === 0 || cacheUsuarios.length === 0) { await carregarDadosAuxiliares(); }
 
         try {
-            let dados = { status: 'Orçamento', placa: '', itens: [], servicos: [] };
-            if (id) {
-                const res = await fetch(`${API_URL}/os/${id}`);
-                if (res.ok) dados = await res.json();
-                
-                itensParaSalvar = (dados.itens || []).map(i => ({ produto_id: i.produto_id, nome: i.nome || i.nome_produto || i.descricao, quantidade: i.quantidade, valor_unitario: i.valor_unitario }));
-                servicosParaSalvar = (dados.servicos || []).map(s => ({ servico_id: s.servico_id, nome: s.nome || s.descricao, quantidade: s.quantidade || 1, valor: s.valor }));
-            }
+            const res = await fetch(`${API_URL}/os/${id}`); const dados = await res.json();
+            
+            itensParaSalvar = (dados.itens || []).map(i => ({ 
+                produto_id: i.produto_id, 
+                nome: i.nome || i.nome_produto || i.descricao || 'Peça', 
+                quantidade: i.quantidade, 
+                valor_unitario: i.valor_unitario 
+            }));
+            
+            servicosParaSalvar = (dados.servicos || []).map(s => ({ 
+                servico_id: s.servico_id, 
+                nome: s.nome || s.descricao || 'Serviço', 
+                quantidade: s.quantidade, 
+                valor: s.valor 
+            }));
+            
             renderizarModalHTML(dados);
             
-            window.tempProdutoId = null;
-            window.tempServicoId = null;
+            if (dados.mecanico_id && document.getElementById('modal-mecanico')) {
+                document.getElementById('modal-mecanico').value = dados.mecanico_id.toString();
+            }
 
-            setupAutocomplete('add-item-nome', 'list-item-autocomplete', cacheProdutos, 'add-item-valor', (id) => { window.tempProdutoId = id; });
-            setupAutocomplete('add-servico-nome', 'list-servico-autocomplete', cacheServicos, 'add-servico-valor', (id) => { window.tempServicoId = id; });
-
+            setupAutocomplete('add-item-nome', 'list-item-autocomplete', cacheProdutos, 'add-item-valor', (id) => { window.tempProdutoId = id; }, 'produto');
+            setupAutocomplete('add-servico-nome', 'list-servico-autocomplete', cacheServicos, 'add-servico-valor', (id) => { window.tempServicoId = id; }, 'servico');
             atualizarListasVisuais();
-        } catch (err) {
-            console.error(err);
-            modalBody.innerHTML = `<p class="text-red-500 p-4">Erro: ${err.message}</p>`;
-        }
+        } catch (err) { console.error(err); modalBody.innerHTML = `<p class="text-red-500 p-4">Erro: ${err.message}</p>`; }
     };
 
     const renderizarModalHTML = (dados) => {
-        const isLocked = dados.status === 'Finalizada' || dados.status === 'Faturada' || dados.status === 'Entregue';
+        const isLocked = dados.status === 'Finalizada' || dados.status === 'Faturada';
         const disabledAttr = isLocked ? 'disabled' : '';
         const bgInput = isLocked ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-white';
 
-        let opcoesStatus = `
-            <option value="Orçamento" ${dados.status === 'Orçamento' ? 'selected' : ''}>Orçamento</option>
-            <option value="Em andamento" ${dados.status === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
-            <option value="Aguardando peças" ${dados.status === 'Aguardando peças' ? 'selected' : ''}>Aguardando peças</option>
-        `;
-        if (isLocked) opcoesStatus += `<option value="${dados.status}" selected>${dados.status}</option>`;
+        // FLUXO SOLICITADO: Orçamento -> Aguardando peças -> Em andamento -> Pronto
+        const opcoesFluxo = ['Orçamento', 'Aguardando peças', 'Em andamento', 'Pronto'];
+        
+        let opcoesStatus = '';
+        opcoesFluxo.forEach(st => {
+            opcoesStatus += `<option value="${st}" ${dados.status === st ? 'selected' : ''}>${st}</option>`;
+        });
+
+        // Se o status atual não estiver no fluxo padrão (ex: Finalizada), adiciona ele
+        if (isLocked && !opcoesFluxo.includes(dados.status)) {
+            opcoesStatus += `<option value="${dados.status}" selected>${dados.status}</option>`;
+        }
+
+        let optionsMecanicos = '<option value="">Selecione...</option>';
+        cacheUsuarios.forEach(u => optionsMecanicos += `<option value="${u.id}">${u.nome}</option>`);
+
+        let statusBadge = `<span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${isLocked ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">${dados.status}</span>`;
+        if (isLocked && dados.venda_gerada_id) {
+            statusBadge += `<div class="mt-1 text-right"><a href="#" onclick="window.imprimirReciboVenda(${dados.venda_gerada_id})" class="text-xs font-bold text-blue-600 hover:underline">Venda #${dados.venda_gerada_id}</a></div>`;
+        }
+
+        // LÓGICA DO BOTÃO "GERAR VENDA"
+        let htmlBotoes = '';
+        if (!isLocked) {
+            htmlBotoes = `<button onclick="salvarAlteracoes()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 mr-2">💾 Salvar</button>`;
+            
+            // Só libera se estiver PRONTO
+            if (dados.status === 'Pronto') {
+                htmlBotoes += `<button onclick="gerarVenda(${dados.id})" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700">💰 Gerar Venda</button>`;
+            } else {
+                // Botão desabilitado visualmente para indicar o fluxo
+                htmlBotoes += `<button disabled class="bg-gray-300 text-gray-500 px-4 py-2 rounded font-bold cursor-not-allowed" title="Mude o status para 'Pronto' para liberar a venda">💰 Gerar Venda</button>`;
+            }
+        } else {
+            htmlBotoes = `<span class="px-4 py-2 bg-gray-100 text-gray-600 rounded font-bold border">Bloqueado</span>`;
+        }
+
+        let nomeMecanicoExibicao = dados.mecanico_nome;
+        if (!nomeMecanicoExibicao && dados.mecanico_id) {
+            const mec = cacheUsuarios.find(u => u.id == dados.mecanico_id);
+            if (mec) nomeMecanicoExibicao = mec.nome;
+        }
+        if (!nomeMecanicoExibicao) nomeMecanicoExibicao = 'Não Informado';
 
         modalBody.innerHTML = `
             <div class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 flex justify-between items-center">
-                <div>
-                    <h3 class="font-bold text-gray-800 text-lg">Cliente: ${dados.cliente_nome || 'NÃO IDENTIFICADO'}</h3>
-                    <p class="text-gray-600 text-sm">Veículo: <span class="font-bold uppercase">${dados.modelo || ''} - ${dados.placa || ''}</span></p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs text-gray-400 font-bold">OS #${dados.id || 'NOVA'}</p>
-                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${isLocked ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${dados.status || 'Nova'}</span>
-                </div>
+                <div><h3 class="font-bold text-gray-800 text-lg">Cliente: ${dados.cliente_nome || 'NÃO IDENTIFICADO'}</h3><p class="text-gray-600 text-sm">Veículo: <span class="font-bold uppercase">${dados.placa || '-'}</span> ${dados.modelo || ''}</p></div>
+                <div class="text-right"><p class="text-xs text-gray-400 font-bold">OS #${dados.id || 'NOVA'}</p>${statusBadge}</div>
             </div>
-
+            <div class="mb-6"><label class="block text-xs font-bold text-blue-700 uppercase mb-1">Mecânico / Responsável Técnico</label>${isLocked ? `<div class="p-2 bg-gray-100 rounded border font-bold text-gray-700">${nomeMecanicoExibicao}</div>` : `<select id="modal-mecanico" class="form-input w-full ${bgInput}">${optionsMecanicos}</select>`}</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Problema Relatado</label>
-                    <textarea id="modal-problema" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.problema_relatado || dados.problema || ''}</textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Diagnóstico Técnico</label>
-                    <textarea id="modal-diagnostico" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.diagnostico_tecnico || dados.diagnostico || ''}</textarea>
-                </div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Problema Relatado</label><textarea id="modal-problema" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.problema_relatado || ''}</textarea></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">Diagnóstico Técnico</label><textarea id="modal-diagnostico" class="form-input w-full ${bgInput}" rows="3" ${disabledAttr}>${dados.diagnostico_tecnico || ''}</textarea></div>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="border rounded-lg p-4 bg-gray-50 flex flex-col h-full">
-                    <h4 class="font-bold text-gray-700 mb-3 border-b pb-2 flex justify-between">Itens <span class="text-xs text-gray-500 font-normal">Estoque</span></h4>
-                    <ul id="lista-itens-visual" class="space-y-2 mb-4 text-sm flex-grow ${isLocked ? 'opacity-75' : ''}"></ul>
-                    ${!isLocked ? `
-                    <div class="flex gap-2 items-end relative">
-                        <div class="flex-grow relative">
-                            <input id="add-item-nome" placeholder="Buscar item..." class="form-input text-sm w-full mb-1" autocomplete="off">
-                            <div id="list-item-autocomplete" class="autocomplete-results hidden absolute w-full max-h-40 overflow-y-auto bg-white border border-gray-300 z-50 rounded shadow-lg top-full left-0"></div>
-                            <div class="flex gap-2">
-                                <input id="add-item-qtd" type="number" value="1" class="form-input text-sm w-16 text-center">
-                                <input id="add-item-valor" type="text" placeholder="R$ 0,00" class="form-input text-sm w-24 text-right">
-                            </div>
-                        </div>
-                        <button onclick="adicionarItemLista()" class="bg-gray-700 text-white px-3 rounded font-bold h-10 hover:bg-gray-800 mb-0.5">+</button>
-                    </div>` : ''}
-                </div>
-
-                <div class="border rounded-lg p-4 bg-gray-50 flex flex-col h-full">
-                    <h4 class="font-bold text-gray-700 mb-3 border-b pb-2">Mão de Obra</h4>
-                    <ul id="lista-servicos-visual" class="space-y-2 mb-4 text-sm flex-grow ${isLocked ? 'opacity-75' : ''}"></ul>
-                    ${!isLocked ? `
-                    <div class="flex gap-2 items-end relative">
-                        <div class="flex-grow relative">
-                            <input id="add-servico-nome" placeholder="Buscar serviço..." class="form-input text-sm w-full mb-1" autocomplete="off">
-                            <div id="list-servico-autocomplete" class="autocomplete-results hidden absolute w-full max-h-40 overflow-y-auto bg-white border border-gray-300 z-50 rounded shadow-lg top-full left-0"></div>
-                            <div class="flex gap-2">
-                                <input id="add-servico-qtd" type="number" value="1" class="form-input text-sm w-16 text-center" placeholder="Qtd">
-                                <input id="add-servico-valor" type="text" placeholder="R$ 0,00" class="form-input text-sm w-full text-right">
-                            </div>
-                        </div>
-                        <button onclick="adicionarServicoLista()" class="bg-gray-700 text-white px-3 rounded font-bold h-10 hover:bg-gray-800 mb-0.5">+</button>
-                    </div>` : ''}
-                </div>
+                <div class="border rounded-lg p-4 bg-gray-50 flex flex-col h-full"><h4 class="font-bold text-gray-700 mb-3 border-b pb-2">Itens (Peças)</h4><ul id="lista-itens-visual" class="space-y-2 mb-4 text-sm flex-grow ${isLocked ? 'opacity-75' : ''}"></ul>${!isLocked ? `<div class="flex gap-2 items-end relative"><div class="flex-grow relative"><input id="add-item-nome" placeholder="Buscar item..." class="form-input text-sm w-full mb-1" autocomplete="off"><div id="list-item-autocomplete" class="hidden absolute bg-white border z-10 w-full shadow-lg max-h-40 overflow-y-auto"></div><div class="flex gap-2"><input id="add-item-qtd" type="number" value="1" class="form-input text-sm w-16 text-center"><input id="add-item-valor" type="text" placeholder="R$ 0,00" class="form-input text-sm w-24 text-right"></div></div><button onclick="adicionarItemLista()" class="bg-gray-700 text-white px-3 rounded font-bold h-10 hover:bg-gray-800 mb-0.5">+</button></div>` : ''}</div>
+                <div class="border rounded-lg p-4 bg-gray-50 flex flex-col h-full"><h4 class="font-bold text-gray-700 mb-3 border-b pb-2">Mão de Obra</h4><ul id="lista-servicos-visual" class="space-y-2 mb-4 text-sm flex-grow ${isLocked ? 'opacity-75' : ''}"></ul>${!isLocked ? `<div class="flex gap-2 items-end relative"><div class="flex-grow relative"><input id="add-servico-nome" placeholder="Buscar serviço..." class="form-input text-sm w-full mb-1" autocomplete="off"><div id="list-servico-autocomplete" class="hidden absolute bg-white border z-10 w-full shadow-lg max-h-40 overflow-y-auto"></div><div class="flex gap-2"><input id="add-servico-qtd" type="number" value="1" class="form-input text-sm w-16 text-center" placeholder="Qtd"><input id="add-servico-valor" type="text" placeholder="R$ 0,00" class="form-input text-sm w-full text-right"></div></div><button onclick="adicionarServicoLista()" class="bg-gray-700 text-white px-3 rounded font-bold h-10 hover:bg-gray-800 mb-0.5">+</button></div>` : ''}</div>
             </div>
-
             <div class="flex flex-col md:flex-row justify-between items-center pt-4 border-t gap-4">
-                <div class="w-full md:w-1/3">
-                    <label class="block text-xs font-bold text-gray-500 mb-1">Situação</label>
-                    <select id="modal-status" class="form-input w-full ${bgInput}" ${disabledAttr}>${opcoesStatus}</select>
-                </div>
-                <div class="text-right">
-                    <p class="text-sm text-gray-500 uppercase font-bold">Total</p>
-                    <p class="text-3xl font-bold text-gray-800" id="modal-total-display">R$ 0,00</p>
-                </div>
+                <div class="w-full md:w-1/3"><label class="block text-xs font-bold text-gray-500 mb-1">Situação</label><select id="modal-status" class="form-input w-full ${bgInput}" ${disabledAttr}>${opcoesStatus}</select></div>
+                <div class="text-right"><p class="text-sm text-gray-500 uppercase font-bold">Total</p><p class="text-3xl font-bold text-gray-800" id="modal-total-display">R$ 0,00</p></div>
             </div>
-
             <div class="flex justify-end gap-3 mt-8">
                 <button onclick="fecharModal()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-bold hover:bg-gray-300">Fechar</button>
                 <button onclick="imprimirOS(${dados.id})" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 shadow">🖨️ Imprimir</button>
-                ${!isLocked ? `
-                    <button id="btn-salvar-os" onclick="salvarAlteracoes()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow">💾 Salvar</button>
-                    <button onclick="gerarVenda(${dados.id})" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-2"><span>💰</span> Gerar Venda</button>
-                ` : `<span class="px-4 py-2 bg-green-100 text-green-800 rounded font-bold border border-green-300 shadow-sm cursor-default">✅ Venda Gerada</span>`}
+                ${htmlBotoes}
             </div>
         `;
     };
 
-    window.adicionarItemLista = () => {
-        const nome = document.getElementById('add-item-nome').value;
-        const qtd = safeNumber(document.getElementById('add-item-qtd').value);
-        const val = safeNumber(document.getElementById('add-item-valor').value);
-        if(!nome) return alert("Preencha o nome do item.");
-        
-        const prodId = window.tempProdutoId || null;
-        itensParaSalvar.push({ produto_id: prodId, nome, quantidade: qtd, valor_unitario: val });
-        
-        document.getElementById('add-item-nome').value = '';
-        document.getElementById('add-item-valor').value = '';
-        document.getElementById('add-item-qtd').value = '1';
-        window.tempProdutoId = null;
-        atualizarListasVisuais();
+    window.adicionarItemLista = () => { 
+        const nome = document.getElementById('add-item-nome').value; 
+        const qtd = safeNumber(document.getElementById('add-item-qtd').value); 
+        const val = safeNumber(document.getElementById('add-item-valor').value); 
+        if(!nome) return alert("Preencha o nome."); 
+        itensParaSalvar.push({ produto_id: window.tempProdutoId, nome, quantidade: qtd, valor_unitario: val }); 
+        document.getElementById('add-item-nome').value=''; 
+        document.getElementById('add-item-valor').value=''; 
+        document.getElementById('add-item-qtd').value='1'; 
+        window.tempProdutoId=null; 
+        atualizarListasVisuais(); 
     };
 
-    window.adicionarServicoLista = () => {
-        const nome = document.getElementById('add-servico-nome').value;
-        const qtd = safeNumber(document.getElementById('add-servico-qtd').value);
-        const val = safeNumber(document.getElementById('add-servico-valor').value);
-        if(!nome) return alert("Preencha o nome do serviço.");
-
-        const servId = window.tempServicoId || null;
-        servicosParaSalvar.push({ servico_id: servId, nome, quantidade: qtd, valor: val });
-        
-        document.getElementById('add-servico-nome').value = '';
-        document.getElementById('add-servico-valor').value = '';
-        document.getElementById('add-servico-qtd').value = '1';
-        window.tempServicoId = null;
-        atualizarListasVisuais();
+    window.adicionarServicoLista = () => { 
+        const nome = document.getElementById('add-servico-nome').value; 
+        const qtd = safeNumber(document.getElementById('add-servico-qtd').value); 
+        const val = safeNumber(document.getElementById('add-servico-valor').value); 
+        if(!nome) return alert("Preencha o nome."); 
+        servicosParaSalvar.push({ servico_id: window.tempServicoId, nome, quantidade: qtd, valor: val }); 
+        document.getElementById('add-servico-nome').value=''; 
+        document.getElementById('add-servico-valor').value=''; 
+        document.getElementById('add-servico-qtd').value='1'; 
+        window.tempServicoId=null; 
+        atualizarListasVisuais(); 
     };
 
     window.removerItemLista = (idx) => { itensParaSalvar.splice(idx, 1); atualizarListasVisuais(); };
     window.removerServicoLista = (idx) => { servicosParaSalvar.splice(idx, 1); atualizarListasVisuais(); };
 
     const atualizarListasVisuais = () => {
-        const ulItens = document.getElementById('lista-itens-visual');
-        const ulServicos = document.getElementById('lista-servicos-visual');
-        const isLocked = document.getElementById('btn-salvar-os') === null;
+        const ulItens = document.getElementById('lista-itens-visual'); const ulServicos = document.getElementById('lista-servicos-visual'); const isLocked = document.getElementById('modal-mecanico') && document.getElementById('modal-mecanico').tagName !== 'SELECT'; 
         let total = 0;
-        
-        ulItens.innerHTML = '';
-        itensParaSalvar.forEach((item, idx) => {
-            const sub = item.quantidade * item.valor_unitario;
-            total += sub;
-            const btnDelete = isLocked ? '' : `<button onclick="removerItemLista(${idx})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded ml-2">&times;</button>`;
-            ulItens.innerHTML += `<li class="flex justify-between items-center bg-white border p-2 rounded mb-1 text-sm">
-                <span class="truncate pr-2">${item.quantidade}x ${item.nome}</span>
-                <div class="whitespace-nowrap"><span class="font-bold mr-1">${formatCurrency(sub)}</span>${btnDelete}</div>
-            </li>`;
-        });
-
-        ulServicos.innerHTML = '';
-        servicosParaSalvar.forEach((serv, idx) => {
-            const qtd = serv.quantidade || 1;
-            const sub = serv.valor * qtd;
-            total += sub;
-            const btnDelete = isLocked ? '' : `<button onclick="removerServicoLista(${idx})" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded ml-2">&times;</button>`;
-            ulServicos.innerHTML += `<li class="flex justify-between items-center bg-white border p-2 rounded mb-1 text-sm">
-                <span class="truncate pr-2">${qtd > 1 ? qtd + 'x ' : ''}${serv.nome}</span>
-                <div class="whitespace-nowrap"><span class="font-bold mr-1">${formatCurrency(sub)}</span>${btnDelete}</div>
-            </li>`;
-        });
-
+        ulItens.innerHTML = ''; itensParaSalvar.forEach((i, idx) => { total += i.quantidade*i.valor_unitario; ulItens.innerHTML += `<li class="flex justify-between items-center bg-white border p-2 rounded mb-1 text-sm"><span class="truncate pr-2">${i.quantidade}x ${i.nome}</span><div class="whitespace-nowrap"><span class="font-bold mr-1">${formatCurrency(i.quantidade*i.valor_unitario)}</span>${!isLocked ? `<button onclick="removerItemLista(${idx})" class="text-red-500 font-bold ml-2">&times;</button>`:''}</div></li>`; });
+        ulServicos.innerHTML = ''; servicosParaSalvar.forEach((s, idx) => { total += s.quantidade*s.valor; ulServicos.innerHTML += `<li class="flex justify-between items-center bg-white border p-2 rounded mb-1 text-sm"><span class="truncate pr-2">${s.quantidade}x ${s.nome}</span><div class="whitespace-nowrap"><span class="font-bold mr-1">${formatCurrency(s.quantidade*s.valor)}</span>${!isLocked ? `<button onclick="removerServicoLista(${idx})" class="text-red-500 font-bold ml-2">&times;</button>`:''}</div></li>`; });
         document.getElementById('modal-total-display').textContent = formatCurrency(total);
     };
 
     window.salvarAlteracoes = async () => {
-        const payload = {
-            problema_relatado: document.getElementById('modal-problema').value,
-            diagnostico_tecnico: document.getElementById('modal-diagnostico').value,
-            status: document.getElementById('modal-status').value,
-            itens: itensParaSalvar,
-            servicos: servicosParaSalvar
-        };
         try {
+            const elemMec = document.getElementById('modal-mecanico');
+            const mecanicoValor = elemMec ? elemMec.value : undefined;
+
+            const payload = {
+                problema_relatado: document.getElementById('modal-problema').value,
+                diagnostico_tecnico: document.getElementById('modal-diagnostico').value,
+                status: document.getElementById('modal-status').value,
+                mecanico_id: mecanicoValor,
+                itens: itensParaSalvar,
+                servicos: servicosParaSalvar
+            };
             const res = await fetch(`${API_URL}/os/${osIdEdicao}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-            if (res.ok) { showAlert("OS Salva!"); fecharModal(); carregarOS(); }
-            else { const err = await res.json(); alert("Erro: " + err.message); }
-        } catch (err) { console.error(err); alert("Erro de conexão."); }
+            if (res.ok) { showAlert("OS Salva!"); if(typeof window.carregarOS === 'function') window.carregarOS(); window.fecharModal(); return true; } 
+            else { const err = await res.json(); alert("Erro ao salvar: " + err.message); return false; }
+        } catch (err) { alert("Erro de conexão."); return false; }
     };
 
-    window.gerarVenda = async (id) => {
-        if(!confirm("Deseja enviar esta OS para o Caixa e finalizar lá?")) return;
-
-        try {
-            await window.salvarAlteracoes();
-            
-            window.location.href = `gestao_vendas.html?carregar_os=${id}`;
-            
-        } catch(err) {
-            console.error(err);
-            alert("Erro ao salvar OS antes de redirecionar.");
-        }
-    };
-
+    window.gerarVenda = async (id) => { if(confirm("Deseja enviar para Vendas?")) { const salvou = await window.salvarAlteracoes(); if(salvou) window.location.href = `gestao_vendas.html?carregar_os=${id}`; } };
     window.fecharModal = () => modalOS.classList.add('hidden', 'modal-oculto');
 
-    // --- NOVA IMPRESSÃO (MODELO ORDEM_DE_SERVICO_2) ---
+    // --- IMPRESSÃO DE RECIBO DE VENDA (Mantido para compatibilidade) ---
+    window.imprimirReciboVenda = async (vendaId) => {
+        if(!vendaId) return alert("Venda não identificada.");
+        try {
+            const res = await fetch(`${API_URL}/relatorios/vendas/${vendaId}`);
+            if(!res.ok) throw new Error("Venda não encontrada no sistema.");
+            const venda = await res.json();
+            
+            let emp = { nome_fantasia: 'Minha Oficina' };
+            try { const r = await fetch(`${API_URL}/empresa`); if(r.ok) emp = await r.json(); } catch(e){}
+
+            // ESTE É O ESTILO QUE VOCÊ GOSTOU EM GESTAO_VENDAS.JS
+            let itensHtml = '';
+            [...(venda.itens || []), ...(venda.servicos || [])].forEach(i => {
+                const sub = i.subtotal || (i.quantidade * (i.valor_unitario || i.valor));
+                itensHtml += `<tr><td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${i.quantidade}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(i.valor_unitario || i.valor || 0)}</td><td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(sub)}</td></tr>`;
+            });
+
+            const htmlContent = `<html><head><meta charset="UTF-8"><title>Recibo Venda #${vendaId}</title><style>body{font-family:'Helvetica',sans-serif;padding:30px;font-size:14px;color:#333}.header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:10px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin:20px 0}th{text-align:left;border-bottom:2px solid #000;padding:8px;background:#eee}td{padding:8px}.totals{width:300px;margin-left:auto;text-align:right}.row{display:flex;justify-content:space-between;padding:4px 0}.final{border-top:2px solid #000;font-weight:bold;font-size:18px;margin-top:5px;padding-top:5px}.footer{text-align:center;margin-top:40px;border-top:1px dashed #ccc;padding-top:10px;font-size:12px;color:#666}</style></head><body>
+            <div class="header"><div><h1>${emp.nome_fantasia}</h1></div><div style="text-align:right;"><h2>RECIBO #${venda.id}</h2><p>${new Date(venda.data).toLocaleDateString('pt-BR')}</p></div></div>
+            <p><strong>Cliente:</strong> ${venda.cliente_nome || 'Consumidor'}</p>
+            <table><thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Total</th></tr></thead><tbody>${itensHtml}</tbody></table>
+            <div class="totals"><div class="row"><span>Desconto:</span><span>- ${formatCurrency(venda.desconto_valor || 0)}</span></div><div class="row final"><span>TOTAL:</span><span>${formatCurrency(venda.total)}</span></div></div>
+            <div class="footer"><p>Documento sem valor fiscal.</p></div>
+            </body></html>`;
+
+            if (window.electronAPI) window.electronAPI.send('print-to-pdf', { html: htmlContent, name: `Venda_${vendaId}.pdf` });
+            else { const w = window.open('', '', 'width=800,height=600'); w.document.write(htmlContent); w.document.close(); w.print(); }
+
+        } catch(e) { console.error(e); alert("Erro ao gerar recibo: " + e.message); }
+    };
+
+    // --- NOVA IMPRESSÃO DE OS (Baseada em gestao_vendas.js) ---
     window.imprimirOS = async (id) => {
         try {
             const res = await fetch(`${API_URL}/os/${id}`);
+            if (!res.ok) throw new Error("Erro ao buscar dados da OS.");
             const os = await res.json();
-            
-            // Dados para o PDF
-            const empresaNome = "OFICINA MECÂNICA"; 
-            const empresaEnd = "Rua da Oficina, 123 - Centro";
-            
-            let itensHtml = '';
-            
-            const lista = [...(os.itens || []), ...(os.servicos || [])];
-            if (lista.length === 0) itensHtml = '<tr><td colspan="4" style="text-align:center; padding:10px;">Nenhum item.</td></tr>';
-            else {
-                lista.forEach(i => {
-                    const tipo = i.produto_id ? "(Peça)" : "(Serviço)";
-                    const val = i.valor_unitario || i.valor || 0;
-                    const qtd = i.quantidade || 1;
-                    const total = val * qtd;
-                    itensHtml += `
-                    <tr>
-                        <td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome || i.descricao} ${tipo}</td>
-                        <td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${qtd}</td>
-                        <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(val)}</td>
-                        <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(total)}</td>
-                    </tr>`;
+
+            let emp = { nome_fantasia: 'Minha Oficina', endereco: '', telefone: '', email: '' };
+            try { const resEmp = await fetch(`${API_URL}/empresa`); if (resEmp.ok) emp = await resEmp.json(); } catch (e) { }
+
+            // LÓGICA COPIADA DE GESTAO_VENDAS.JS PARA NORMALIZAR ITENS
+            // Isso resolve o problema do "undefined"
+            let listaImpressao = [];
+
+            // Processar Produtos (Peças)
+            if (os.itens && os.itens.length > 0) {
+                os.itens.forEach(item => {
+                    listaImpressao.push({
+                        // Tenta todas as possibilidades de nome, se falhar usa 'Peça' (igual Vendas)
+                        nome: item.nome || item.nome_produto || item.descricao || 'Peça', 
+                        quantidade: item.quantidade,
+                        valor: item.valor_unitario || item.valor || 0
+                    });
                 });
             }
 
-            const nomeArquivo = `OS_${os.id}_${(os.cliente_nome||'CLIENTE').replace(/[^a-zA-Z0-9]/g,'_')}.pdf`;
+            // Processar Serviços
+            if (os.servicos && os.servicos.length > 0) {
+                os.servicos.forEach(serv => {
+                    listaImpressao.push({
+                        nome: serv.nome || serv.descricao || 'Serviço',
+                        quantidade: serv.quantidade || 1,
+                        valor: serv.valor || 0
+                    });
+                });
+            }
 
-            const htmlContent = `
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>OS #${os.id}</title>
-                <style>
-                    body { font-family: 'Helvetica', sans-serif; padding: 30px; font-size: 14px; color: #333; }
-                    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-                    .header h1 { margin: 0; font-size: 22px; color: #000; }
-                    .header p { margin: 2px 0; font-size: 12px; color: #555; }
-                    .os-title { text-align: right; }
-                    .os-title h2 { margin: 0; font-size: 24px; color: #000; }
-                    
-                    .section-box { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; border-radius: 4px; background: #f9f9f9; }
-                    .section-title { font-weight: bold; margin-bottom: 5px; font-size: 13px; text-transform: uppercase; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 2px; }
-                    
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                    th { text-align: left; border-bottom: 2px solid #000; padding: 8px; background: #eee; font-size: 12px; }
-                    td { font-size: 13px; }
-                    
-                    .total-box { text-align: right; margin-top: 20px; font-size: 18px; font-weight: bold; }
-                    .assinatura { margin-top: 60px; border-top: 1px solid #000; width: 60%; margin-left: auto; margin-right: auto; text-align: center; padding-top: 5px; font-size: 12px; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div>
-                        <h1>${empresaNome}</h1>
-                        <p>${empresaEnd}</p>
-                        <p>Data: ${formatDate(os.data_entrada)}</p>
-                    </div>
-                    <div class="os-title">
-                        <h2>ORDEM DE SERVIÇO</h2>
-                        <p style="font-size: 18px; font-weight: bold;">#${os.id}</p>
-                    </div>
-                </div>
-
-                <div class="section-box">
-                    <div class="section-title">Dados do Cliente e Veículo</div>
-                    <p><strong>Cliente:</strong> ${os.cliente_nome || 'Consumidor'} | <strong>Telefone:</strong> ${os.cliente_telefone || '-'}</p>
-                    <p><strong>Veículo:</strong> ${os.placa || '-'} | ${os.modelo || ''} ${os.marca || ''}</p>
-                </div>
-
-                <div class="section-box">
-                    <div class="section-title">Problema Relatado / Diagnóstico</div>
-                    <p><strong>Problema:</strong> ${os.problema_relatado || 'Não informado.'}</p>
-                    <p style="margin-top:5px;"><strong>Diagnóstico:</strong> ${os.diagnostico_tecnico || 'Não informado.'}</p>
-                </div>
-
-                <table>
-                    <thead>
+            // GERAÇÃO DO HTML (Usando o CSS do gestao_vendas.js que você gostou)
+            let itensHtml = '';
+            if (listaImpressao.length === 0) {
+                itensHtml = '<tr><td colspan="4" style="text-align:center; padding:10px; color:#777;">Nenhum item registrado.</td></tr>';
+            } else {
+                listaImpressao.forEach(i => {
+                    const totalItem = i.quantidade * i.valor;
+                    itensHtml += `
                         <tr>
-                            <th width="50%">Descrição</th>
-                            <th width="10%" style="text-align:center">Qtd.</th>
-                            <th width="20%" style="text-align:right">Vlr. Unit.</th>
-                            <th width="20%" style="text-align:right">Subtotal</th>
+                            <td style="border-bottom:1px solid #ddd; padding:6px;">${i.nome}</td>
+                            <td style="border-bottom:1px solid #ddd; padding:6px; text-align:center;">${i.quantidade}</td>
+                            <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(i.valor)}</td>
+                            <td style="border-bottom:1px solid #ddd; padding:6px; text-align:right;">${formatCurrency(totalItem)}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        ${itensHtml}
-                    </tbody>
-                </table>
+                    `;
+                });
+            }
 
-                <div class="total-box">
-                    TOTAL: ${formatCurrency(os.total)}
-                </div>
+            // HTML Baseado em gestao_vendas.js + Campos da OS
+            const htmlContent = `
+                <html>
+                <head>
+                    <title>OS #${os.id}</title>
+                    <style>
+                        body { font-family: 'Helvetica', sans-serif; padding: 30px; font-size: 14px; color: #333; }
+                        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+                        .header h1 { margin: 0; font-size: 22px; }
+                        .header p { margin: 2px 0; font-size: 12px; }
+                        .box-info { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border: 1px solid #eee; border-radius: 4px; }
+                        .box-title { font-weight: bold; font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 5px; }
+                        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                        th { text-align: left; border-bottom: 2px solid #000; padding: 8px; background: #eee; }
+                        td { padding: 8px; }
+                        .totals { width: 300px; margin-left: auto; text-align: right; }
+                        .row { display: flex; justify-content: space-between; padding: 4px 0; }
+                        .final { border-top: 2px solid #000; font-weight: bold; font-size: 18px; margin-top: 5px; padding-top: 5px; }
+                        .footer { text-align: center; margin-top: 40px; border-top: 1px dashed #ccc; padding-top: 10px; font-size: 12px; color: #666; }
+                        .status { font-weight: bold; padding: 3px 8px; background: #eee; border-radius: 4px; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div>
+                            <h1>${emp.nome_fantasia}</h1>
+                            <p>${emp.endereco || ''}</p>
+                            <p>${emp.telefone || ''}</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <h2>ORDEM DE SERVIÇO</h2>
+                            <p>#${os.id}</p>
+                            <p>${new Date(os.data_entrada).toLocaleDateString('pt-BR')}</p>
+                            <span class="status">${os.status}</span>
+                        </div>
+                    </div>
 
-                <div class="assinatura">
-                    Assinatura do Cliente<br>
-                    (Autorizo a execução dos serviços acima descritos)
-                </div>
-            </body>
-            </html>`;
+                    <div class="box-info">
+                        <div class="box-title">Cliente / Veículo</div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <div><strong>${os.cliente_nome || 'Consumidor'}</strong><br>${os.cliente_telefone || ''}</div>
+                            <div style="text-align:right;"><strong>${os.placa || ''}</strong><br>${os.modelo || ''}</div>
+                        </div>
+                    </div>
 
-            if (window.electronAPI) window.electronAPI.send('print-to-pdf', { html: htmlContent, name: nomeArquivo });
-            else { const win = window.open('', '', 'width=800,height=600'); win.document.write(htmlContent); win.document.close(); win.print(); }
-        } catch(e) { console.error(e); alert("Erro ao gerar PDF: " + e.message); }
+                    <div class="box-info">
+                        <div class="box-title">Problema Relatado</div>
+                        <p style="margin:0;">${os.problema_relatado || 'Não informado.'}</p>
+                    </div>
+
+                    ${os.diagnostico_tecnico ? `
+                    <div class="box-info">
+                        <div class="box-title">Diagnóstico Técnico</div>
+                        <p style="margin:0;">${os.diagnostico_tecnico}</p>
+                    </div>` : ''}
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Descrição</th>
+                                <th style="text-align:center">Qtd</th>
+                                <th style="text-align:right">Unit.</th>
+                                <th style="text-align:right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itensHtml}
+                        </tbody>
+                    </table>
+
+                    <div class="totals">
+                        <div class="row final">
+                            <span>TOTAL:</span>
+                            <span>${formatCurrency(os.total)}</span>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+                            <div style="width: 45%; border-top: 1px solid #000; padding-top: 5px;">Assinatura da Oficina</div>
+                            <div style="width: 45%; border-top: 1px solid #000; padding-top: 5px;">Assinatura do Cliente</div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            if (window.electronAPI) {
+                window.electronAPI.send('print-to-pdf', { html: htmlContent, name: `OS_${os.id}.pdf` });
+            } else {
+                const w = window.open('', '', 'width=900,height=700');
+                w.document.write(htmlContent); w.document.close(); setTimeout(() => w.print(), 500);
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert("Erro ao gerar PDF da OS: " + e.message);
+        }
     };
 
-    if (btnNovaOS) btnNovaOS.addEventListener('click', async () => {
-        const placa = await solicitarPlacaVisual();
-        if (!placa) return;
-        try {
-            const res = await fetch(`${API_URL}/os`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ placa: placa }) });
-            const data = await res.json();
-            if (res.ok) { showAlert(`OS #${data.id} criada!`); await carregarOS(); abrirModalEdicao(data.id); } 
-            else { 
-                if (data.message && data.message.includes('não foi encontrado')) { if(confirm(`Veículo não encontrado!\nDeseja cadastrar agora?`)) window.location.href = 'gestao_clientes.html'; }
-                else alert("Erro: " + data.message); 
-            }
-        } catch (err) { console.error(err); alert("Erro ao criar OS."); }
-    });
+    if (btnNovaOS) btnNovaOS.addEventListener('click', abrirModalNovaOS);
+    if (inputBusca) inputBusca.addEventListener('input', window.carregarOS);
 
-    if (inputBusca) inputBusca.addEventListener('input', carregarOS);
     carregarDadosAuxiliares();
-    carregarOS();
+    window.carregarOS();
 });

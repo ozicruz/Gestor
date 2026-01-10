@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico do Produto</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="p-4 md:p-8 bg-gray-50">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 flex justify-between items-center">
+            <div>
+                <a href="gestao_produtos.html" class="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                    &larr; Voltar para Produtos
+                </a>
+                <h1 class="text-4xl font-bold text-gray-800 mt-2 flex items-center gap-3">
+                    📦 <span id="produto-titulo">Carregando...</span>
+                </h1>
+                <p id="produto-subtitulo" class="text-gray-500 mt-1">Detalhes de estoque e movimentações</p>
+            </div>
+            
+            <div class="flex gap-4">
+                <div class="bg-white p-4 rounded shadow border border-gray-200 text-center min-w-[120px]">
+                    <p class="text-xs text-gray-500 uppercase font-bold">Estoque Atual</p>
+                    <p id="card-estoque" class="text-2xl font-bold text-blue-600">...</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow border border-gray-200 text-center min-w-[120px]">
+                    <p class="text-xs text-gray-500 uppercase font-bold">Preço Médio</p>
+                    <p id="card-custo-medio" class="text-2xl font-bold text-green-600">...</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden h-full">
+                    <div class="bg-yellow-50 p-4 border-b border-yellow-100">
+                        <h2 class="font-bold text-yellow-800 flex items-center gap-2">
+                            🏆 Melhores Preços de Compra
+                        </h2>
+                        <p class="text-xs text-yellow-600 mt-1">Onde vale a pena comprar?</p>
+                    </div>
+                    <div class="overflow-y-auto max-h-[500px]">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-500 font-bold">
+                                <tr>
+                                    <th class="p-3 text-left">Fornecedor</th>
+                                    <th class="p-3 text-right">Valor Pago</th>
+                                    <th class="p-3 text-center">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-ranking" class="divide-y divide-gray-100">
+                                <tr><td colspan="3" class="p-4 text-center text-gray-400">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden flex flex-col h-full">
+                    <div class="bg-gray-100 p-4 border-b border-gray-200">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                                📜 Histórico Completo
+                            </h2>
+                        </div>
+                        
+                        <div class="flex space-x-1 bg-gray-200 p-1 rounded text-sm">
+                            <button onclick="filtrarHistorico('todas')" id="tab-todas" class="flex-1 py-1 px-3 rounded font-bold bg-white text-blue-600 shadow transition-all">Todas</button>
+                            <button onclick="filtrarHistorico('entrada')" id="tab-entrada" class="flex-1 py-1 px-3 rounded font-medium text-gray-600 hover:bg-white hover:text-green-600 transition-all">📥 Entradas</button>
+                            <button onclick="filtrarHistorico('saida')" id="tab-saida" class="flex-1 py-1 px-3 rounded font-medium text-gray-600 hover:bg-white hover:text-red-600 transition-all">📤 Saídas</button>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-y-auto flex-1 max-h-[600px]">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-gray-700 font-bold sticky top-0 shadow-sm z-10">
+                                <tr>
+                                    <th class="p-3 w-32">Data / Hora</th>
+                                    <th class="p-3 text-center w-24">Tipo</th>
+                                    <th class="p-3 text-center w-16">Qtd</th>
+                                    <th class="p-3 text-right w-24">Custo Unit.</th>
+                                    <th class="p-3">Detalhes / Observação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico" class="divide-y divide-gray-100 text-gray-700">
+                                <tr><td colspan="5" class="p-4 text-center text-gray-400">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="js/historico_produto.js"></script>
+</body>
+</html>

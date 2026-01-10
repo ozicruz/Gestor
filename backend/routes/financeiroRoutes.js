@@ -2,31 +2,31 @@ const express = require('express');
 const router = express.Router();
 const financeiroController = require('../controllers/financeiroController');
 
-// Listas auxiliares
-router.get('/formaspagamento', financeiroController.listarFormasPagamento);
-router.get('/categorias', financeiroController.listarCategorias);
-
-// --- ROTAS DE CONTAS / CAIXAS (CORRIGIDAS) ---
-router.get('/contascaixa', financeiroController.listarContas); // Usa a função nova SQL
+// --- 1. Contas e Caixas ---
+// CORREÇÃO: Frontend chama '/contas', não '/contascaixa'
+router.get('/contas', financeiroController.listarContas); 
+router.get('/contascaixa', financeiroController.listarContas); // Mantém compatibilidade
 router.post('/contascaixa', financeiroController.criarConta);
 router.delete('/contascaixa/:id', financeiroController.removerConta);
 
-// Dashboard e Movimentos
+// --- 2. Auxiliares ---
+router.get('/formas-pagamento', financeiroController.listarFormasPagamento);
+router.get('/categorias', financeiroController.listarCategorias);
+
+// --- 3. Lançamentos ---
+router.post('/lancamentos', financeiroController.criarLancamento);
+// CORREÇÃO: Frontend chama '/baixar' (verbo), não '/baixa'
+router.put('/lancamentos/:id/baixar', financeiroController.baixarLancamento); 
+router.put('/lancamentos/:id/baixa', financeiroController.baixarLancamento); // Mantém compatibilidade
+router.delete('/lancamentos/:id', financeiroController.excluirLancamento);
+
+// --- 4. Relatórios e Dashboard ---
 router.get('/dashboard/resumo', financeiroController.getDashboardResumo);
-router.get('/movimentocaixa', financeiroController.getMovimentoCaixa);
-
-// Lançamentos
-router.post('/lancamento', financeiroController.criarLancamento);
-router.delete('/lancamento/:id', financeiroController.excluirLancamento);
-
-// Contas a Receber
-router.get('/contasareceber/resumo', financeiroController.getContasAReceberResumo);
-router.get('/contasareceber', financeiroController.listarContasAReceber);
-router.post('/lancamento/:id/baixar', financeiroController.baixarLancamento);
-
-// Contas a Pagar e Relatórios
+router.get('/movimento-caixa', financeiroController.getMovimentoCaixa);
+router.get('/contas-receber/resumo', financeiroController.getContasAReceberResumo);
+router.get('/contas-receber', financeiroController.listarContasAReceber);
+router.get('/contas-pagar/resumo', financeiroController.obterResumoContasPagar);
+router.get('/contas-pagar', financeiroController.listarContasAPagar);
 router.get('/relatorios/dre', financeiroController.getRelatorioDRE);
-router.get('/contasapagar', financeiroController.listarContasAPagar);
-router.get('/contasapagar/resumo', financeiroController.obterResumoContasPagar);
 
 module.exports = router;

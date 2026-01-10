@@ -7,102 +7,180 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .bloqueado { display: none !important; }
+    </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-8 bg-gray-50 min-h-screen">
 
     <div class="max-w-7xl mx-auto">
-        <header class="mb-10 text-center">
-            <h1 class="text-4xl font-bold text-gray-800 tracking-tight">Sistema de Gestão de Oficina</h1>
-            <p class="mt-2 text-lg text-gray-500">Bem-vindo! Selecione um módulo para começar.</p>
+        <header class="mb-10 flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 tracking-tight">Sistema de Gestão de Oficina</h1>
+                <p class="mt-2 text-lg text-gray-500">Bem-vindo, <span id="nome-usuario" class="font-bold text-blue-600">...</span></p>
+            </div>
+            <button onclick="fazerLogout()" class="text-red-500 hover:text-red-700 font-bold flex items-center gap-2 border border-red-100 bg-red-50 px-4 py-2 rounded-lg transition hover:bg-red-100">
+                Sair 🚪
+            </button>
         </header>
 
         <main class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-            <a href="gestao_os.html" class="nav-card border-l-4 border-blue-500">
+            <a href="gestao_os.html" id="card-os" class="nav-card border-l-4 border-blue-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Ordens de Serviço 🔧</h3>
-                    <p>Abra e gira o estado das Ordens de Serviço, orçamentos e aprovações.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Ordens de Serviço 🔧</h3>
+                    <p class="text-gray-600">Abra e gira o estado das Ordens de Serviço, orçamentos e aprovações.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-blue-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="gestao_patio.html" class="nav-card border-l-4 border-orange-500">
+            <a href="gestao_patio.html" id="card-patio" class="nav-card border-l-4 border-orange-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Pátio 🏍️</h3>
-                    <p>Controle visual dos veículos que estão atualmente na oficina.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Pátio / Serviços 🚗 🏍️</h3>
+                    <p class="text-gray-600">Controle visual dos veículos que estão atualmente na oficina.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-orange-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="gestao_vendas.html" class="nav-card border-l-4 border-purple-500">
+            <a href="gestao_vendas.html" id="card-vendas" class="nav-card border-l-4 border-purple-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Vendas 🛒</h3>
-                    <p>Venda rápida de peças e produtos diretos ao cliente (PDV).</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Vendas 🛒</h3>
+                    <p class="text-gray-600">Venda rápida de peças e produtos diretos ao cliente (PDV).</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-purple-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="gestao_clientes.html" class="nav-card border-l-4 border-teal-500">
+            <a href="gestao_clientes.html" id="card-clientes" class="nav-card border-l-4 border-teal-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Clientes e Veículos 👥</h3>
-                    <p>Base de dados completa de clientes e histórico das motos.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Clientes e Veículos 👥</h3>
+                    <p class="text-gray-600">Base de dados completa de clientes e histórico das motos.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-teal-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="cadastros.html" class="nav-card border-l-4 border-gray-500">
+            <a href="cadastros.html" id="card-cadastros" class="nav-card border-l-4 border-gray-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Cadastros Gerais 📦</h3>
-                    <p>Registe peças, produtos e tabela de preços de serviços.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Cadastros Gerais 📦</h3>
+                    <p class="text-gray-600">Registe peças, produtos e tabela de preços de serviços.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-gray-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="gestao_financeiro.html" class="nav-card border-l-4 border-green-600">
+            <a href="gestao_financeiro.html" id="card-financeiro" class="nav-card border-l-4 border-green-600 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Financeiro 💰</h3>
-                    <p>Fluxo de caixa, entradas, saídas e lucro líquido.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Financeiro 💰</h3>
+                    <p class="text-gray-600">Fluxo de caixa, entradas, saídas e lucro líquido.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-green-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="gestao_contas_receber.html" class="nav-card border-l-4 border-yellow-500">
+            <a href="gestao_contas_receber.html" id="card-receber" class="nav-card border-l-4 border-yellow-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Contas a Receber 📒</h3>
-                    <p>Controle de fiados e pagamentos pendentes de clientes.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Contas a Receber 📒</h3>
+                    <p class="text-gray-600">Controle de fiados e pagamentos pendentes de clientes.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-yellow-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="relatorios.html" class="nav-card border-l-4 border-indigo-500">
+            <a href="relatorios.html" id="card-relatorios" class="nav-card border-l-4 border-indigo-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Relatórios 📊</h3>
-                    <p>Análise de desempenho, DRE e rankings de vendas.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Relatórios 📊</h3>
+                    <p class="text-gray-600">Análise de desempenho, DRE e rankings de vendas.</p>
                 </div>
-                <span class="go-arrow">Acessar &rarr;</span>
+                <span class="text-indigo-600 font-bold mt-4 block">Acessar &rarr;</span>
             </a>
 
-            <a href="configuracoes.html" class="nav-card border-l-4 border-slate-700">
+            <a href="configuracoes.html" id="card-config" class="nav-card border-l-4 border-slate-700 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Configurações ⚙️</h3>
-                    <p>Dados da empresa, backup de segurança e ajustes do sistema.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Configurações ⚙️</h3>
+                    <p class="text-gray-600">Dados da empresa, backup de segurança e ajustes do sistema.</p>
                 </div>
-                <span class="go-arrow">Configurar &rarr;</span>
+                <span class="text-slate-600 font-bold mt-4 block">Configurar &rarr;</span>
             </a>
-            <a href="config_financeiro.html" class="nav-card border-l-4 border-emerald-600">
+
+            <a href="config_financeiro.html" id="card-bancos" class="nav-card border-l-4 border-emerald-600 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
                 <div>
-                    <h3>Contas e Bancos 🏦</h3>
-                    <p>Cadastre bancos, caixas e saldos iniciais.</p>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Contas e Bancos 🏦</h3>
+                    <p class="text-gray-600">Cadastre bancos, caixas e saldos iniciais.</p>
                 </div>
-                <span class="go-arrow">Gerir &rarr;</span>
+                <span class="text-emerald-600 font-bold mt-4 block">Gerir &rarr;</span>
+            </a>
+
+            <a href="gestao_usuarios.html" id="card-rh" class="nav-card border-l-4 border-pink-500 bg-white p-6 rounded-lg shadow hover:shadow-md transition-all">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">RH / Usuários 🔐</h3>
+                    <p class="text-gray-600">Gestão de acessos, logins e permissões da equipe.</p>
+                </div>
+                <span class="text-pink-600 font-bold mt-4 block">Gerir &rarr;</span>
             </a>
 
         </main>
 
         <footer class="text-center mt-16 text-gray-400 text-sm">
-            <p>&copy; <span id="currentYear"></span> ZySystems. Todos os direitos reservados.</p>
+            <p>&copy; <span id="currentYear"></span> OzTec. Todos os direitos reservados.</p>
         </footer>
     </div>
-    <script>document.getElementById('currentYear').textContent = new Date().getFullYear();</script>
+
+    <script>
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const usuarioJson = localStorage.getItem('usuario_logado');
+            
+            if (!usuarioJson) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const usuario = JSON.parse(usuarioJson);
+            document.getElementById('nome-usuario').textContent = usuario.nome;
+
+            const temPermissao = (perm) => {
+                if (usuario.is_admin === 1) return true;
+                return usuario.permissoes && usuario.permissoes.includes(perm);
+            };
+
+            // --- REGRAS DE BLOQUEIO ---
+
+            // OS e Pátio (Quem mexe com oficina ou vendas)
+            if (!temPermissao('vendas') && !temPermissao('servicos')) {
+                document.getElementById('card-os').classList.add('bloqueado');
+                document.getElementById('card-patio').classList.add('bloqueado');
+            }
+
+            // Vendas
+            if (!temPermissao('vendas')) document.getElementById('card-vendas').classList.add('bloqueado');
+            
+            // Clientes
+            if (!temPermissao('clientes')) document.getElementById('card-clientes').classList.add('bloqueado');
+
+            // Cadastros Gerais (Quem mexe com estoque OU serviços)
+            if (!temPermissao('produtos') && !temPermissao('servicos')) {
+                document.getElementById('card-cadastros').classList.add('bloqueado');
+            }
+
+            // Financeiro Completo
+            if (!temPermissao('financeiro')) {
+                document.getElementById('card-financeiro').classList.add('bloqueado');
+                document.getElementById('card-receber').classList.add('bloqueado');
+                document.getElementById('card-bancos').classList.add('bloqueado');
+            }
+
+            // Relatórios
+            if (!temPermissao('relatorios')) document.getElementById('card-relatorios').classList.add('bloqueado');
+
+            // Admin Only
+            if (usuario.is_admin !== 1) {
+                document.getElementById('card-config').classList.add('bloqueado');
+                document.getElementById('card-rh').classList.add('bloqueado');
+                // Bancos também bloqueado para não-admin se preferir, ou liberado para financeiro (regra acima libera p/ financeiro)
+            }
+        });
+
+        function fazerLogout() {
+            localStorage.removeItem('usuario_logado');
+            window.location.href = 'login.html';
+        }
+    </script>
 </body>
 </html>

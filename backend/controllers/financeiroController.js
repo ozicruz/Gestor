@@ -1,314 +1,225 @@
-const FinanceiroModel = require('../models/financeiroModel');
-const { dbAll, dbRun } = require('../database/database');
+const { dbAll, dbRun, dbGet } = require('../database/database');
 
-// --- 1. CONTAS E CAIXAS (Lógica SQL Direta - A que funciona) ---
-
+// --- 1. Contas e Caixas ---
 const listarContas = async (req, res) => {
     try {
-        // Busca direta no banco, sem depender do Model antigo
         const contas = await dbAll('SELECT * FROM ContasCaixa');
         res.json(contas);
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao buscar contas.', error: error.message });
-    }
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const criarConta = async (req, res) => {
-    const { nome, saldoInicial } = req.body;
+    const { nome, saldo_inicial } = req.body;
     try {
-        const sql = 'INSERT INTO ContasCaixa (Nome, SaldoInicial, Saldo) VALUES (?, ?, ?)';
-        await dbRun(sql, [nome, saldoInicial || 0, saldoInicial || 0]);
-        res.status(201).json({ message: 'Conta criada com sucesso!' });
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao criar conta.', error: error.message });
-    }
+        await dbRun(
+            'INSERT INTO ContasCaixa (Nome, Saldo, SaldoInicial) VALUES (?, ?, ?)', 
+            [nome, saldo_inicial || 0, saldo_inicial || 0]
+        );
+        res.status(201).json({ message: 'Conta criada.' });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const removerConta = async (req, res) => {
     const { id } = req.params;
     try {
-        if (id == 1) { 
-            return res.status(400).json({ message: 'Não é possível remover o Caixa Principal.' });
-        }
+        if(id == 1) return res.status(400).json({ message: "Não é possível remover o caixa principal." });
         await dbRun('DELETE FROM ContasCaixa WHERE id = ?', [id]);
         res.json({ message: 'Conta removida.' });
-    } catch (error) {
-        res.status(500).json({ message: 'Erro ao remover conta.', error: error.message });
-    }
+    } catch (err) { res.status(500).json({ message: "Erro ao remover (pode haver vínculos). " + err.message }); }
 };
 
-// --- 2. OUTRAS LISTAGENS ---
-
+// --- 2. Auxiliares ---
 const listarFormasPagamento = async (req, res) => {
-    try { res.json(await FinanceiroModel.getFormasPagamento()); } 
-    catch (e) { res.status(500).json({ message: "Erro ao buscar formas." }); }
+    try {
+        const formas = await dbAll('SELECT * FROM FormasPagamento');
+        res.json(formas);
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const listarCategorias = async (req, res) => {
-    try { res.json(await FinanceiroModel.getCategorias(req.query.tipo)); } 
-    catch (e) { res.status(500).json({ message: "Erro ao buscar categorias." }); }
+    try {
+        const { tipo } = req.query;
+        let sql = 'SELECT * FROM CategoriasFinanceiras';
+        let params = [];
+        if (tipo) { sql += ' WHERE Tipo = ?'; params.push(tipo); }
+        const categorias = await dbAll(sql, params);
+        res.json(categorias);
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
-// --- 3. LANÇAMENTOS E BAIXAS ---
-
+// --- 3. Lançamentos ---
 const criarLancamento = async (req, res) => {
+    const { descricao, valor, tipo, data_vencimento, categoria_id, conta_id, forma_pagamento_id, status } = req.body;
     try {
-        const { Descricao, Valor, Tipo, Status, ContaCaixaID, CategoriaID } = req.body;
-
-        if (!Descricao || !Valor || !Tipo) {
-            return res.status(400).json({ message: 'Campos obrigatórios: Descrição, Valor e Tipo.' });
+        const result = await dbRun(
+            `INSERT INTO Lancamentos (Descricao, Valor, Tipo, DataVencimento, CategoriaID, ContaCaixaID, FormaPagamentoID, Status, DataPagamento) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [descricao, valor, tipo, data_vencimento, categoria_id, conta_id, forma_pagamento_id, status, status === 'PAGO' ? new Date().toISOString() : null]
+        );
+        
+        if (status === 'PAGO' && conta_id) {
+            const operador = tipo === 'RECEITA' ? '+' : '-';
+            await dbRun(`UPDATE ContasCaixa SET Saldo = Saldo ${operador} ? WHERE id = ?`, [valor, conta_id]);
         }
 
-        // Sanitização: Garante que IDs vazios virem NULL e números sejam números
-        const dadosLimpos = {
-            ...req.body,
-            ContaCaixaID: ContaCaixaID ? Number(ContaCaixaID) : null,
-            CategoriaID: CategoriaID ? Number(CategoriaID) : null,
-            Valor: parseFloat(Valor)
-        };
-
-        const result = await FinanceiroModel.createLancamento(dadosLimpos);
-
-        // Lógica de Atualização de Saldo
-        // Se for PAGO (ou status não informado, assume-se pago na criação rápida) e tiver conta vinculada
-        if ((Status === 'PAGO' || !Status) && dadosLimpos.ContaCaixaID) {
-            let valorEffect = dadosLimpos.Valor;
-            if (Tipo === 'DESPESA') valorEffect = valorEffect * -1;
-            await dbRun('UPDATE ContasCaixa SET Saldo = Saldo + ? WHERE id = ?', [valorEffect, dadosLimpos.ContaCaixaID]);
-        }
-
-        res.status(201).json({ id: result.id, message: 'Lançamento criado com sucesso.' });
-
-    } catch (err) {
-        console.error('Erro ao criar lançamento:', err);
-        res.status(500).json({ message: 'Erro ao salvar lançamento.', error: err.message });
-    }
+        res.status(201).json({ id: result.id, message: 'Lançamento criado.' });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const baixarLancamento = async (req, res) => {
     const { id } = req.params;
-    const { ValorRecebido, DataPagamento, ContaCaixaID, FormaPagamentoID } = req.body;
-
+    const { ValorRecebido, ContaCaixaID, DataPagamento } = req.body; // Recebendo dados do modal
+    
     try {
-        await dbRun('BEGIN TRANSACTION');
+        const lancamento = await dbGet('SELECT * FROM Lancamentos WHERE id = ?', [id]);
+        if (!lancamento) return res.status(404).json({ message: 'Lançamento não encontrado.' });
+        if (lancamento.Status === 'PAGO') return res.status(400).json({ message: 'Já está pago.' });
 
-        const dividaOriginal = await FinanceiroModel.findLancamentoPendenteById(id);
-        if (!dividaOriginal) {
-            await dbRun('ROLLBACK');
-            return res.status(404).json({ message: "Dívida não encontrada ou já paga." });
+        // Usa a data enviada ou hoje
+        const dataPag = DataPagamento || new Date().toISOString();
+        // Usa o valor recebido ou o valor original
+        const valorFinal = ValorRecebido || lancamento.Valor;
+
+        // Atualiza o lançamento para PAGO
+        await dbRun('UPDATE Lancamentos SET Status = ?, DataPagamento = ?, Valor = ? WHERE id = ?', 
+            ['PAGO', dataPag, valorFinal, id]);
+
+        // Atualiza o Saldo da Conta Selecionada
+        if (ContaCaixaID) {
+            const operador = lancamento.Tipo === 'RECEITA' ? '+' : '-';
+            await dbRun(`UPDATE ContasCaixa SET Saldo = Saldo ${operador} ? WHERE id = ?`, [valorFinal, ContaCaixaID]);
         }
-
-        // --- PROTEÇÃO NOVA: Valor Padrão e Validação ---
-        // Se não vier valor, assume que é o valor total da dívida
-        let valorRecebidoFloat = ValorRecebido ? parseFloat(ValorRecebido) : parseFloat(dividaOriginal.Valor);
-
-        if (isNaN(valorRecebidoFloat) || valorRecebidoFloat <= 0) {
-            await dbRun('ROLLBACK');
-            return res.status(400).json({ message: "O valor do pagamento deve ser maior que zero." });
-        }
-        
-        if (!FormaPagamentoID || !ContaCaixaID) {
-            await dbRun('ROLLBACK');
-            return res.status(400).json({ message: "Selecione a Conta (Caixa) e a Forma de Pagamento." });
-        }
-        // ------------------------------------------------
-
-        const valorOriginal = parseFloat(dividaOriginal.Valor);
-
-        // Arredondamento para evitar problemas com dizimas (ex: 99.99999)
-        const diff = Math.abs(valorOriginal - valorRecebidoFloat);
-
-        if (diff < 0.01) { 
-            // Pagamento TOTAL (se a diferença for menor que 1 centavo)
-            await FinanceiroModel.updateLancamentoParaPago(id, DataPagamento, ContaCaixaID, FormaPagamentoID);
-        } else if (valorRecebidoFloat < valorOriginal) {
-            // Pagamento PARCIAL
-            const novoValorPendente = valorOriginal - valorRecebidoFloat;
-            await FinanceiroModel.updateLancamentoValorPendente(id, novoValorPendente);
-            
-            const lancamentoPago = {
-                Descricao: `Pagto parcial ref. #${id} - ${dividaOriginal.Descricao}`,
-                Valor: valorRecebidoFloat,
-                Tipo: dividaOriginal.Tipo, 
-                Status: 'PAGO',
-                DataPagamento: DataPagamento,
-                DataVencimento: DataPagamento, // Vencimento vira a data do pagamento
-                CategoriaID: dividaOriginal.CategoriaID,
-                ContaCaixaID: ContaCaixaID,
-                ClienteID: dividaOriginal.ClienteID,
-                VendaID: dividaOriginal.VendaID,
-                FormaPagamentoID: FormaPagamentoID
-            };
-            await FinanceiroModel.createLancamento(lancamentoPago);
-        } else {
-            await dbRun('ROLLBACK');
-            return res.status(400).json({ message: "O valor pago não pode ser maior que a dívida." });
-        }
-
-        // Atualiza o Saldo da Conta Caixa
-        let valorEffect = valorRecebidoFloat;
-        if (dividaOriginal.Tipo === 'DESPESA') valorEffect = valorEffect * -1;
-        await dbRun('UPDATE ContasCaixa SET Saldo = Saldo + ? WHERE id = ?', [valorEffect, ContaCaixaID]);
-
-        await dbRun('COMMIT');
-        res.json({ message: "Baixa realizada com sucesso!" });
-
-    } catch (error) {
-        await dbRun('ROLLBACK');
-        console.error("Erro ao baixar:", error);
-        res.status(500).json({ message: "Erro ao processar baixa.", error: error.message });
-    }
+        res.json({ message: 'Baixa realizada com sucesso.' });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const excluirLancamento = async (req, res) => {
+    const { id } = req.params;
     try {
-        const { id } = req.params;
-        await FinanceiroModel.deleteLancamento(id);
-        res.json({ message: 'Lançamento excluído com sucesso.' });
-    } catch (err) {
-        console.error("Erro ao excluir:", err);
-        res.status(500).json({ message: 'Erro ao excluir lançamento.' });
-    }
+        const lanc = await dbGet('SELECT * FROM Lancamentos WHERE id = ?', [id]);
+        if (lanc && lanc.Status === 'PAGO' && lanc.ContaCaixaID) {
+            const operadorInverso = lanc.Tipo === 'RECEITA' ? '-' : '+';
+            await dbRun(`UPDATE ContasCaixa SET Saldo = Saldo ${operadorInverso} ? WHERE id = ?`, [lanc.Valor, lanc.ContaCaixaID]);
+        }
+        await dbRun('DELETE FROM Lancamentos WHERE id = ?', [id]);
+        res.json({ message: 'Lançamento excluído.' });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
-// --- 4. RELATÓRIOS E DASHBOARD ---
-
+// --- 4. Dashboard e Relatórios ---
 const getDashboardResumo = async (req, res) => {
     try {
-        const hoje = new Date().toISOString().split('T')[0];
-        const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-        const fimMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0];
+        const saldoTotal = await dbGet('SELECT SUM(Saldo) as total FROM ContasCaixa');
+        const hoje = new Date();
+        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+        const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
 
-        const [saldoResult, entradasResult, saidasResult, vencidoResult, pagarHojeResult] = await Promise.all([
-            FinanceiroModel.getSaldoAtual(),
-            FinanceiroModel.getEntradasMes(inicioMes, fimMes),
-            FinanceiroModel.getSaidasMes(inicioMes, fimMes),
-            FinanceiroModel.getReceberVencido(hoje),
-            FinanceiroModel.getPagarHoje(hoje)
-        ]);
+        const entradas = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='RECEITA' AND Status='PAGO' AND date(DataPagamento) BETWEEN ? AND ?", [inicioMes, fimMes]);
+        const saidas = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='DESPESA' AND Status='PAGO' AND date(DataPagamento) BETWEEN ? AND ?", [inicioMes, fimMes]);
+        const vencidos = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='RECEITA' AND Status='PENDENTE' AND date(DataVencimento) < date('now')");
 
-        const resumo = {
-            SaldoAtualTotal: Number(saldoResult?.SaldoAtualTotal) || 0,
-            EntradasMes: Number(entradasResult?.EntradasMes) || 0,
-            SaidasMes: Number(saidasResult?.SaidasMes) || 0,
-            ContasReceberVencido: Number(vencidoResult?.ContasReceberVencido) || 0,
-            ContasPagarHoje: Number(pagarHojeResult?.ContasPagarHoje) || 0
-        };
-        res.status(200).json(resumo);
-    } catch (error) {
-        res.status(500).json({ message: "Erro interno ao buscar resumo." });
-    }
+        res.json({
+            SaldoAtualTotal: saldoTotal?.total || 0,
+            EntradasMes: entradas?.total || 0,
+            SaidasMes: saidas?.total || 0,
+            AReceberVencido: vencidos?.total || 0
+        });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const getMovimentoCaixa = async (req, res) => {
+    const { data_inicio, data_fim } = req.query;
     try {
-        const { data_inicio, data_fim, conta_id } = req.query;
-        res.json(await FinanceiroModel.getMovimentoCaixa(data_inicio, data_fim, conta_id));
-    } catch (error) { res.status(500).json({ message: "Erro ao buscar movimentos." }); }
+        const sql = `
+            SELECT l.*, c.Nome as CategoriaNome, cc.Nome as ContaNome 
+            FROM Lancamentos l
+            LEFT JOIN CategoriasFinanceiras c ON l.CategoriaID = c.id
+            LEFT JOIN ContasCaixa cc ON l.ContaCaixaID = cc.id
+            WHERE l.Status = 'PAGO' 
+            AND date(l.DataPagamento) BETWEEN date(?) AND date(?)
+            ORDER BY l.DataPagamento DESC
+        `;
+        const movimentos = await dbAll(sql, [data_inicio, data_fim]);
+        res.json(movimentos);
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
+const getRelatorioDRE = async (req, res) => {
+    const { data_inicio, data_fim } = req.query;
+    try {
+        const sqlProd = `SELECT SUM(iv.quantidade * iv.valor_unitario) as total FROM Itens_Venda iv JOIN Vendas v ON iv.venda_id = v.id WHERE date(v.data) BETWEEN date(?) AND date(?)`;
+        const rProd = await dbGet(sqlProd, [data_inicio, data_fim]);
+        const receitaProdutos = rProd?.total || 0;
+
+        const sqlServ = `SELECT SUM(sv.valor * sv.quantidade) as total FROM Servicos_Venda sv JOIN Vendas v ON sv.venda_id = v.id WHERE date(v.data) BETWEEN date(?) AND date(?)`;
+        const rServ = await dbGet(sqlServ, [data_inicio, data_fim]);
+        const receitaServicos = rServ?.total || 0;
+
+        const sqlCMV = `SELECT SUM(iv.quantidade * p.valor_custo) as total FROM Itens_Venda iv JOIN Vendas v ON iv.venda_id = v.id JOIN Produtos p ON iv.produto_id = p.id WHERE date(v.data) BETWEEN date(?) AND date(?)`;
+        const c = await dbGet(sqlCMV, [data_inicio, data_fim]);
+        const TotalCMV = c?.total || 0;
+
+        const sqlCatDespesas = `SELECT c.Nome as categoria, SUM(l.Valor) as total FROM Lancamentos l JOIN CategoriasFinanceiras c ON l.CategoriaID = c.id WHERE l.Tipo='DESPESA' AND l.Status='PAGO' AND date(l.DataPagamento) BETWEEN date(?) AND date(?) GROUP BY c.Nome`;
+        const listaDespesas = await dbAll(sqlCatDespesas, [data_inicio, data_fim]);
+        const TotalDespesas = listaDespesas.reduce((acc, curr) => acc + curr.total, 0);
+
+        const TotalReceitas = receitaProdutos + receitaServicos;
+        const LucroBruto = TotalReceitas - TotalCMV;
+        const LucroLiquido = LucroBruto - TotalDespesas;
+
+        res.json({
+            TotalReceitas, TotalCMV, LucroBruto, TotalDespesas, LucroLiquido,
+            Receitas: [{ categoria: 'Venda de Produtos', total: receitaProdutos }, { categoria: 'Venda de Serviços', total: receitaServicos }],
+            Despesas: listaDespesas
+        });
+    } catch (err) { res.status(500).json({ message: "Erro DRE: " + err.message }); }
+};
+
+// --- 5. Contas a Receber (CORRIGIDO: NOMES QUE O FRONT ESPERA) ---
 const getContasAReceberResumo = async (req, res) => {
     try {
-        const hoje = new Date().toISOString().split('T')[0];
-        const [total, vencido, hojeVal] = await Promise.all([
-            FinanceiroModel.getTotalAReceber(),
-            FinanceiroModel.getTotalVencido(hoje),
-            FinanceiroModel.getReceberHoje(hoje)
-        ]);
-        res.json({ TotalAReceber: total.TotalAReceber, TotalVencido: vencido.TotalVencido, ReceberHoje: hojeVal.ReceberHoje });
-    } catch (error) { res.status(500).json({ message: "Erro no resumo receber." }); }
+        const total = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='RECEITA' AND Status='PENDENTE'");
+        const vencido = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='RECEITA' AND Status='PENDENTE' AND date(DataVencimento) < date('now', 'localtime')");
+        const hoje = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='RECEITA' AND Status='PENDENTE' AND date(DataVencimento) = date('now', 'localtime')");
+
+        // AQUI ESTAVA O ERRO: Mudamos os nomes das chaves para bater com o gestao_contas_receber.js
+        res.json({
+            TotalAReceber: total?.total || 0,
+            TotalVencido: vencido?.total || 0,
+            ReceberHoje: hoje?.total || 0
+        });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const listarContasAReceber = async (req, res) => {
     try {
-        const filtros = { ...req.query, hoje: new Date().toISOString().split('T')[0] };
-        res.json(await FinanceiroModel.getContasAReceber(filtros));
-    } catch (error) { res.status(500).json({ message: "Erro ao buscar pendências." }); }
+        const sql = `SELECT l.*, c.nome as NomeCliente, c.nome as ClienteNome FROM Lancamentos l LEFT JOIN Clientes c ON l.ClienteID = c.id WHERE l.Tipo = 'RECEITA' AND l.Status = 'PENDENTE' ORDER BY l.DataVencimento ASC`;
+        const contas = await dbAll(sql);
+        res.json(contas);
+    } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+// --- 6. Contas a Pagar ---
+const obterResumoContasPagar = async (req, res) => {
+    try {
+        const total = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='DESPESA' AND Status='PENDENTE'");
+        const vencido = await dbGet("SELECT SUM(Valor) as total FROM Lancamentos WHERE Tipo='DESPESA' AND Status='PENDENTE' AND date(DataVencimento) < date('now', 'localtime')");
+        res.json({ TotalAPagar: total?.total || 0, TotalVencido: vencido?.total || 0 });
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 const listarContasAPagar = async (req, res) => {
-    try { res.json(await FinanceiroModel.getContasAPagar()); } 
-    catch (err) { res.status(500).json({ message: 'Erro ao buscar contas a pagar.' }); }
-};
-
-const obterResumoContasPagar = async (req, res) => {
     try {
-        const hoje = new Date().toISOString().split('T')[0];
-        res.json(await FinanceiroModel.getResumoContasPagar(hoje));
-    } catch (err) { res.status(500).json({ message: 'Erro ao buscar resumo.' }); }
-};
-
-const getRelatorioDRE = async (req, res) => {
-    try {
-        const { data_inicio, data_fim } = req.query;
-        if (!data_inicio || !data_fim) return res.status(400).json({ message: "Datas obrigatórias." });
-
-        const { grupos, totalCMV } = await FinanceiroModel.getDRE(data_inicio, data_fim);
-        
-        // Variáveis inicializadas
-        let RecProdutos = 0;
-        let RecServicos = 0;
-        let RecOutras = 0;
-        let DespTotal = 0;
-        
-        const RecDet = [], DespDet = [];
-
-        // Loop corrigido para separar Serviços de Outras Receitas
-        for (const g of grupos) {
-            const val = parseFloat(g.TotalPorCategoria);
-            if (g.Tipo === 'RECEITA') {
-                if (g.CategoriaNome === 'Venda de Produtos') {
-                    RecProdutos += val;
-                } else if (g.CategoriaNome === 'Venda de Serviços') {
-                    RecServicos += val; // Agora somamos serviços separadamente
-                } else {
-                    RecOutras += val;
-                }
-                RecDet.push({ categoria: g.CategoriaNome, total: val });
-            } else {
-                DespDet.push({ categoria: g.CategoriaNome, total: val });
-                DespTotal += val;
-            }
-        }
-
-        const TotalRec = RecProdutos + RecServicos + RecOutras;
-
-        // CÁLCULO CORRETO: Lucro Bruto é a operação principal (Peças + Mão de Obra) menos o custo das peças
-        const LucroBruto = (RecProdutos + RecServicos) - totalCMV;
-
-        // Resultado Líquido: Lucro Bruto + Outras Receitas (ex: Rendimentos) - Despesas
-        const LucroLiquido = (LucroBruto + RecOutras) - DespTotal;
-
-        res.json({ 
-            TotalReceitas: TotalRec, 
-            TotalDespesas: DespTotal, 
-            TotalCMV: totalCMV, 
-            LucroBruto, 
-            LucroLiquido, 
-            Receitas: RecDet, 
-            Despesas: DespDet 
-        });
-
-    } catch (error) { 
-        console.error("Erro DRE:", error);
-        res.status(500).json({ message: "Erro ao gerar DRE." }); 
-    }
+        const sql = `SELECT * FROM Lancamentos WHERE Tipo = 'DESPESA' AND Status = 'PENDENTE' ORDER BY DataVencimento ASC`;
+        const contas = await dbAll(sql);
+        res.json(contas);
+    } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 module.exports = {
-    listarContas, // Esta é a função correta
-    criarConta,
-    removerConta,
-    listarFormasPagamento,
-    listarCategorias,
-    criarLancamento,
-    baixarLancamento,
-    excluirLancamento,
-    getDashboardResumo,
-    getMovimentoCaixa,
-    getContasAReceberResumo,
-    listarContasAReceber,
-    listarContasAPagar,
-    obterResumoContasPagar,
-    getRelatorioDRE
+    listarContas, criarConta, removerConta,
+    listarFormasPagamento, listarCategorias,
+    criarLancamento, baixarLancamento, excluirLancamento,
+    getDashboardResumo, getMovimentoCaixa, getRelatorioDRE,
+    getContasAReceberResumo, listarContasAReceber, obterResumoContasPagar, listarContasAPagar
 };

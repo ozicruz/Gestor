@@ -1,167 +1,127 @@
-// backend/controllers/vendaController.js
-const { dbRun, dbAll, dbGet } = require('../database/database');
+const { dbGet, dbRun, dbAll } = require('../database/database');
+
+const getDataHoraLocal = () => {
+    const now = new Date();
+    const offsetMs = now.getTimezoneOffset() * 60 * 1000;
+    const localTime = new Date(now.getTime() - offsetMs);
+    return localTime.toISOString().slice(0, 19).replace('T', ' ');
+};
 
 const criarVenda = async (req, res) => {
-    const { 
-        cliente_id, total, subtotal, desconto_valor, acrescimo_valor, 
-        desconto_tipo, acrescimo_tipo, 
-        FormaPagamentoID, ContaCaixaID, DataVencimento, numParcelas, 
-        itens, os_id 
-    } = req.body;
-
-    await dbRun('BEGIN TRANSACTION');
-
     try {
-        const dataHoje = new Date().toISOString();
-        const parcelas = numParcelas && numParcelas > 1 ? numParcelas : 1; // Garante inteiro
+        const { cliente_id, os_id, itens, total, desconto_tipo, desconto_valor, acrescimo_tipo, acrescimo_valor, FormaPagamentoID, ContaCaixaID, DataVencimento, num_parcelas, vendedor_id } = req.body;
+
+        const dataVenda = getDataHoraLocal(); 
+
+        await dbRun('BEGIN TRANSACTION');
+
+        // --- VERIFICAÇÃO DE ESTOQUE ---
+        let estoqueJaBaixado = false;
+        if (os_id) {
+            const osOrigem = await dbGet('SELECT status FROM Ordens_Servico WHERE id = ?', [os_id]);
+            // Se a OS já estava 'Em andamento' ou 'Finalizada', o estoque já foi baixado no controller da OS.
+            if (osOrigem && osOrigem.status !== 'Orçamento' && osOrigem.status !== 'Cancelada') {
+                estoqueJaBaixado = true;
+            }
+            // REMOVIDO: Não tentamos mais atualizar a OS com 'TEMP' aqui para evitar erro de Foreign Key
+        }
+
+        // 1. Cria a Venda Primeiro (Para gerar o ID)
+        const sqlVenda = `
+            INSERT INTO Vendas (cliente_id, os_id, total, desconto_tipo, desconto_valor, acrescimo_tipo, acrescimo_valor, FormaPagamentoID, ContaCaixaID, DataVencimento, num_parcelas, data, vendedor_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
         
-        // --- 1. DETECTOR DE CATEGORIA (PRODUTO vs SERVIÇO) ---
-        let temProduto = false;
-        let temServico = false;
-        
-        if (itens && itens.length > 0) {
-            itens.forEach(item => {
-                if (item.tipo === 'produto') temProduto = true;
-                if (item.tipo === 'serviço') temServico = true;
-            });
-        }
-
-        // Prioridade: Se tiver produto, é "Venda de Produtos". Se for só serviço, é "Venda de Serviços".
-        let nomeCategoria = 'Venda de Produtos';
-        if (temServico && !temProduto) {
-            nomeCategoria = 'Venda de Serviços';
-        }
-
-        const catDb = await dbGet('SELECT id FROM CategoriasFinanceiras WHERE Nome = ?', [nomeCategoria]);
-        const categoriaID = catDb ? catDb.id : null;
-
-        // --- 2. BUSCA NOME DA FORMA DE PAGTO ---
-        let nomeForma = 'Não Informado';
-        if (FormaPagamentoID) {
-            const forma = await dbGet('SELECT Nome FROM FormasPagamento WHERE id = ?', [FormaPagamentoID]);
-            if (forma) nomeForma = forma.Nome;
-        }
-
-        // --- 3. INSERIR A VENDA (Agora salvando num_parcelas) ---
-        const resultVenda = await dbRun(`
-            INSERT INTO Vendas (
-                cliente_id, data, total, subtotal, 
-                desconto_valor, acrescimo_valor, desconto_tipo, acrescimo_tipo,
-                forma_pagamento, FormaPagamentoID, ContaCaixaID, DataVencimento, 
-                num_parcelas, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-            cliente_id || null, 
-            dataHoje, 
-            total, 
-            subtotal || total, 
-            desconto_valor || 0, 
-            acrescimo_valor || 0,
-            desconto_tipo || 'R$',
-            acrescimo_tipo || '%',
-            nomeForma, 
-            FormaPagamentoID, 
-            ContaCaixaID || null,
-            DataVencimento || null,
-            parcelas, // <--- SALVANDO AS PARCELAS AQUI
-            'Finalizada'
+        const result = await dbRun(sqlVenda, [
+            cliente_id, os_id, total, desconto_tipo, desconto_valor, acrescimo_tipo, acrescimo_valor, FormaPagamentoID, ContaCaixaID, DataVencimento, num_parcelas || 1, dataVenda, vendedor_id || null
         ]);
+        
+        const vendaId = result.id;
 
-        const vendaId = resultVenda.id;
+        // 2. AGORA SIM: Atualiza a OS com o ID real e Status
+        if (os_id) {
+            await dbRun("UPDATE Ordens_Servico SET status = 'Finalizada', venda_gerada_id = ? WHERE id = ?", [vendaId, os_id]);
+        }
 
-        // --- 4. ITENS E ESTOQUE ---
+        // 3. Insere os Itens e Baixa Estoque (CONDICIONAL)
         if (itens && itens.length > 0) {
             for (const item of itens) {
                 if (item.tipo === 'produto') {
-                    await dbRun(`
-                        INSERT INTO Itens_Venda (venda_id, produto_id, quantidade, valor_unitario, subtotal)
-                        VALUES (?, ?, ?, ?, ?)
-                    `, [vendaId, item.id, item.quantidade, item.precoUnitario, item.subtotal]);
+                    // Regista o item na venda
+                    await dbRun(`INSERT INTO Itens_Venda (venda_id, produto_id, quantidade, valor_unitario) VALUES (?, ?, ?, ?)`, 
+                        [vendaId, item.id, item.quantidade, item.precoUnitario]);
+                    
+                    // SÓ BAIXA ESTOQUE SE AINDA NÃO FOI BAIXADO PELA OS
+                    if (!estoqueJaBaixado) {
+                        await dbRun(`UPDATE Produtos SET quantidade_em_estoque = quantidade_em_estoque - ? WHERE id = ?`, 
+                            [item.quantidade, item.id]);
 
-                    await dbRun(`UPDATE Produtos SET quantidade_em_estoque = quantidade_em_estoque - ? WHERE id = ?`, [item.quantidade, item.id]);
-                }
-                else if (item.tipo === 'serviço') {
-                     try {
-                        await dbRun(`
-                            INSERT INTO Servicos_Venda (venda_id, servico_id, quantidade, valor)
-                            VALUES (?, ?, ?, ?)
-                        `, [vendaId, item.id, item.quantidade, item.precoUnitario]);
-                     } catch(e) { console.warn("Tabela Servicos_Venda ignorada."); }
+                        await dbRun(`INSERT INTO MovimentacoesEstoque (produto_id, quantidade, tipo, custo_unitario, observacao, data) VALUES (?, ?, ?, ?, ?, ?)`, 
+                            [item.id, -item.quantidade, 'VENDA', 0, `Venda #${vendaId}`, dataVenda]);
+                    } 
+                    // Se foi OS já baixada, o histórico já tem "OS #..." gravado pelo controller da OS.
+
+                } else if (item.tipo === 'serviço') {
+                    await dbRun(`INSERT INTO Servicos_Venda (venda_id, servico_id, quantidade, valor) VALUES (?, ?, ?, ?)`, 
+                        [vendaId, item.id, item.quantidade, item.precoUnitario]);
                 }
             }
         }
 
-        if (os_id) await dbRun("UPDATE Ordens_Servico SET status = 'Finalizada' WHERE id = ?", [os_id]);
+        // 4. LANÇAMENTO FINANCEIRO
+        const formaPagto = await dbGet('SELECT Nome, TipoLancamento FROM FormasPagamento WHERE id = ?', [FormaPagamentoID]);
+        const tipoLanc = formaPagto ? formaPagto.TipoLancamento : 'A_VISTA';
 
-        // --- 5. LANÇAMENTOS FINANCEIROS ---
+        let statusFinanceiro = 'PAGO';
+        let dataPagtoFinanceiro = dataVenda.substring(0, 10); 
         
-        // Define a descrição base
-        let descFin = `Venda Balcão #${vendaId}`;
-        if (parcelas > 1) descFin += ` (${parcelas}x)`; // Adiciona info de parcela na descrição
+        if (tipoLanc === 'A_PRAZO') {
+            statusFinanceiro = 'PENDENTE';
+            dataPagtoFinanceiro = null;
+        }
 
-        if (ContaCaixaID) { 
-            // Venda À VISTA / Cartão com Recebimento Imediato
-            // Lança o valor TOTAL de uma vez, mas com a descrição mostrando que foi parcelado
-            await dbRun(`
-                INSERT INTO Lancamentos (
-                    Descricao, Valor, Tipo, Status, DataVencimento, DataPagamento, 
-                    ClienteID, VendaID, FormaPagamentoID, ContaCaixaID, CategoriaID
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `, [
-                descFin, 
-                total, 
-                'RECEITA', 
-                'PAGO', 
-                dataHoje, 
-                dataHoje,
-                cliente_id, 
-                vendaId, 
-                FormaPagamentoID, 
-                ContaCaixaID,
-                categoriaID 
-            ]);
-            
+        const catVenda = await dbGet("SELECT id FROM CategoriasFinanceiras WHERE Nome LIKE '%Venda%' LIMIT 1");
+        const categoriaID = catVenda ? catVenda.id : null;
+
+        const dataVencimentoFinal = DataVencimento || dataPagtoFinanceiro || dataVenda.substring(0, 10);
+
+        await dbRun(`
+            INSERT INTO Lancamentos (Descricao, Valor, Tipo, Status, DataVencimento, DataPagamento, ClienteID, VendaID, FormaPagamentoID, CategoriaID, ContaCaixaID)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            `Venda Balcão #${vendaId}`, total, 'RECEITA', statusFinanceiro, 
+            dataVencimentoFinal, dataPagtoFinanceiro, 
+            cliente_id, vendaId, FormaPagamentoID, categoriaID, ContaCaixaID
+        ]);
+
+        if (statusFinanceiro === 'PAGO' && ContaCaixaID) {
             await dbRun('UPDATE ContasCaixa SET Saldo = Saldo + ? WHERE id = ?', [total, ContaCaixaID]);
-
-        } else if (DataVencimento) { 
-            // Venda FIADO / A PRAZO (Aqui sim dividimos em linhas separadas)
-            const valorParcela = total / parcelas; 
-
-            for (let i = 0; i < parcelas; i++) {
-                let dataVencParcela = new Date(DataVencimento);
-                dataVencParcela.setMonth(dataVencParcela.getMonth() + i);
-                let dataVencISO = dataVencParcela.toISOString().split('T')[0];
-
-                let descParcela = `Venda Prazo #${vendaId}`;
-                if (parcelas > 1) descParcela += ` (${i + 1}/${parcelas})`;
-
-                await dbRun(`
-                    INSERT INTO Lancamentos (
-                        Descricao, Valor, Tipo, Status, DataVencimento, 
-                        ClienteID, VendaID, FormaPagamentoID, CategoriaID
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `, [
-                    descParcela, 
-                    valorParcela,
-                    'RECEITA', 
-                    'PENDENTE', 
-                    dataVencISO,
-                    cliente_id, 
-                    vendaId, 
-                    FormaPagamentoID,
-                    categoriaID 
-                ]);
-            }
         }
 
         await dbRun('COMMIT');
-        res.status(201).json({ id: vendaId, message: 'Venda realizada com sucesso!' });
+        res.status(201).json({ id: vendaId, message: 'Venda realizada com sucesso.' });
 
     } catch (err) {
         await dbRun('ROLLBACK');
-        console.error("Erro ao criar venda:", err);
-        res.status(500).json({ message: "Erro ao processar venda: " + err.message });
+        console.error("Erro Venda:", err);
+        res.status(500).json({ message: 'Erro ao processar venda.', error: err.message });
     }
 };
 
-module.exports = { criarVenda };
+const listarVendas = async (req, res) => {
+    try {
+        const vendas = await dbAll(`SELECT v.*, c.nome as cliente_nome, fp.Nome as forma_pagamento FROM Vendas v LEFT JOIN Clientes c ON v.cliente_id = c.id LEFT JOIN FormasPagamento fp ON v.FormaPagamentoID = fp.id ORDER BY v.data DESC`);
+        res.json(vendas);
+    } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+const obterPerformanceVendedores = async (req, res) => {
+    try {
+        const { data_inicio, data_fim } = req.query;
+        const sql = `SELECT u.nome as vendedor, COUNT(v.id) as total_vendas, SUM(v.total) as total_faturado FROM Vendas v JOIN Usuarios u ON v.vendedor_id = u.id WHERE date(v.data) BETWEEN date(?) AND date(?) GROUP BY u.id ORDER BY total_faturado DESC`;
+        const dados = await dbAll(sql, [data_inicio, data_fim]);
+        res.json(dados);
+    } catch (err) { res.status(500).json({ message: err.message }); }
+};
+
+module.exports = { criarVenda, listarVendas, obterPerformanceVendedores };

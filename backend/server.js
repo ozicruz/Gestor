@@ -17,10 +17,35 @@ const financeiroRoutes = require('./routes/financeiroRoutes');
 const relatorioRoutes = require('./routes/relatorioRoutes');
 const empresaRoutes = require('./routes/empresaRoutes');
 const backupRoutes = require('./routes/backupRoutes');
+const usuarioRoutes = require('./routes/usuarioRoutes');
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// --- Rota CORRIGIDA para buscar contas (Tabela certa: ContasCaixa) ---
+app.get('/api/financeiro/contas', (req, res) => {
+    // Busca na tabela correta 'ContasCaixa'
+    const sql = `SELECT * FROM ContasCaixa WHERE Ativo = 1 ORDER BY Nome`;
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            // Se der erro porque a coluna 'Ativo' não existe, tenta buscar tudo sem filtro
+            if (err.message.includes('no such column: Ativo')) {
+                db.all(`SELECT * FROM ContasCaixa ORDER BY Nome`, [], (err2, rows2) => {
+                    if (err2) return res.status(500).json({ error: err2.message });
+                    res.json(rows2);
+                });
+                return;
+            }
+            console.error('Erro ao buscar contas:', err);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+// ---------------------------------------------------------------------
 app.use(express.raw({ type: 'application/octet-stream', limit: '50mb' }));
 
 // --- CONFIGURAÇÃO DAS ROTAS ---
@@ -35,6 +60,7 @@ app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/relatorios', relatorioRoutes);
 app.use('/api', empresaRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api', usuarioRoutes);
 
 const startServer = (port) => {
     app.listen(port, () => {

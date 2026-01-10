@@ -1,13 +1,23 @@
 const { dbRun, dbGet, dbAll } = require('../database/database');
-const OrdemServico = require('../models/ordemServicoModel');
 
 const listarOS = async (req, res) => {
     try {
-        const ordens = await OrdemServico.findAll();
+        const sql = `
+            SELECT os.*, 
+                   c.nome as cliente_nome, 
+                   v.placa, v.modelo, v.marca, 
+                   u.nome as mecanico_nome,
+                   (COALESCE((SELECT SUM(quantidade * valor_unitario) FROM Itens_OS WHERE os_id = os.id), 0) + 
+                    COALESCE((SELECT SUM(quantidade * valor) FROM Servicos_OS WHERE os_id = os.id), 0)) as total_calculado
+            FROM Ordens_Servico os
+            LEFT JOIN Veiculos v ON os.veiculo_id = v.id
+            LEFT JOIN Clientes c ON v.cliente_id = c.id
+            LEFT JOIN Usuarios u ON os.mecanico_id = u.id
+            ORDER BY os.id DESC
+        `;
+        const ordens = await dbAll(sql);
         res.json(ordens);
-    } catch (err) {
-        res.status(500).json({ message: 'Erro ao buscar OS.', error: err.message });
-    }
+    } catch (err) { res.status(500).json({ message: 'Erro ao buscar OS.', error: err.message }); }
 };
 
 const criarOrdemServico = async (req, res) => {
@@ -15,110 +25,146 @@ const criarOrdemServico = async (req, res) => {
         const { placa } = req.body;
         if (!placa) return res.status(400).json({ message: 'Placa obrigatória.' });
 
-        const result = await OrdemServico.create(placa);
-        // Ajuste aqui também para garantir, caso use result.id
-        const novoId = result.id || result.lastID; 
-        res.status(201).json({ id: novoId, message: 'OS criada.' });
-    } catch (err) {
-        res.status(500).json({ message: 'Erro ao criar OS.', error: err.message });
+        const veiculo = await dbGet('SELECT id, cliente_id FROM Veiculos WHERE placa = ?', [placa]);
+        
+        if (!veiculo) {
+            return res.status(404).json({ message: 'Veículo não encontrado. Cadastre-o primeiro.' });
+        }
+
+        const result = await dbRun(`
+            INSERT INTO Ordens_Servico 
+            (veiculo_id, data_entrada, status, total, problema_relatado, diagnostico_tecnico) 
+            VALUES (?, datetime("now", "localtime"), ?, ?, ?, ?)
+        `, [veiculo.id, 'Orçamento', 0, '', '']);
+
+        res.status(201).json({ id: result.id, message: 'OS Criada.' });
+
+    } catch (err) { 
+        console.error("Erro Criar OS:", err);
+        res.status(500).json({ message: 'Erro ao criar OS.', error: err.message }); 
     }
 };
 
 const buscarOSPorId = async (req, res) => {
     try {
-        const os = await OrdemServico.findById(req.params.id);
-        if (os) res.json(os);
-        else res.status(404).json({ message: 'OS não encontrada.' });
-    } catch (err) {
-        res.status(500).json({ message: 'Erro ao buscar OS.', error: err.message });
-    }
-};
-
-const atualizarOS = async (req, res) => {
-    try {
         const { id } = req.params;
         
-        // TRAVA DE SEGURANÇA
-        const osAtual = await dbGet('SELECT status FROM Ordens_Servico WHERE id = ?', [id]);
-        if (osAtual && (osAtual.status === 'Finalizada' || osAtual.status === 'Faturada')) {
-            return res.status(403).json({ message: '⛔ AÇÃO NEGADA: OS já finalizada.' });
-        }
+        const os = await dbGet(`
+            SELECT os.*, 
+                   v.cliente_id, 
+                   c.nome as cliente_nome, 
+                   v.placa, v.modelo, v.marca, 
+                   u.nome as mecanico_nome
+            FROM Ordens_Servico os
+            LEFT JOIN Veiculos v ON os.veiculo_id = v.id
+            LEFT JOIN Clientes c ON v.cliente_id = c.id
+            LEFT JOIN Usuarios u ON os.mecanico_id = u.id
+            WHERE os.id = ?
+        `, [id]);
 
-        await OrdemServico.update(id, req.body);
-        res.json({ message: 'OS atualizada com sucesso.' });
-    } catch (err) {
-        res.status(500).json({ message: 'Erro ao atualizar.', error: err.message });
-    }
+        if (!os) return res.status(404).json({ message: 'OS não encontrada.' });
+
+        const itens = await dbAll(`
+            SELECT ios.*, p.nome as nome_produto 
+            FROM Itens_OS ios 
+            LEFT JOIN Produtos p ON ios.produto_id = p.id 
+            WHERE ios.os_id = ?`, [id]);
+            
+        const servicos = await dbAll(`
+            SELECT sos.*, s.nome 
+            FROM Servicos_OS sos 
+            LEFT JOIN Servicos s ON sos.servico_id = s.id 
+            WHERE sos.os_id = ?`, [id]);
+
+        const totalItens = (itens || []).reduce((acc, i) => acc + (i.quantidade * i.valor_unitario), 0);
+        const totalServicos = (servicos || []).reduce((acc, s) => acc + (s.quantidade * s.valor), 0);
+        os.total = totalItens + totalServicos;
+
+        res.json({ ...os, itens, servicos });
+    } catch (err) { res.status(500).json({ message: 'Erro ao buscar OS.', error: err.message }); }
 };
 
-const gerarVendaDeOS = async (req, res) => {
+// --- FUNÇÃO ATUALIZAR CORRIGIDA (TRAVA DE SEGURANÇA + HISTÓRICO CORRETO) ---
+const atualizarOrdemServico = async (req, res) => {
     const { id } = req.params;
-
-    // INICIA TRANSAÇÃO
-    await dbRun('BEGIN TRANSACTION');
+    const { status, problema_relatado, diagnostico_tecnico, itens, servicos, mecanico_id } = req.body;
 
     try {
-        const os = await OrdemServico.findById(id);
-        if (!os) throw new Error('OS não encontrada.');
+        await dbRun('BEGIN TRANSACTION');
 
-        if (os.status === 'Finalizada' || os.status === 'Faturada') {
-            throw new Error('Esta OS já foi finalizada.');
-        }
+        const osAtual = await dbGet('SELECT status FROM Ordens_Servico WHERE id = ?', [id]);
+        if (!osAtual) throw new Error("OS não encontrada");
 
-        const itensOS = await dbAll('SELECT * FROM Itens_OS WHERE os_id = ?', [id]);
-        const servicosOS = await dbAll('SELECT * FROM Servicos_OS WHERE os_id = ?', [id]);
+        // Regra de Estoque: Só considera 'Baixado' se estiver sendo trabalhado ou finalizado
+        // 'Aprovada' e 'Aguardando peças' NÃO baixam estoque (pois o carro não está sendo montado)
+        const statusBaixaEstoque = ['Em andamento', 'Pronto', 'Finalizada', 'Faturada'];
+        
+        const estavaBaixado = statusBaixaEstoque.includes(osAtual.status);
+        const vaiFicarBaixado = statusBaixaEstoque.includes(status);
 
-        if (itensOS.length === 0 && servicosOS.length === 0) {
-            throw new Error('A OS está vazia. Adicione itens antes de gerar venda.');
-        }
-
-        // 2. Baixa Estoque
-        for (const item of itensOS) {
-            // Se o produto_id for nulo (item avulso), ignoramos a baixa de estoque
-            if (item.produto_id) {
-                await dbRun(
-                    'UPDATE Produtos SET quantidade_em_estoque = quantidade_em_estoque - ? WHERE id = ?',
-                    [item.quantidade, item.produto_id]
-                );
+        // 1. DEVOLUÇÃO (Se estava baixado e agora não vai estar, ou para recalcular)
+        if (estavaBaixado) {
+            const itensAntigos = await dbAll('SELECT * FROM Itens_OS WHERE os_id = ?', [id]);
+            for (const item of itensAntigos) {
+                if (item.produto_id) {
+                    await dbRun('UPDATE Produtos SET quantidade_em_estoque = quantidade_em_estoque + ? WHERE id = ?', [item.quantidade, item.produto_id]);
+                    // Log de devolução
+                    await dbRun(`INSERT INTO MovimentacoesEstoque (produto_id, quantidade, tipo, observacao) VALUES (?, ?, 'ENTRADA', ?)`, [item.produto_id, item.quantidade, `Retorno OS #${id} (${status})`]);
+                }
             }
         }
 
-        // 3. CRIA A VENDA
-        const dataHoje = new Date().toISOString();
-        const resultVenda = await dbRun(`
-            INSERT INTO Vendas (cliente_id, data, total, forma_pagamento, desconto, acrescimo, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [os.cliente_id, dataHoje, os.total, 'A Definir', 0, 0, 'Finalizada']);
-        
-        // --- A CORREÇÃO MÁGICA ESTÁ AQUI ---
-        // Usamos .id porque o seu database.js retorna { id: ..., changes: ... }
-        const vendaId = resultVenda.id; 
+        // 2. ATUALIZA DADOS DA OS
+        await dbRun(`
+            UPDATE Ordens_Servico 
+            SET status = ?, problema_relatado = ?, diagnostico_tecnico = ?, mecanico_id = ?
+            WHERE id = ?
+        `, [status, problema_relatado, diagnostico_tecnico, mecanico_id || null, id]);
 
-        if (!vendaId) {
-            throw new Error("Falha ao recuperar ID da venda criada.");
+        // Limpa itens antigos para recriar
+        await dbRun('DELETE FROM Itens_OS WHERE os_id = ?', [id]);
+        await dbRun('DELETE FROM Servicos_OS WHERE os_id = ?', [id]);
+
+        let novoTotal = 0;
+
+        // 3. INSERE NOVOS ITENS E BAIXA ESTOQUE (Se o status exigir)
+        if (itens) {
+            for (const item of itens) {
+                const qtd = parseFloat(item.quantidade);
+                const valUnit = parseFloat(item.valor_unitario);
+                
+                await dbRun(`INSERT INTO Itens_OS (os_id, produto_id, quantidade, valor_unitario) VALUES (?, ?, ?, ?)`, 
+                    [id, item.produto_id || null, qtd, valUnit]);
+                
+                novoTotal += (qtd * valUnit);
+
+                if (vaiFicarBaixado && item.produto_id) {
+                    await dbRun('UPDATE Produtos SET quantidade_em_estoque = quantidade_em_estoque - ? WHERE id = ?', [qtd, item.produto_id]);
+                    await dbRun(`INSERT INTO MovimentacoesEstoque (produto_id, quantidade, tipo, observacao) VALUES (?, ?, 'SAIDA', ?)`, [item.produto_id, -qtd, `Saída OS #${id}`]);
+                }
+            }
         }
 
-        // 4. Itens Venda
-        for (const item of itensOS) {
-            // Se não tiver ID de produto, usamos um ID genérico ou deixamos null, mas o venda_id é OBRIGATÓRIO
-            await dbRun(`INSERT INTO Itens_Venda (venda_id, produto_id, quantidade, valor_unitario, subtotal) VALUES (?, ?, ?, ?, ?)`,
-                [vendaId, item.produto_id, item.quantidade, item.valor_unitario, item.quantidade * item.valor_unitario]);
+        if (servicos) {
+            for (const serv of servicos) {
+                const valServ = parseFloat(serv.valor || 0);
+                const qtdServ = parseFloat(serv.quantidade || 1);
+                await dbRun(`INSERT INTO Servicos_OS (os_id, servico_id, quantidade, valor) VALUES (?, ?, ?, ?)`, 
+                    [id, serv.servico_id || null, qtdServ, valServ]);
+                novoTotal += (qtdServ * valServ);
+            }
         }
-        
-        // 5. Serviços Venda (Opcional: Se tiver tabela de serviços na venda, insira aqui)
-        // Se não tiver tabela específica para serviços na venda, pode pular ou adaptar.
 
-        // 6. Finaliza OS
-        await dbRun("UPDATE Ordens_Servico SET status = 'Finalizada' WHERE id = ?", [id]);
-
+        await dbRun('UPDATE Ordens_Servico SET total = ? WHERE id = ?', [novoTotal, id]);
         await dbRun('COMMIT');
-        res.json({ message: "Venda gerada com sucesso!", venda_id: vendaId });
+        
+        res.json({ message: 'OS atualizada com sucesso.' });
 
     } catch (err) {
         await dbRun('ROLLBACK');
-        console.error('Erro ao gerar venda:', err);
-        res.status(500).json({ message: err.message || 'Erro ao processar venda.' });
+        console.error("Erro ao salvar OS:", err);
+        res.status(500).json({ message: err.message || 'Erro ao atualizar OS.' });
     }
 };
 
-module.exports = { listarOS, criarOrdemServico, buscarOSPorId, atualizarOS, gerarVendaDeOS };
+module.exports = { listarOS, criarOrdemServico, buscarOSPorId, atualizarOrdemServico };

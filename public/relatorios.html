@@ -10,7 +10,7 @@
 </head>
 <body class="p-4 md:p-8 bg-gray-50"> <div class="max-w-7xl mx-auto">
         <header class="mb-8">
-            <a href="index.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar à Página Inicial</a>
+            <a href="index.html" class="text-blue-600 hover:text-blue-800 font-medium">&larr; Voltar</a>
             <h1 class="text-4xl font-bold text-gray-800 mt-2">Relatórios Financeiros 📈</h1>
         </header>
 
@@ -29,7 +29,8 @@
 
                 <hr class="border-gray-100">
 
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    
                     <button type="submit" id="btn-gerar-dre"
                         class="bg-white border-l-4 border-blue-600 p-4 rounded-lg shadow hover:shadow-md transition-transform hover:scale-105 flex flex-col items-center justify-center gap-2 group">
                         <span class="text-3xl group-hover:scale-110 transition-transform">📊</span>
@@ -65,6 +66,19 @@
                         <span class="text-3xl group-hover:scale-110 transition-transform">⚠️</span>
                         <span class="text-sm font-bold text-gray-700 group-hover:text-yellow-700">Stock Baixo</span>
                     </button>
+
+                    <button type="button" id="btn-gerar-performance"
+                        class="bg-white border-l-4 border-pink-600 p-4 rounded-lg shadow hover:shadow-md transition-transform hover:scale-105 flex flex-col items-center justify-center gap-2 group">
+                        <span class="text-3xl group-hover:scale-110 transition-transform">🏆</span>
+                        <span class="text-sm font-bold text-gray-700 group-hover:text-pink-700">Performance Equipe</span>
+                    </button>
+
+                    <button type="button" id="btn-gerar-auditoria"
+                        class="bg-white border-l-4 border-red-600 p-4 rounded-lg shadow hover:shadow-md transition-transform hover:scale-105 flex flex-col items-center justify-center gap-2 group">
+                        <span class="text-3xl group-hover:scale-110 transition-transform">🕵️</span>
+                        <span class="text-sm font-bold text-gray-700 group-hover:text-red-700">Auditoria & Preços</span>
+                    </button>
+
                 </div>
             </form>
         </div>
